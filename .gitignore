@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environnement
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Tests / cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Graphify generated cache
+graphify-out/cache/
+
+# Logs
+*.log
