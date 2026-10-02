@@ -1,0 +1,3 @@
+requests>=2.31
+# Optionnel — Google Trends (peut être limité par Google en cas d'usage intensif)
+pytrends>=4.9 ; python_version >= "3.8"

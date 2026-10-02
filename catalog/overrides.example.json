@@ -1,0 +1,7 @@
+{
+  "_comment": "Copier vers overrides.json. Par outil: enabled, endpoint, notes. Les secrets restent dans l'env, pas ici.",
+  "searxng": {
+    "enabled": true,
+    "endpoint": "http://127.0.0.1:8888"
+  }
+}

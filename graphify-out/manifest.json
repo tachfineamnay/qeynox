@@ -1,0 +1,162 @@
+{
+  "catalog/arms.json": {
+    "mtime": 1790967493.4201005,
+    "ast_hash": "d78f3cb38c03f68ad237b2b752b98576",
+    "semantic_hash": ""
+  },
+  "catalog/overrides.example.json": {
+    "mtime": 1790966904.5992725,
+    "ast_hash": "661f71d9c282c2fbb8163f777c9298fe",
+    "semantic_hash": ""
+  },
+  "engine/__init__.py": {
+    "mtime": 1790958282.947959,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "engine/arms.py": {
+    "mtime": 1790967584.3480642,
+    "ast_hash": "7e02a734e89f6cd3760af7ba0a2e57c4",
+    "semantic_hash": ""
+  },
+  "engine/dossier.py": {
+    "mtime": 1790958282.9667337,
+    "ast_hash": "fa16e7201b62355734eaee764aa2c022",
+    "semantic_hash": ""
+  },
+  "engine/launch.py": {
+    "mtime": 1790958282.9888785,
+    "ast_hash": "423e46b19ae88163287c5d7b360c8065",
+    "semantic_hash": ""
+  },
+  "engine/loops.py": {
+    "mtime": 1790967457.4296067,
+    "ast_hash": "69e308af0e78e7b131bae83a81e3683b",
+    "semantic_hash": ""
+  },
+  "engine/pipeline.py": {
+    "mtime": 1790958283.0304368,
+    "ast_hash": "57ec1e8c560f7384988d33477fd57f12",
+    "semantic_hash": ""
+  },
+  "engine/repo_scan.py": {
+    "mtime": 1790958283.0523548,
+    "ast_hash": "3004bb7b9273a7dea6647c531f77101b",
+    "semantic_hash": ""
+  },
+  "engine/research.py": {
+    "mtime": 1790967342.8546634,
+    "ast_hash": "c6b9974bc5fe9ea6d9886ff405d23be2",
+    "semantic_hash": ""
+  },
+  "engine/synthesize.py": {
+    "mtime": 1790958283.0979087,
+    "ast_hash": "4baca62d3a52e01b4db49363980cdb45",
+    "semantic_hash": ""
+  },
+  "mcp_server.py": {
+    "mtime": 1790958282.8722968,
+    "ast_hash": "2eb3096c9b019f2cbb6876eecbc8a0e3",
+    "semantic_hash": ""
+  },
+  "qeynox.py": {
+    "mtime": 1790967498.8719883,
+    "ast_hash": "04a6ea488c3ae78bf90caf5dfee15eb1",
+    "semantic_hash": ""
+  },
+  "stacks/registry.json": {
+    "mtime": 1790967335.761068,
+    "ast_hash": "58e0494c51d30eb3494f7c9198986bb9",
+    "semantic_hash": ""
+  },
+  "tools/competitor_watch.py": {
+    "mtime": 1790967410.0077975,
+    "ast_hash": "26ff7ca1c154b38accf1feb60f3e79f0",
+    "semantic_hash": ""
+  },
+  "tools/gtm_common.py": {
+    "mtime": 1790967336.5653608,
+    "ast_hash": "5dbcf99e6223ae8d900e386cb7e7135e",
+    "semantic_hash": ""
+  },
+  "tools/gtm_store.py": {
+    "mtime": 1790958283.8212626,
+    "ast_hash": "642c61a021efc5741dc75abf394ccfd7",
+    "semantic_hash": ""
+  },
+  "tools/keyword_research.py": {
+    "mtime": 1790967412.539952,
+    "ast_hash": "0d6cda3486a386f12f178155a38d8d17",
+    "semantic_hash": ""
+  },
+  "tools/searx_search.py": {
+    "mtime": 1790967428.863151,
+    "ast_hash": "58389db6397643a2f4c9f50291dde570",
+    "semantic_hash": ""
+  },
+  "tools/serp_rank.py": {
+    "mtime": 1790967420.2940216,
+    "ast_hash": "12d292cdd9644389a68c9303ac47a18d",
+    "semantic_hash": ""
+  },
+  "tools/social_pulse.py": {
+    "mtime": 1790967624.979123,
+    "ast_hash": "5fb046dd086155e913cf5e20531582c3",
+    "semantic_hash": ""
+  },
+  "tools/trends_check.py": {
+    "mtime": 1790967432.5359251,
+    "ast_hash": "bada33eba19b5a7e6663daa9bb6ecda6",
+    "semantic_hash": ""
+  },
+  "web/app.py": {
+    "mtime": 1790958283.9602866,
+    "ast_hash": "0f2e1748301aaaa7bc359b0bab3f40cd",
+    "semantic_hash": ""
+  },
+  "web/static/app.js": {
+    "mtime": 1790967413.5093572,
+    "ast_hash": "12c8c783069aba5ac782693b11b2be7d",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1790967509.7677815,
+    "ast_hash": "5791cad4a5ebadac3cafc06be1e9c017",
+    "semantic_hash": ""
+  },
+  "docs/PRD-v1.md": {
+    "mtime": 1790967305.4116294,
+    "ast_hash": "5f4b45f7c6b6781ea77e4674175fe478",
+    "semantic_hash": ""
+  },
+  "docs/archive/checklist-startup-saas-raas.md": {
+    "mtime": 1790958282.8367276,
+    "ast_hash": "13ac7a654ad9546194b1cbc63f7127c1",
+    "semantic_hash": ""
+  },
+  "docs/archive/insider-opportunites-qeynox.md": {
+    "mtime": 1790958282.850379,
+    "ast_hash": "627052040ed6ffdf01bd5524cf21840d",
+    "semantic_hash": ""
+  },
+  "tools/requirements.txt": {
+    "mtime": 1790958283.8582492,
+    "ast_hash": "45dd3cbbaf75940138ad82b4194593b8",
+    "semantic_hash": ""
+  },
+  "web/static/index.html": {
+    "mtime": 1790958284.0496552,
+    "ast_hash": "d23b4e68a64559ae74fe931c76a9a48b",
+    "semantic_hash": ""
+  },
+  "docs/archive/mecanique-agentique-audit.md": {
+    "mtime": 1790958282.890217,
+    "ast_hash": "77e39d6f3022f61bf4395aa7818cb678",
+    "semantic_hash": ""
+  },
+  "web/static/favicon.svg": {
+    "mtime": 1790958284.0159504,
+    "ast_hash": "7e6a38f772bec1544ca99c933cd77d46",
+    "semantic_hash": ""
+  }
+}

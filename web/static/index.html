@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QeyNox — GTM Swarm Platform</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <svg viewBox="0 0 48 48" class="logo-moon" aria-hidden="true">
+        <defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#F0D9A0"/><stop offset="1" stop-color="#C4A35A"/>
+        </linearGradient></defs>
+        <path d="M24 3 41 13v22L24 45 7 35V13Z" fill="none" stroke="url(#gold)" stroke-width="1.6"/>
+        <path d="M24 10.5 34.5 16.5v12L24 34.5 13.5 28.5v-12Z" fill="url(#gold)" opacity=".9"/>
+        <circle cx="24" cy="24" r="2.2" fill="#0a0b14"/>
+      </svg>
+      <div class="logo-text">
+        <strong>QeyNox</strong>
+        <span>GTM Swarm</span>
+      </div>
+    </div>
+
+    <nav id="nav" class="nav">
+      <button data-view="stacks" class="nav-item active"><span class="nav-ic" data-ic="layers"></span>Stacks</button>
+      <button data-view="dashboard" class="nav-item"><span class="nav-ic" data-ic="home"></span>Tableau de bord</button>
+      <button data-view="keywords"   class="nav-item"><span class="nav-ic" data-ic="keywords"></span>Mots-clés</button>
+      <button data-view="signals"    class="nav-item"><span class="nav-ic" data-ic="pulse"></span>Signaux</button>
+      <button data-view="competitors" class="nav-item"><span class="nav-ic" data-ic="radar"></span>Concurrents</button>
+      <button data-view="serp"       class="nav-item"><span class="nav-ic" data-ic="chart"></span>Positions SERP</button>
+      <div class="nav-sep"></div>
+      <button data-view="missions"   class="nav-item"><span class="nav-ic" data-ic="rocket"></span>Missions</button>
+      <button data-view="reports"    class="nav-item"><span class="nav-ic" data-ic="doc"></span>Rapports</button>
+      <button data-view="agents"     class="nav-item"><span class="nav-ic" data-ic="users"></span>Agents</button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="dot-status" id="searx-status" title="État SearXNG"><span class="dot"></span> SearXNG</div>
+      <div class="foot-note">QeyNox · swarm auto-hébergé</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1 id="view-title">Stacks</h1>
+        <p id="view-sub" class="view-sub"></p>
+      </div>
+      <div class="topbar-actions">
+        <div class="stack-select-wrap" id="stack-select-wrap" style="display:none">
+          <label class="small faint">Stack</label>
+          <select id="stack-select" class="stack-select"></select>
+        </div>
+        <button class="btn ghost" id="btn-refresh" title="Rafraîchir"><span class="ic" data-ic="refresh"></span></button>
+        <button class="btn primary" id="btn-onboard" title="Connecter un dépôt"><span class="ic" data-ic="plus"></span>Connecter un repo</button>
+      </div>
+    </header>
+
+    <div class="content" id="content"></div>
+
+    <footer class="page-foot">
+      ⬡ QeyNox · GTM Swarm Platform — données locales, validation admin avant tout lancement.
+    </footer>
+  </main>
+</div>
+
+<div id="modal-root"></div>
+<div id="toast-root" class="toast-root"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
