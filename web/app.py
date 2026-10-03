@@ -204,9 +204,11 @@ def run_mission(mid: int) -> None:
     log_path = os.path.join(QEYNOX_ROOT, "logs", f"mission-{mid:04d}.log")
     db = stack_db(slug) if slug and os.path.isdir(os.path.join(STACKS_DIR, slug)) else os.environ.get("GTM_DB", os.path.join(TOOLS_DIR, "data", "gtm.db"))
     env = mission_env(slug, db)
+    args = build_args(m["type"], m.get("params", {}))
+    script = os.path.join(TOOLS_DIR, args[0])
     try:
         with open(log_path, "w", encoding="utf-8") as log:
-            proc = subprocess.Popen([sys.executable, *build_args(m["type"], m.get("params", {}))],
+            proc = subprocess.Popen([sys.executable, script, *args[1:]],
                                     cwd=cwd, env=env, stdout=log, stderr=subprocess.STDOUT)
             m["pid"] = proc.pid
             code = proc.wait()

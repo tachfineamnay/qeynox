@@ -341,6 +341,7 @@ class Lot0Tests(unittest.TestCase):
         with open(os.path.join(stack, "context", "repo-analysis.json"), "w", encoding="utf-8") as f:
             json.dump({"brand": {"guess": "DemoBrand"}}, f)
         self.patch(app, "STACKS_DIR", tmp)
+        self.patch(app, "MISSIONS_FILE", os.path.join(tmp, "missions.json"))
         self.patch(app.pl, "STACKS_DIR", tmp)
         self.patch(app.pl, "REGISTRY", os.path.join(tmp, "registry.json"))
         app.pl.save_registry([{
@@ -351,6 +352,7 @@ class Lot0Tests(unittest.TestCase):
 
         class Proc:
             def __init__(self, cmd, cwd=None, env=None, stdout=None, stderr=None):
+                captured["cmd"] = cmd
                 captured["cwd"] = cwd
                 captured["env"] = env
                 self.pid = 7
@@ -359,16 +361,59 @@ class Lot0Tests(unittest.TestCase):
                 return 0
 
         self.patch(app.subprocess, "Popen", Proc)
+        cases = [
+            ("keywords", {"seeds": ["graine"]}, "keyword_research.py", ["--seed", "graine", "--rounds", "1", "--breadth", "6"]),
+            ("competitors", {}, "competitor_watch.py", ["--scan"]),
+            ("trends", {"kws": ["alpha"], "geo": "FR"}, "trends_check.py", ["--kw", "alpha", "--geo", "FR"]),
+        ]
+        for mid, (mtype, params, script, business) in enumerate(cases, start=1):
+            app._missions.clear()
+            app._missions[mid] = {
+                "id": mid, "type": mtype, "stack": slug, "params": params, "status": "running",
+            }
+            app.run_mission(mid)
+            expected = os.path.join(app.TOOLS_DIR, script)
+            self.assertEqual(captured["cmd"][0], sys.executable)
+            self.assertEqual(os.path.normcase(captured["cmd"][1]), os.path.normcase(expected))
+            self.assertTrue(os.path.isfile(captured["cmd"][1]))
+            self.assertEqual(captured["cmd"][2:], business)
+            self.assertEqual(os.path.normcase(captured["cwd"]), os.path.normcase(stack))
+        self.assertTrue(captured["env"]["GTM_DB"].endswith(os.path.join(slug, "data", "gtm.db")))
+        self.assertEqual(captured["env"]["GTM_BRAND"], "DemoBrand")
+        self.assertEqual(captured["env"]["GTM_DOMAIN"], "example.com")
+
+    def test_web_mission_runs_absolute_script_inside_the_stack(self) -> None:
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        tools = os.path.join(tmp, "tools")
+        slug = "demo"
+        stack = os.path.join(tmp, "stacks", slug)
+        os.makedirs(tools)
+        os.makedirs(os.path.join(stack, "context"))
+        script = os.path.join(tools, "keyword_research.py")
+        with open(script, "w", encoding="utf-8") as fh:
+            fh.write(
+                "import os\n"
+                "from pathlib import Path\n"
+                "Path('probe.txt').write_text(os.getcwd() + '\\n' + os.path.abspath(__file__), encoding='utf-8')\n"
+            )
+        self.patch(app, "TOOLS_DIR", tools)
+        self.patch(app, "STACKS_DIR", os.path.join(tmp, "stacks"))
+        self.patch(app, "MISSIONS_FILE", os.path.join(tmp, "missions.json"))
+        self.patch(app.pl, "STACKS_DIR", os.path.join(tmp, "stacks"))
+        self.patch(app.pl, "REGISTRY", os.path.join(tmp, "registry.json"))
+        app.pl.save_registry([])
         app._missions.clear()
         app._missions[1] = {
             "id": 1, "type": "keywords", "stack": slug,
             "params": {"seeds": ["graine"]}, "status": "running",
         }
         app.run_mission(1)
-        self.assertEqual(os.path.normcase(captured["cwd"]), os.path.normcase(stack))
-        self.assertTrue(captured["env"]["GTM_DB"].endswith(os.path.join(slug, "data", "gtm.db")))
-        self.assertEqual(captured["env"]["GTM_BRAND"], "DemoBrand")
-        self.assertEqual(captured["env"]["GTM_DOMAIN"], "example.com")
+        self.assertEqual(app._missions[1]["status"], "done")
+        with open(os.path.join(stack, "probe.txt"), encoding="utf-8") as fh:
+            cwd, ran = fh.read().splitlines()
+        self.assertEqual(os.path.normcase(os.path.normpath(cwd)), os.path.normcase(stack))
+        self.assertEqual(os.path.normcase(os.path.normpath(ran)), os.path.normcase(script))
 
     def test_web_mission_rejects_escaping_slug(self) -> None:
         tmp = tempfile.mkdtemp()
