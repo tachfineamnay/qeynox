@@ -223,7 +223,7 @@ def build_cmd(prog: dict, slug: str) -> list[str]:
 def _top_kws(slug: str, n: int) -> list[tuple]:
     try:
         con = sqlite3.connect(os.path.join(STACKS, slug, "data", "gtm.db"))
-        rows = con.execute("SELECT keyword FROM keywords ORDER BY score DESC LIMIT ?", (n,)).fetchall()
+        rows = con.execute("SELECT kw FROM keywords ORDER BY score DESC LIMIT ?", (n,)).fetchall()
         con.close()
         return rows
     except Exception:
@@ -236,10 +236,19 @@ def source_fingerprint(slug: str) -> str:
     repo = os.path.join(STACKS, slug, "repo")
     if os.path.isdir(repo):
         try:
-            head = subprocess.run(["git", "-C", repo, "rev-parse", "HEAD"],
-                                  capture_output=True, text=True, timeout=10).stdout.strip()
-            if head:
-                return head
+            # For cloned repositories, fingerprint the remote state, not only the
+            # stale local HEAD. A failed/unconfigured remote falls back to HEAD.
+            subprocess.run(
+                ["git", "-C", repo, "fetch", "--quiet", "origin"],
+                capture_output=True, text=True, timeout=30, check=False,
+            )
+            for ref in ("origin/HEAD", "origin/main", "origin/master", "HEAD"):
+                sha = subprocess.run(
+                    ["git", "-C", repo, "rev-parse", "--verify", ref],
+                    capture_output=True, text=True, timeout=10, check=False,
+                ).stdout.strip()
+                if sha:
+                    return sha
         except Exception:
             pass
         for root, dirs, files in os.walk(repo):
@@ -271,10 +280,11 @@ def run_program(slug: str, prog: dict) -> dict:
         res["ok"] = True
         if prev and fp and prev != fp:
             res["note"] = "changement source détecté → re-scan research déclenché"
-            for other in load_programs(slug)[0]:
+            programs, _ = load_programs(slug)
+            for other in programs:
                 if other["type"] in ("keywords", "competitors") and other.get("enabled"):
                     other["next_run"] = now()   # re-scan immédiat
-            save_programs(slug, load_programs(slug)[0])
+            save_programs(slug, programs)
         elif not fp:
             res["note"] = "pas de source fingerprintable (site-only) — ignoré"
         else:
