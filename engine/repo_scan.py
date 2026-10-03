@@ -17,7 +17,7 @@ import zipfile
 from collections import Counter
 from datetime import datetime, timezone
 from html.parser import HTMLParser
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit, urlunsplit
 
 SKIP_DIRS = {
     ".git", "node_modules", "__pycache__", ".venv", "venv", "env", "dist", "build",
@@ -60,6 +60,48 @@ def is_git_url(source: str) -> bool:
     return bool(re.match(r"^(https?://|git@)[^\s]+", source)) and not source.endswith(".zip")
 
 
+_GIT_USERINFO = re.compile(r"(https?://)[^\s/@]+(?::[^\s/@]*)?@")
+
+
+def redact_git_url(source: str) -> str:
+    """Retire user:token@ des URL https avant toute persistance."""
+    source = (source or "").strip()
+    if not is_git_url(source):
+        return source
+    try:
+        parts = urlsplit(source)
+    except ValueError:
+        return _GIT_USERINFO.sub(r"\1", source)
+    if parts.scheme in ("http", "https") and "@" in parts.netloc:
+        host = parts.hostname or ""
+        netloc = f"{host}:{parts.port}" if parts.port else host
+        return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+    return source
+
+
+def scrub_git_credentials(text: str) -> str:
+    return _GIT_USERINFO.sub(r"\1", text or "")
+
+
+def _inside(root: str, candidate: str) -> bool:
+    root_a = os.path.normcase(os.path.abspath(root))
+    cand_a = os.path.normcase(os.path.abspath(candidate))
+    try:
+        return os.path.commonpath([root_a, cand_a]) == root_a
+    except ValueError:
+        return False
+
+
+def _safe_extract_zip(archive: zipfile.ZipFile, dest: str) -> None:
+    dest_abs = os.path.abspath(dest)
+    os.makedirs(dest_abs, exist_ok=True)
+    for info in archive.infolist():
+        target = os.path.abspath(os.path.join(dest_abs, info.filename))
+        if not _inside(dest_abs, target):
+            raise RuntimeError(f"zip refusé: {info.filename}")
+    archive.extractall(dest_abs)
+
+
 def prepare_repo(source: str, workdir: str) -> tuple[str, str]:
     """Retourne (chemin du dépôt, mode d'obtention). Nettoie si besoin."""
     source = source.strip().strip('"').strip("'")
@@ -70,7 +112,7 @@ def prepare_repo(source: str, workdir: str) -> tuple[str, str]:
         if os.path.exists(dest):
             shutil.rmtree(dest)
         with zipfile.ZipFile(os.path.expanduser(source)) as z:
-            z.extractall(dest)
+            _safe_extract_zip(z, dest)
         # si l'archive contient un seul dossier racine, le descendre
         entries = os.listdir(dest)
         if len(entries) == 1 and os.path.isdir(os.path.join(dest, entries[0])):
@@ -85,7 +127,7 @@ def prepare_repo(source: str, workdir: str) -> tuple[str, str]:
         cmd = ["git", "clone", "--depth", "1", source, dest]
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         if p.returncode != 0:
-            raise RuntimeError(f"git clone a échoué: {p.stderr.strip()[:300]}")
+            raise RuntimeError(scrub_git_credentials(f"git clone a échoué: {p.stderr.strip()[:300]}"))
         return dest, "git"
     raise RuntimeError(f"Source introuvable ou non supportée: {source}")
 
@@ -356,7 +398,7 @@ def run(source: str, stack_dir: str) -> dict:
     os.makedirs(workdir, exist_ok=True)
     repo, mode = prepare_repo(source, workdir)
     analysis = scan_repo(repo)
-    analysis["source"] = source
+    analysis["source"] = redact_git_url(source)
     analysis["source_mode"] = mode
     ctx_dir = os.path.join(stack_dir, "context")
     os.makedirs(ctx_dir, exist_ok=True)

@@ -222,6 +222,9 @@ def handle(msg: dict) -> dict | None:
     if method == "tools/call":
         params = msg.get("params", {})
         name, args = params.get("name", ""), params.get("arguments", {}) or {}
+        if "slug" in args and not re.fullmatch(r"[\w-]+", str(args.get("slug") or "")):
+            return {"jsonrpc": "2.0", "id": mid, "result": {
+                "content": [{"type": "text", "text": "slug invalide"}], "isError": True}}
         entry = TOOLS.get(name)
         if not entry:
             return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32602, "message": f"outil inconnu: {name}"}}

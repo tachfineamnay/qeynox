@@ -30,10 +30,17 @@ def slugify(name: str) -> str:
 
 
 def load_registry() -> list[dict]:
-    if os.path.exists(REGISTRY):
-        with open(REGISTRY, encoding="utf-8") as f:
-            return json.load(f)
-    return []
+    if not os.path.exists(REGISTRY):
+        return []
+    with open(REGISTRY, encoding="utf-8") as f:
+        rows = json.load(f)
+    if not isinstance(rows, list):
+        return rows
+    from engine.repo_scan import redact_git_url
+    for row in rows:
+        if isinstance(row, dict) and isinstance(row.get("source"), str):
+            row["source"] = redact_git_url(row["source"])
+    return rows
 
 
 def save_registry(rows: list[dict]) -> None:
@@ -117,7 +124,7 @@ def run_pipeline(slug: str, cfg: dict) -> None:
             # 2. analyse statique
             mark("scan", "running")
             analysis = repo_scan.scan_repo(repo_path)
-            analysis["source"] = cfg["source"]
+            analysis["source"] = repo_scan.redact_git_url(cfg["source"])
             analysis["source_mode"] = repo_mode
             if cfg.get("name"):  # le nom donné par l'admin est la marque de référence
                 analysis["brand"]["guess"] = cfg["name"]
@@ -183,7 +190,7 @@ def run_pipeline(slug: str, cfg: dict) -> None:
             save_registry(rows)
         except Exception as exc:
             pipe["status"] = "error"
-            pipe["error"] = str(exc)[:500]
+            pipe["error"] = repo_scan.scrub_git_credentials(str(exc))[:500]
             write_pipeline(slug, pipe)
             rows = load_registry()
             for s in rows:
@@ -197,6 +204,8 @@ def start_pipeline_async(slug: str, cfg: dict) -> None:
 
 
 def create_stack(name: str, source: str, site_url: str = "", seeds: list[str] | None = None) -> dict:
+    from engine.repo_scan import redact_git_url
+
     base = slugify(name)
     slug, i = base, 2
     while get_stack(slug):
@@ -204,7 +213,7 @@ def create_stack(name: str, source: str, site_url: str = "", seeds: list[str] | 
         i += 1
     rows = load_registry()
     rows.append({
-        "slug": slug, "name": name, "source": source, "site_url": site_url,
+        "slug": slug, "name": name, "source": redact_git_url(source), "site_url": site_url,
         "seeds": seeds or [], "status": "queued", "created_at": now_iso(),
     })
     save_registry(rows)
