@@ -12,6 +12,7 @@ from core.domain.model import (
     BusinessContext,
     Conflict,
     ContextSnapshot,
+    DomainError,
     Feedback,
     JobRun,
     JobSpec,
@@ -146,6 +147,99 @@ class CoreService:
         )
         self._repository.add_job_run(run)
         return run
+
+    def mark_job_run(
+        self,
+        *,
+        organization_id: UUID,
+        project_id: UUID,
+        job_run_id: UUID,
+        status: str,
+        error: str | None = None,
+    ) -> JobRun:
+        run = self._repository.get_job_run(organization_id, project_id, job_run_id)
+        if run is None or run.organization_id != organization_id:
+            raise NotInOrganization("job_run")
+        if run.status == "ok" or run.status == status:
+            return run
+        updated = run.with_status(status, error)
+        self._repository.save_job_run(updated)
+        return updated
+
+    def complete_job_run(
+        self,
+        *,
+        organization_id: UUID,
+        project_id: UUID,
+        job_run_id: UUID,
+        body: dict,
+        sources: list | tuple,
+        confidence: str,
+        created_at: datetime | None = None,
+    ) -> ArtifactVersion:
+        run = self._repository.get_job_run(organization_id, project_id, job_run_id)
+        if run is None or run.organization_id != organization_id:
+            raise NotInOrganization("job_run")
+        existing = self._repository.get_version_for_run(organization_id, project_id, run.id)
+        if existing is not None:
+            return existing
+        if run.status == "failed":
+            raise DomainError("job run failed")
+        spec = self._require_spec(organization_id, project_id, run.job_spec_id)
+        context = self._require_context(organization_id, project_id)
+        moment = created_at if created_at is not None else datetime.now(timezone.utc)
+        artifact = self._repository.get_artifact_for_spec(organization_id, project_id, spec.id)
+        if artifact is None:
+            artifact = Artifact(
+                id=uuid4(),
+                organization_id=organization_id,
+                project_id=project_id,
+                job_spec_id=spec.id,
+                created_at=moment,
+            )
+            version_number = 1
+            parent_version_id = None
+            create_artifact = True
+        else:
+            versions = self._repository.list_artifact_versions(organization_id, project_id, artifact.id)
+            head = versions[-1]
+            version_number = head.version_number + 1
+            parent_version_id = head.id
+            create_artifact = False
+        snapshot = ContextSnapshot(
+            id=uuid4(),
+            organization_id=context.organization_id,
+            project_id=context.project_id,
+            business_context_id=context.id,
+            language=context.language,
+            geo=context.geo,
+            site_url=context.site_url,
+            brand_aliases=context.brand_aliases,
+            offer=context.offer,
+            captured_at=moment,
+        )
+        version = ArtifactVersion(
+            id=uuid4(),
+            organization_id=organization_id,
+            project_id=project_id,
+            artifact_id=artifact.id,
+            version_number=version_number,
+            parent_version_id=parent_version_id,
+            job_run_id=run.id,
+            context_snapshot_id=snapshot.id,
+            body=body,
+            sources=sources,
+            confidence=confidence,
+            created_at=moment,
+        )
+        finished = run.with_status("running") if run.status == "queued" else run
+        finished = finished.with_status("ok")
+        self._repository.add_context_snapshot(snapshot)
+        if create_artifact:
+            self._repository.add_artifact(artifact)
+        self._repository.add_artifact_version(version)
+        self._repository.save_job_run(finished)
+        return version
 
     def read_chain(self, *, organization_id: UUID, project_id: UUID, job_run_id: UUID) -> Chain:
         organization = self._repository.get_organization(organization_id)

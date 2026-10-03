@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import copy
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from uuid import UUID
 
@@ -198,6 +198,27 @@ class JobRun:
             object.__setattr__(self, "error", _text(self.error, "erreur"))
         if self.created_at.tzinfo is None or self.created_at.utcoffset() is None:
             raise DomainError("created_at sans fuseau")
+
+    def with_status(self, status: str, error: str | None = None) -> JobRun:
+        if status not in JOB_STATUSES:
+            raise DomainError("statut inconnu")
+        if status != self.status:
+            allowed = {
+                "queued": {"running", "failed"},
+                "running": {"ok", "failed"},
+                "failed": {"running"},
+                "ok": set(),
+                "needs_approval": set(),
+            }
+            if status not in allowed[self.status]:
+                raise DomainError("transition interdite")
+        if status == "failed":
+            next_error: str | None = _text(error or "", "erreur")
+        elif status == "ok":
+            next_error = None
+        else:
+            next_error = self.error
+        return replace(self, status=status, error=next_error)
 
 
 CONFIDENCE = frozenset({"ok", "low"})

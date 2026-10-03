@@ -209,6 +209,31 @@ class PostgresCoreRepository:
             created_at=row["created_at"],
         )
 
+    def save_job_run(self, run: JobRun) -> None:
+        self._write(
+            """
+            UPDATE job_runs
+            SET status = %s, error = %s
+            WHERE organization_id = %s AND project_id = %s AND id = %s
+            """,
+            (run.status, run.error, run.organization_id, run.project_id, run.id),
+            "job_run",
+        )
+
+    def get_version_for_run(
+        self, organization_id: UUID, project_id: UUID, job_run_id: UUID
+    ) -> ArtifactVersion | None:
+        row = self._connection.execute(
+            """
+            SELECT id, organization_id, project_id, artifact_id, version_number, parent_version_id,
+                   job_run_id, context_snapshot_id, body, sources, confidence, created_at
+            FROM artifact_versions
+            WHERE organization_id = %s AND project_id = %s AND job_run_id = %s
+            """,
+            (organization_id, project_id, job_run_id),
+        ).fetchone()
+        return None if row is None else self._version(row)
+
     def add_context_snapshot(self, snapshot: ContextSnapshot) -> None:
         self._write(
             """
