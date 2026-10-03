@@ -1,0 +1,22 @@
+# Date: 2026-10-03
+schema_version: 1
+execution_run_id: exrun_example
+status: success
+capability: repo.pr.create
+provider_id: github-provider
+trace_id: trace_example
+
+outputs:
+  branch: qeynox/fix-example
+  pr_url: https://example.invalid/pr/123
+
+evidence:
+  - kind: diff
+    uri: s3://qeynox/evidence/example.diff
+    checksum: sha256:example
+
+metrics:
+  duration_ms: 4200
+  external_cost_eur: 0
+
+error: null

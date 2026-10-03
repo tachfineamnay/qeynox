@@ -1,0 +1,22 @@
+# Date: 2026-10-03
+schema_version: 1
+id: js_example
+project_id: prj_example
+type: content.landing.generate
+capabilities:
+  - content.landing.generate
+
+inputs:
+  offer_ref: offer_main
+  market: fr-FR
+
+instructions: >
+  Générer une landing page orientée conversion sans modifier
+  les faits métier validés.
+
+output_schema: landing-page.v1
+
+execution_policy:
+  model_tier: auto
+  freshness: current_snapshot
+  budget_eur_max: 1.00
