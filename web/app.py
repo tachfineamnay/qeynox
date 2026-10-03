@@ -4,7 +4,7 @@
 Onboardez un dépôt : analyse → deep research (mots-clés, signaux, concurrents, AEO/GEO)
 → dossier GTM → validation admin → lancement du swarm.
 
-    python3 app.py                     # http://0.0.0.0:8765  (GTM_WEB_PORT pour changer)
+    python3 app.py                     # http://127.0.0.1:8765  (GTM_WEB_HOST/GTM_WEB_PORT)
 
 Sécurité : prévu pour tourner en local/VPS derrière une auth (proxy/Tailscale).
 """
@@ -31,6 +31,7 @@ sys.path.insert(0, QEYNOX_ROOT)
 from engine import pipeline as pl  # noqa: E402
 from engine import launch as launch_mod  # noqa: E402
 
+HOST = os.environ.get("GTM_WEB_HOST", "127.0.0.1")
 PORT = int(os.environ.get("GTM_WEB_PORT", "8765"))
 HOOK_TOKEN = os.environ.get("GTM_HOOK_TOKEN", "")
 MISSIONS_FILE = os.path.join(WEB_DIR, "missions.json")
@@ -127,14 +128,19 @@ def build_args(mtype: str, p: dict) -> list[str]:
 def run_mission(mid: int) -> None:
     m = _missions[mid]
     slug = m.get("stack") or ""
+    stack_dir = os.path.join(STACKS_DIR, slug) if slug else ""
+    valid_stack = bool(stack_dir and os.path.isdir(stack_dir))
     os.makedirs(os.path.join(QEYNOX_ROOT, "logs"), exist_ok=True)
     log_path = os.path.join(QEYNOX_ROOT, "logs", f"mission-{mid:04d}.log")
-    db = stack_db(slug) if slug and os.path.isdir(os.path.join(STACKS_DIR, slug)) else os.environ.get("GTM_DB", os.path.join(TOOLS_DIR, "data", "gtm.db"))
+    db = stack_db(slug) if valid_stack else os.environ.get("GTM_DB", os.path.join(TOOLS_DIR, "data", "gtm.db"))
     env = {**os.environ, "GTM_DB": db, "GTM_LANG": "fr", "GTM_GL": "FR", "PYTHONUNBUFFERED": "1"}
     try:
+        tool_args = build_args(m["type"], m.get("params", {}))
+        script = os.path.join(TOOLS_DIR, tool_args[0])
         with open(log_path, "w", encoding="utf-8") as log:
-            proc = subprocess.Popen([sys.executable, *build_args(m["type"], m.get("params", {}))],
-                                    cwd=TOOLS_DIR, env=env, stdout=log, stderr=subprocess.STDOUT)
+            proc = subprocess.Popen([sys.executable, script, *tool_args[1:]],
+                                    cwd=stack_dir if valid_stack else TOOLS_DIR,
+                                    env=env, stdout=log, stderr=subprocess.STDOUT)
             m["pid"] = proc.pid
             code = proc.wait()
         m["status"] = "done" if code == 0 else "error"
@@ -191,8 +197,12 @@ class Handler(BaseHTTPRequestHandler):
         self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
 
     def _static(self, rel: str) -> None:
-        path = os.path.normpath(os.path.join(STATIC_DIR, rel.lstrip("/")))
-        if not path.startswith(STATIC_DIR) or not os.path.isfile(path):
+        path = os.path.abspath(os.path.normpath(os.path.join(STATIC_DIR, rel.lstrip("/"))))
+        try:
+            inside_static = os.path.commonpath([STATIC_DIR, path]) == STATIC_DIR
+        except ValueError:
+            inside_static = False
+        if not inside_static or not os.path.isfile(path):
             return self._json({"error": "introuvable"}, 404)
         ctype = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
                  ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml",
@@ -347,8 +357,12 @@ class Handler(BaseHTTPRequestHandler):
                 slug = (qs.get("stack") or [""])[0]
                 rel = (qs.get("path") or [""])[0]
                 root = os.path.abspath(stack_output(slug) if slug else STACKS_DIR)
-                fp = os.path.normpath(os.path.join(root, rel))
-                if not fp.startswith(root) or not os.path.isfile(fp):
+                fp = os.path.abspath(os.path.normpath(os.path.join(root, rel)))
+                try:
+                    inside_root = os.path.commonpath([root, fp]) == root
+                except ValueError:
+                    inside_root = False
+                if not inside_root or not os.path.isfile(fp):
                     return self._json({"error": "introuvable"}, 404)
                 with open(fp, encoding="utf-8", errors="replace") as f:
                     return self._json({"path": rel, "content": f.read()[:200_000]})
@@ -433,8 +447,8 @@ class Handler(BaseHTTPRequestHandler):
 def main() -> None:
     load_missions()
     os.makedirs(os.path.join(QEYNOX_ROOT, "logs"), exist_ok=True)
-    srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"⬡ QeyNox — plateforme GTM swarm — http://0.0.0.0:{PORT}")
+    srv = ThreadingHTTPServer((HOST, PORT), Handler)
+    print(f"⬡ QeyNox — plateforme GTM swarm — http://{HOST}:{PORT}")
     srv.serve_forever()
 
 
