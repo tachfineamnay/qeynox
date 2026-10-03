@@ -1,6 +1,7 @@
 """Applique les fichiers SQL de core/migrations dans l'ordre des noms."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 _MIGRATIONS = Path(__file__).resolve().parents[1] / "migrations"
@@ -31,4 +32,36 @@ def apply(connection) -> None:
 
 
 def _statements(sql: str) -> list[str]:
-    return [chunk.strip() for chunk in sql.split(";") if chunk.strip()]
+    parts: list[str] = []
+    buf: list[str] = []
+    index = 0
+    dollar: str | None = None
+    while index < len(sql):
+        if dollar is not None:
+            if sql.startswith(dollar, index):
+                buf.append(dollar)
+                index += len(dollar)
+                dollar = None
+            else:
+                buf.append(sql[index])
+                index += 1
+            continue
+        marker = re.match(r"\$[A-Za-z0-9_]*\$", sql[index:])
+        if marker:
+            dollar = marker.group(0)
+            buf.append(dollar)
+            index += len(dollar)
+            continue
+        if sql[index] == ";":
+            statement = "".join(buf).strip()
+            if statement:
+                parts.append(statement)
+            buf = []
+            index += 1
+            continue
+        buf.append(sql[index])
+        index += 1
+    tail = "".join(buf).strip()
+    if tail:
+        parts.append(tail)
+    return parts

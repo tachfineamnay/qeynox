@@ -198,3 +198,136 @@ class JobRun:
             object.__setattr__(self, "error", _text(self.error, "erreur"))
         if self.created_at.tzinfo is None or self.created_at.utcoffset() is None:
             raise DomainError("created_at sans fuseau")
+
+
+CONFIDENCE = frozenset({"ok", "low"})
+APPROVAL_DECISIONS = frozenset({"go", "no_go"})
+
+
+def _moment(value: datetime) -> datetime:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise DomainError("horodatage sans fuseau")
+    return value
+
+
+@dataclass(frozen=True)
+class SourceRef:
+    url: str
+    note: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.url, str) or _URL.fullmatch(self.url) is None:
+            raise DomainError("source url invalide")
+        if not isinstance(self.note, str):
+            raise DomainError("source note invalide")
+        object.__setattr__(self, "note", self.note.strip())
+
+
+def _sources(value: object) -> tuple[SourceRef, ...]:
+    if isinstance(value, str) or not isinstance(value, (tuple, list)):
+        raise DomainError("sources invalides")
+    refs: list[SourceRef] = []
+    for item in value:
+        if isinstance(item, SourceRef):
+            refs.append(item)
+        elif isinstance(item, (tuple, list)) and len(item) == 2:
+            refs.append(SourceRef(url=item[0], note=item[1]))
+        else:
+            raise DomainError("source invalide")
+    return tuple(refs)
+
+
+@dataclass(frozen=True)
+class ContextSnapshot:
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    business_context_id: UUID
+    language: str
+    geo: str
+    site_url: str
+    brand_aliases: tuple[str, ...]
+    offer: str
+    captured_at: datetime
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.language, str) or _LANGUAGE.fullmatch(self.language) is None:
+            raise DomainError("langue invalide")
+        object.__setattr__(self, "geo", _text(self.geo, "geo"))
+        if not isinstance(self.site_url, str) or _URL.fullmatch(self.site_url) is None:
+            raise DomainError("site_url invalide")
+        object.__setattr__(self, "brand_aliases", _aliases(self.brand_aliases))
+        object.__setattr__(self, "offer", _text(self.offer, "offre"))
+        object.__setattr__(self, "captured_at", _moment(self.captured_at))
+
+
+@dataclass(frozen=True)
+class Artifact:
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    job_spec_id: UUID
+    created_at: datetime
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "created_at", _moment(self.created_at))
+
+
+@dataclass(frozen=True)
+class ArtifactVersion:
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    artifact_id: UUID
+    version_number: int
+    parent_version_id: UUID | None
+    job_run_id: UUID
+    context_snapshot_id: UUID
+    body: dict
+    sources: tuple[SourceRef, ...]
+    confidence: str
+    created_at: datetime
+
+    def __post_init__(self) -> None:
+        if isinstance(self.version_number, bool) or not isinstance(self.version_number, int) or self.version_number < 1:
+            raise DomainError("numéro de version invalide")
+        if self.version_number == 1 and self.parent_version_id is not None:
+            raise DomainError("v1 sans parent")
+        if self.version_number > 1 and self.parent_version_id is None:
+            raise DomainError("version sans parent")
+        if self.confidence not in CONFIDENCE:
+            raise DomainError("confiance inconnue")
+        if not isinstance(self.body, dict):
+            raise DomainError("body doit être un objet")
+        object.__setattr__(self, "body", _json_value(copy.deepcopy(self.body)))
+        object.__setattr__(self, "sources", _sources(self.sources))
+        object.__setattr__(self, "created_at", _moment(self.created_at))
+
+
+@dataclass(frozen=True)
+class Feedback:
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    artifact_version_id: UUID
+    note: str
+    created_at: datetime
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "note", _text(self.note, "note"))
+        object.__setattr__(self, "created_at", _moment(self.created_at))
+
+
+@dataclass(frozen=True)
+class Approval:
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    artifact_version_id: UUID
+    decision: str
+    decided_at: datetime
+
+    def __post_init__(self) -> None:
+        if self.decision not in APPROVAL_DECISIONS:
+            raise DomainError("décision inconnue")
+        object.__setattr__(self, "decided_at", _moment(self.decided_at))

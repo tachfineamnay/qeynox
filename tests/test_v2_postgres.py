@@ -40,7 +40,7 @@ class PostgresCoreTests(unittest.TestCase):
         migrate(self.conn)
         self.conn.commit()
         self.conn.execute(
-            "TRUNCATE job_runs, job_specs, business_contexts, projects, organizations"
+            "TRUNCATE job_runs, job_specs, business_contexts, projects, organizations CASCADE"
         )
         self.conn.commit()
         self.service = CoreService(PostgresCoreRepository(self.conn))
@@ -203,4 +203,4 @@ class PostgresCoreTests(unittest.TestCase):
         migrate(self.conn)
         self.conn.commit()
         row = self.conn.execute("SELECT count(*) AS n FROM schema_migrations").fetchone()
-        self.assertEqual(row["n"], 1)
+        self.assertEqual(row["n"], 2)

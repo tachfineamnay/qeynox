@@ -6,8 +6,13 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from core.domain.model import (
+    Approval,
+    Artifact,
+    ArtifactVersion,
     BusinessContext,
     Conflict,
+    ContextSnapshot,
+    Feedback,
     JobRun,
     JobSpec,
     NotFound,
@@ -25,6 +30,21 @@ class Chain:
     context: BusinessContext
     spec: JobSpec
     run: JobRun
+
+
+@dataclass(frozen=True)
+class Publication:
+    snapshot: ContextSnapshot
+    run: JobRun
+    artifact: Artifact
+    version: ArtifactVersion
+
+
+@dataclass(frozen=True)
+class ApprovalState:
+    head: ArtifactVersion
+    approval: Approval | None
+    stale: bool
 
 
 class CoreService:
@@ -142,6 +162,223 @@ class CoreService:
         if spec is None:
             raise NotInOrganization("job_spec")
         return Chain(organization=organization, project=project, context=context, spec=spec, run=run)
+
+    def publish_artifact(
+        self,
+        *,
+        organization_id: UUID,
+        project_id: UUID,
+        job_spec_id: UUID,
+        body: dict,
+        sources: list | tuple,
+        confidence: str,
+        created_at: datetime | None = None,
+    ) -> Publication:
+        spec = self._require_spec(organization_id, project_id, job_spec_id)
+        context = self._require_context(organization_id, project_id)
+        if self._repository.get_artifact_for_spec(organization_id, project_id, spec.id) is not None:
+            raise Conflict("artifact")
+        moment = created_at if created_at is not None else datetime.now(timezone.utc)
+        return self._append_version(
+            spec=spec,
+            context=context,
+            artifact=Artifact(
+                id=uuid4(),
+                organization_id=organization_id,
+                project_id=project_id,
+                job_spec_id=spec.id,
+                created_at=moment,
+            ),
+            version_number=1,
+            parent_version_id=None,
+            body=body,
+            sources=sources,
+            confidence=confidence,
+            created_at=moment,
+            create_artifact=True,
+        )
+
+    def regenerate_artifact(
+        self,
+        *,
+        organization_id: UUID,
+        project_id: UUID,
+        artifact_id: UUID,
+        body: dict,
+        sources: list | tuple,
+        confidence: str,
+        created_at: datetime | None = None,
+    ) -> Publication:
+        artifact = self._repository.get_artifact(organization_id, project_id, artifact_id)
+        if artifact is None or artifact.organization_id != organization_id:
+            raise NotInOrganization("artifact")
+        spec = self._require_spec(organization_id, project_id, artifact.job_spec_id)
+        context = self._require_context(organization_id, project_id)
+        versions = self._repository.list_artifact_versions(organization_id, project_id, artifact.id)
+        if not versions:
+            raise NotFound("artifact_version")
+        head = versions[-1]
+        moment = created_at if created_at is not None else datetime.now(timezone.utc)
+        return self._append_version(
+            spec=spec,
+            context=context,
+            artifact=artifact,
+            version_number=head.version_number + 1,
+            parent_version_id=head.id,
+            body=body,
+            sources=sources,
+            confidence=confidence,
+            created_at=moment,
+            create_artifact=False,
+        )
+
+    def list_versions(self, *, organization_id: UUID, project_id: UUID, artifact_id: UUID) -> list[ArtifactVersion]:
+        if self._repository.get_artifact(organization_id, project_id, artifact_id) is None:
+            raise NotInOrganization("artifact")
+        return self._repository.list_artifact_versions(organization_id, project_id, artifact_id)
+
+    def record_feedback(
+        self,
+        *,
+        organization_id: UUID,
+        project_id: UUID,
+        artifact_version_id: UUID,
+        note: str,
+        created_at: datetime | None = None,
+    ) -> Feedback:
+        version = self._require_version(organization_id, project_id, artifact_version_id)
+        moment = created_at if created_at is not None else datetime.now(timezone.utc)
+        feedback = Feedback(
+            id=uuid4(),
+            organization_id=organization_id,
+            project_id=project_id,
+            artifact_version_id=version.id,
+            note=note,
+            created_at=moment,
+        )
+        self._repository.add_feedback(feedback)
+        return feedback
+
+    def list_feedback(
+        self, *, organization_id: UUID, project_id: UUID, artifact_version_id: UUID
+    ) -> list[Feedback]:
+        self._require_version(organization_id, project_id, artifact_version_id)
+        return self._repository.list_feedback(organization_id, project_id, artifact_version_id)
+
+    def approve(
+        self,
+        *,
+        organization_id: UUID,
+        project_id: UUID,
+        artifact_version_id: UUID,
+        decision: str,
+        decided_at: datetime | None = None,
+    ) -> Approval:
+        version = self._require_version(organization_id, project_id, artifact_version_id)
+        moment = decided_at if decided_at is not None else datetime.now(timezone.utc)
+        approval = Approval(
+            id=uuid4(),
+            organization_id=organization_id,
+            project_id=project_id,
+            artifact_version_id=version.id,
+            decision=decision,
+            decided_at=moment,
+        )
+        self._repository.add_approval(approval)
+        return approval
+
+    def approval_state(self, *, organization_id: UUID, project_id: UUID, artifact_id: UUID) -> ApprovalState:
+        versions = self.list_versions(
+            organization_id=organization_id, project_id=project_id, artifact_id=artifact_id
+        )
+        if not versions:
+            raise NotFound("artifact_version")
+        head = versions[-1]
+        head_approval = self._repository.get_approval_for_version(organization_id, project_id, head.id)
+        if head_approval is not None:
+            return ApprovalState(head=head, approval=head_approval, stale=False)
+        earlier = None
+        for version in versions:
+            found = self._repository.get_approval_for_version(organization_id, project_id, version.id)
+            if found is not None:
+                earlier = found
+        return ApprovalState(head=head, approval=earlier, stale=earlier is not None)
+
+    def _append_version(
+        self,
+        *,
+        spec: JobSpec,
+        context: BusinessContext,
+        artifact: Artifact,
+        version_number: int,
+        parent_version_id: UUID | None,
+        body: dict,
+        sources: list | tuple,
+        confidence: str,
+        created_at: datetime,
+        create_artifact: bool,
+    ) -> Publication:
+        snapshot = ContextSnapshot(
+            id=uuid4(),
+            organization_id=context.organization_id,
+            project_id=context.project_id,
+            business_context_id=context.id,
+            language=context.language,
+            geo=context.geo,
+            site_url=context.site_url,
+            brand_aliases=context.brand_aliases,
+            offer=context.offer,
+            captured_at=created_at,
+        )
+        run = JobRun(
+            id=uuid4(),
+            organization_id=spec.organization_id,
+            project_id=spec.project_id,
+            job_spec_id=spec.id,
+            type=spec.type,
+            status="ok",
+            model=spec.model,
+            error=None,
+            created_at=created_at,
+        )
+        version = ArtifactVersion(
+            id=uuid4(),
+            organization_id=artifact.organization_id,
+            project_id=artifact.project_id,
+            artifact_id=artifact.id,
+            version_number=version_number,
+            parent_version_id=parent_version_id,
+            job_run_id=run.id,
+            context_snapshot_id=snapshot.id,
+            body=body,
+            sources=sources,
+            confidence=confidence,
+            created_at=created_at,
+        )
+        self._repository.add_context_snapshot(snapshot)
+        self._repository.add_job_run(run)
+        if create_artifact:
+            self._repository.add_artifact(artifact)
+        self._repository.add_artifact_version(version)
+        return Publication(snapshot=snapshot, run=run, artifact=artifact, version=version)
+
+    def _require_context(self, organization_id: UUID, project_id: UUID) -> BusinessContext:
+        context = self._repository.get_business_context(organization_id, project_id)
+        if context is None:
+            raise NotFound("business_context")
+        return context
+
+    def _require_spec(self, organization_id: UUID, project_id: UUID, job_spec_id: UUID) -> JobSpec:
+        spec = self._repository.get_job_spec(organization_id, project_id, job_spec_id)
+        if spec is None or spec.organization_id != organization_id or spec.project_id != project_id:
+            raise NotInOrganization("job_spec")
+        return spec
+
+    def _require_version(self, organization_id: UUID, project_id: UUID, artifact_version_id: UUID) -> ArtifactVersion:
+        version = self._repository.get_artifact_version(organization_id, project_id, artifact_version_id)
+        if version is None or version.organization_id != organization_id:
+            raise NotInOrganization("artifact_version")
+        return version
 
     def _require_project(self, organization_id: UUID, project_id: UUID) -> Project:
         project = self._repository.get_project(organization_id, project_id)
