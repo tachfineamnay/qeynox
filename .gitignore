@@ -26,3 +26,17 @@ graphify-out/cache/
 
 # Logs
 *.log
+
+# QeyNox runtime / tenant data
+stacks/*
+web/missions.json
+logs/
+output/
+data/
+tools/data/
+tools/output/
+catalog/custom.json
+catalog/overrides.json
+
+# Generated analysis artifacts
+graphify-out/
