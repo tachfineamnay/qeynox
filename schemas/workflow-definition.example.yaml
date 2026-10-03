@@ -1,0 +1,40 @@
+# Date: 2026-10-03
+schema_version: 1
+id: product-launch
+version: "1"
+name: Product Launch
+
+nodes:
+  - id: market
+    type: job
+    capability: market.research
+
+  - id: keywords
+    type: job
+    capability: keyword.discover
+    depends_on: [market]
+
+  - id: competitors
+    type: job
+    capability: competitor.analyze
+    depends_on: [market]
+
+  - id: strategy
+    type: job
+    capability: strategy.generate
+    depends_on: [keywords, competitors]
+
+  - id: strategy_approval
+    type: approval
+    depends_on: [strategy]
+
+  - id: landing
+    type: job
+    capability: content.landing.generate
+    depends_on: [strategy_approval]
+
+defaults:
+  retry:
+    max_attempts: 3
+    backoff: exponential
+  timeout_seconds: 600
