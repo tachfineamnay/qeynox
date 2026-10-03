@@ -9,13 +9,11 @@ from uuid import UUID, uuid4
 import psycopg
 from psycopg.rows import dict_row
 
-from core.application.providers import ProviderResolver
+from core.application.providers import SEED_OFFERS, ProviderResolver
 from core.application.service import CoreService
 from core.domain.model import (
     CAPABILITIES,
     JOB_TYPES,
-    PROVIDER_CAPABILITIES,
-    PROVIDERS,
     WORKFLOW_CAPABILITY,
     Capability,
     Conflict,
@@ -88,21 +86,26 @@ class MemoryBindings:
 
 class CatalogTests(unittest.TestCase):
     def test_catalog_is_two_search_providers_and_known_workflows(self) -> None:
-        self.assertEqual(PROVIDERS, frozenset({"searxng", "duckduckgo"}))
+        self.assertEqual(set(SEED_OFFERS), {"searxng", "duckduckgo"})
         self.assertEqual(CAPABILITIES, frozenset({"search"}))
-        self.assertEqual(set(PROVIDER_CAPABILITIES), set(PROVIDERS))
-        for capability in PROVIDER_CAPABILITIES.values():
+        for capability in SEED_OFFERS.values():
             self.assertTrue(capability <= CAPABILITIES)
         for workflow, capability in WORKFLOW_CAPABILITY.items():
             self.assertIn(workflow, JOB_TYPES)
             self.assertIn(capability, CAPABILITIES)
         self.assertEqual(capability_for_workflow("search.web"), "search")
         self.assertEqual(Capability(key="search").key, "search")
-        self.assertEqual(Provider(key="searxng").capabilities, frozenset({"search"}))
+        self.assertEqual(Provider(key="provider-test-x").key, "provider-test-x")
         with self.assertRaises(DomainError):
-            Provider(key="openseo")
+            Provider(key="OpenSEO")
         with self.assertRaises(DomainError):
             capability_for_workflow("content.outline")
+
+    def test_domain_does_not_name_concrete_providers(self) -> None:
+        for path in (ROOT / "core" / "domain").glob("*.py"):
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("searxng", text)
+            self.assertNotIn("duckduckgo", text)
 
     def test_core_does_not_branch_on_a_provider_name(self) -> None:
         for relative in ("core/domain", "core/application", "core/ports"):
@@ -117,7 +120,7 @@ class CatalogTests(unittest.TestCase):
                         if isinstance(item, ast.Constant) and isinstance(item.value, str)
                     ]
                     for value in constants:
-                        self.assertNotIn(value, PROVIDERS)
+                        self.assertNotIn(value, SEED_OFFERS)
 
 
 class ResolverTests(unittest.TestCase):
@@ -239,6 +242,35 @@ class ResolverTests(unittest.TestCase):
         stranger = uuid4()
         with self.assertRaises(NotInOrganization):
             self.resolver.resolve(organization_id=stranger, project_id=self.project.id, workflow="search.web")
+
+    def test_arbitrary_provider_resolves_without_a_domain_change(self) -> None:
+        offers = {**SEED_OFFERS, "provider-test-x": frozenset({"search"})}
+        resolver = ProviderResolver(self.repo, offers=offers)
+        primary = resolver.bind(
+            organization_id=self.org,
+            project_id=self.project.id,
+            workflow="search.web",
+            provider="provider-test-x",
+            priority=40,
+        )
+        resolver.bind(
+            organization_id=self.org,
+            project_id=self.project.id,
+            workflow="search.web",
+            provider="duckduckgo",
+            priority=10,
+        )
+        chosen = resolver.resolve(organization_id=self.org, project_id=self.project.id, workflow="search.web")
+        self.assertEqual(chosen.key, "provider-test-x")
+        self.assertEqual(resolver.capability_for("search.web").key, "search")
+        resolver.set_health(
+            organization_id=self.org,
+            project_id=self.project.id,
+            binding_id=primary.id,
+            health="down",
+        )
+        fallback = resolver.resolve(organization_id=self.org, project_id=self.project.id, workflow="search.web")
+        self.assertEqual(fallback.key, "duckduckgo")
 
 
 class ProviderPostgresTests(unittest.TestCase):

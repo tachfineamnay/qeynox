@@ -17,10 +17,21 @@ from core.domain.model import (
 )
 from core.ports.repository import CoreRepository
 
+# Offres connues hors du domaine. Un test peut en passer d'autres au resolver.
+SEED_OFFERS: dict[str, frozenset[str]] = {
+    "searxng": frozenset({"search"}),
+    "duckduckgo": frozenset({"search"}),
+}
+
 
 class ProviderResolver:
-    def __init__(self, repository: CoreRepository) -> None:
+    def __init__(
+        self,
+        repository: CoreRepository,
+        offers: dict[str, frozenset[str]] | None = None,
+    ) -> None:
         self._repository = repository
+        self._offers = SEED_OFFERS if offers is None else offers
 
     def bind(
         self,
@@ -33,6 +44,9 @@ class ProviderResolver:
     ) -> ProviderBinding:
         self._require_project(organization_id, project_id)
         capability = self.capability_for(workflow)
+        offered = self._offers.get(provider, frozenset())
+        if capability.key not in offered:
+            raise DomainError("provider hors capability")
         binding = ProviderBinding(
             id=uuid4(),
             organization_id=organization_id,

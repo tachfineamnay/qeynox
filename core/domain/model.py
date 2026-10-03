@@ -34,18 +34,13 @@ JOB_TYPES = frozenset({
 JOB_STATUSES = frozenset({"queued", "running", "ok", "failed", "needs_approval"})
 MODEL_SELECTORS = frozenset({"auto", "fast", "strong", "local", "custom"})
 
-# Intention métier, pas un outil. Les deux providers couvrent la recherche web déjà utilisée.
+# Capability métier. Le nom d'un provider n'appartient pas au domaine.
 CAPABILITIES = frozenset({"search"})
-PROVIDERS = frozenset({"searxng", "duckduckgo"})
 PROVIDER_HEALTH = frozenset({"up", "down"})
 WORKFLOW_CAPABILITY = {
     "search.web": "search",
     "discover.serp": "search",
     "discover.signals": "search",
-}
-PROVIDER_CAPABILITIES = {
-    "searxng": frozenset({"search"}),
-    "duckduckgo": frozenset({"search"}),
 }
 
 
@@ -71,6 +66,12 @@ def capability_for_workflow(workflow: str) -> str:
         return WORKFLOW_CAPABILITY[workflow]
     except KeyError as exc:
         raise DomainError("workflow sans capability") from exc
+
+
+def _key(value: str, label: str) -> str:
+    if not isinstance(value, str) or _SLUG.fullmatch(value) is None:
+        raise DomainError(f"clé {label} invalide")
+    return value
 
 
 def _name(value: str) -> str:
@@ -390,12 +391,7 @@ class Provider:
     key: str
 
     def __post_init__(self) -> None:
-        if self.key not in PROVIDERS:
-            raise DomainError("provider inconnu")
-
-    @property
-    def capabilities(self) -> frozenset[str]:
-        return PROVIDER_CAPABILITIES[self.key]
+        object.__setattr__(self, "key", _key(self.key, "provider"))
 
 
 @dataclass(frozen=True)
@@ -411,10 +407,7 @@ class ProviderBinding:
     def __post_init__(self) -> None:
         if self.capability not in CAPABILITIES:
             raise DomainError("capability inconnue")
-        if self.provider not in PROVIDERS:
-            raise DomainError("provider inconnu")
-        if self.capability not in PROVIDER_CAPABILITIES[self.provider]:
-            raise DomainError("provider hors capability")
+        object.__setattr__(self, "provider", _key(self.provider, "provider"))
         if type(self.priority) is not int or self.priority < 0:
             raise DomainError("priorité invalide")
         if self.health not in PROVIDER_HEALTH:
