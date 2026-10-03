@@ -15,6 +15,7 @@ from core.domain.model import (
     JobSpec,
     Organization,
     Project,
+    ProviderBinding,
 )
 
 
@@ -76,3 +77,15 @@ class CoreRepository(Protocol):
     def get_approval_for_version(
         self, organization_id: UUID, project_id: UUID, artifact_version_id: UUID
     ) -> Approval | None: ...
+
+    def add_provider_binding(self, binding: ProviderBinding) -> None: ...
+
+    def save_provider_binding(self, binding: ProviderBinding) -> None: ...
+
+    def get_provider_binding(
+        self, organization_id: UUID, project_id: UUID, binding_id: UUID
+    ) -> ProviderBinding | None: ...
+
+    def list_provider_bindings(
+        self, organization_id: UUID, project_id: UUID, capability: str
+    ) -> list[ProviderBinding]: ...

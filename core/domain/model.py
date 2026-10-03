@@ -34,6 +34,20 @@ JOB_TYPES = frozenset({
 JOB_STATUSES = frozenset({"queued", "running", "ok", "failed", "needs_approval"})
 MODEL_SELECTORS = frozenset({"auto", "fast", "strong", "local", "custom"})
 
+# Intention métier, pas un outil. Les deux providers couvrent la recherche web déjà utilisée.
+CAPABILITIES = frozenset({"search"})
+PROVIDERS = frozenset({"searxng", "duckduckgo"})
+PROVIDER_HEALTH = frozenset({"up", "down"})
+WORKFLOW_CAPABILITY = {
+    "search.web": "search",
+    "discover.serp": "search",
+    "discover.signals": "search",
+}
+PROVIDER_CAPABILITIES = {
+    "searxng": frozenset({"search"}),
+    "duckduckgo": frozenset({"search"}),
+}
+
 
 class DomainError(Exception):
     """Règle métier refusée."""
@@ -49,6 +63,14 @@ class NotInOrganization(DomainError):
 
 class Conflict(DomainError):
     """Unicité déjà prise (slug, ou contexte déjà posé)."""
+
+
+def capability_for_workflow(workflow: str) -> str:
+    """Workflow métier → capability. Le nom d'un provider n'entre pas dans ce choix."""
+    try:
+        return WORKFLOW_CAPABILITY[workflow]
+    except KeyError as exc:
+        raise DomainError("workflow sans capability") from exc
 
 
 def _name(value: str) -> str:
@@ -352,3 +374,57 @@ class Approval:
         if self.decision not in APPROVAL_DECISIONS:
             raise DomainError("décision inconnue")
         object.__setattr__(self, "decided_at", _moment(self.decided_at))
+
+
+@dataclass(frozen=True)
+class Capability:
+    key: str
+
+    def __post_init__(self) -> None:
+        if self.key not in CAPABILITIES:
+            raise DomainError("capability inconnue")
+
+
+@dataclass(frozen=True)
+class Provider:
+    key: str
+
+    def __post_init__(self) -> None:
+        if self.key not in PROVIDERS:
+            raise DomainError("provider inconnu")
+
+    @property
+    def capabilities(self) -> frozenset[str]:
+        return PROVIDER_CAPABILITIES[self.key]
+
+
+@dataclass(frozen=True)
+class ProviderBinding:
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    capability: str
+    provider: str
+    priority: int
+    health: str
+
+    def __post_init__(self) -> None:
+        if self.capability not in CAPABILITIES:
+            raise DomainError("capability inconnue")
+        if self.provider not in PROVIDERS:
+            raise DomainError("provider inconnu")
+        if self.capability not in PROVIDER_CAPABILITIES[self.provider]:
+            raise DomainError("provider hors capability")
+        if type(self.priority) is not int or self.priority < 0:
+            raise DomainError("priorité invalide")
+        if self.health not in PROVIDER_HEALTH:
+            raise DomainError("santé inconnue")
+
+    def with_provider(self, provider: str) -> ProviderBinding:
+        return replace(self, provider=provider)
+
+    def with_priority(self, priority: int) -> ProviderBinding:
+        return replace(self, priority=priority)
+
+    def with_health(self, health: str) -> ProviderBinding:
+        return replace(self, health=health)

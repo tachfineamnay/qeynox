@@ -20,6 +20,7 @@ from core.domain.model import (
     NotInOrganization,
     Organization,
     Project,
+    ProviderBinding,
 )
 
 
@@ -456,6 +457,86 @@ class PostgresCoreRepository:
             sources=[(item["url"], item["note"]) for item in row["sources"]],
             confidence=row["confidence"],
             created_at=row["created_at"],
+        )
+
+    def add_provider_binding(self, binding: ProviderBinding) -> None:
+        self._write(
+            """
+            INSERT INTO provider_bindings (
+                id, organization_id, project_id, capability_key, provider_key, priority, health
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                binding.id,
+                binding.organization_id,
+                binding.project_id,
+                binding.capability,
+                binding.provider,
+                binding.priority,
+                binding.health,
+            ),
+            "provider_binding",
+        )
+
+    def save_provider_binding(self, binding: ProviderBinding) -> None:
+        try:
+            cursor = self._connection.execute(
+                """
+                UPDATE provider_bindings
+                SET provider_key = %s, priority = %s, health = %s
+                WHERE id = %s AND organization_id = %s AND project_id = %s
+                """,
+                (
+                    binding.provider,
+                    binding.priority,
+                    binding.health,
+                    binding.id,
+                    binding.organization_id,
+                    binding.project_id,
+                ),
+            )
+        except UniqueViolation as exc:
+            raise Conflict("provider_binding") from exc
+        except ForeignKeyViolation as exc:
+            raise NotInOrganization("provider_binding") from exc
+        if cursor.rowcount != 1:
+            raise NotInOrganization("provider_binding")
+
+    def get_provider_binding(
+        self, organization_id: UUID, project_id: UUID, binding_id: UUID
+    ) -> ProviderBinding | None:
+        row = self._connection.execute(
+            """
+            SELECT id, organization_id, project_id, capability_key, provider_key, priority, health
+            FROM provider_bindings
+            WHERE organization_id = %s AND project_id = %s AND id = %s
+            """,
+            (organization_id, project_id, binding_id),
+        ).fetchone()
+        return None if row is None else self._binding(row)
+
+    def list_provider_bindings(
+        self, organization_id: UUID, project_id: UUID, capability: str
+    ) -> list[ProviderBinding]:
+        rows = self._connection.execute(
+            """
+            SELECT id, organization_id, project_id, capability_key, provider_key, priority, health
+            FROM provider_bindings
+            WHERE organization_id = %s AND project_id = %s AND capability_key = %s
+            """,
+            (organization_id, project_id, capability),
+        ).fetchall()
+        return [self._binding(row) for row in rows]
+
+    def _binding(self, row) -> ProviderBinding:
+        return ProviderBinding(
+            id=row["id"],
+            organization_id=row["organization_id"],
+            project_id=row["project_id"],
+            capability=row["capability_key"],
+            provider=row["provider_key"],
+            priority=row["priority"],
+            health=row["health"],
         )
 
     def _write(self, sql: str, params: tuple, kind: str) -> None:
