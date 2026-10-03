@@ -4,6 +4,8 @@ Usine GTM auto-hébergée. Un produit connecté devient un dossier, un plan, pui
 
 **Décisions tranchées.** Hermes = worker d’exécution (caché). OpenClaw hors V1. Telegram / WhatsApp hors V1. Zéro verticale hardcodée.
 
+**Suite :** [PRD-v2.md](PRD-v2.md) — exécution du plan (jobs, Hermes branché, LLM par tâche, API métier).
+
 ---
 
 ## 1. Problème

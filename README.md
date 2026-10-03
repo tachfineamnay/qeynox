@@ -2,7 +2,7 @@
 
 Connectez le **repo d’un produit**. QeyNox en extrait le contexte, mène la research (marché, mots-clés, signaux, concurrents, AEO), produit un dossier + un plan, attend **votre go**, puis lance les veilles.
 
-Produit de référence : [docs/PRD-v1.md](docs/PRD-v1.md).
+Contrats produit : [docs/PRD-v1.md](docs/PRD-v1.md) (usine, dossier, gate) · [docs/PRD-v2.md](docs/PRD-v2.md) (plan, jobs, Hermes, LLM par tâche).
 
 Hermes Agent est le worker d’exécution (caché). OpenClaw et Telegram sont hors V1.
 
@@ -41,6 +41,7 @@ python qeynox.py arms enable searxng --endpoint http://127.0.0.1:8888
 ```
 qeynox/
 ├── docs/PRD-v1.md      contrat produit V1
+├── docs/PRD-v2.md      exécution du plan (jobs, Hermes, API)
 ├── catalog/            bras OSS/payants (alimentable)
 ├── qeynox.py           CLI
 ├── engine/             pipeline, dossier, boucles, catalogue
