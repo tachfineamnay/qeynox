@@ -1,0 +1,41 @@
+# Date: 2026-10-03
+schema_version: 1
+id: example-provider
+name: Example Provider
+version: "1.0.0"
+status: unverified
+
+capabilities:
+  - id: crawl.site
+    version: "1"
+    operation: crawl_site
+    side_effect: false
+    default_risk: R0
+
+transport:
+  type: http
+  base_url_env: EXAMPLE_PROVIDER_URL
+
+auth:
+  type: bearer
+  secret_ref_env: EXAMPLE_PROVIDER_TOKEN
+
+health:
+  method: GET
+  path: /health
+  timeout_seconds: 5
+
+operations:
+  crawl_site:
+    method: POST
+    path: /v1/crawl
+    input_schema: crawl-site-input.v1
+    output_schema: crawl-site-result.v1
+    timeout_seconds: 120
+
+limits:
+  max_concurrency: 5
+  requests_per_second: 2
+
+certification:
+  required: true
