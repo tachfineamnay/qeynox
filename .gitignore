@@ -3,10 +3,18 @@ __pycache__/
 *.py[cod]
 *.pyo
 
-# Environnement
+# Secrets — templates tracked: tools/config.example.env, catalog/overrides.example.json
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+id_rsa
+id_ed25519
+credentials.json
+secrets.json
+
+# Environnement local
 venv/
 .venv/
 
@@ -16,13 +24,37 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Tests / cache
+# Caches
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 
-# Graphify generated cache
-graphify-out/cache/
+# Graphify généré (cache, graphe, rapports, sauvegardes datées)
+graphify-out/
 
-# Logs
+# Logs, sorties, temporaires
 *.log
+logs/
+output/
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Bases et données runtime
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Missions web (état du serveur, pas du code)
+web/missions.json
+
+# Projets / tenants. registry.json est créé au premier onboard, pas un seed git.
+stacks/
+
+# Surcharges locales du catalogue. Les exemples et arms.json restent versionnés.
+catalog/overrides.json
+catalog/custom.json

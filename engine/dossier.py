@@ -190,7 +190,7 @@ f"**Questions types** : {' · '.join(p['signaux']['questions']) or '—'}",
 f"**Angle marketing** : {p['angle_marketing']}",
 f"**Canaux** : {p['canaux']}",
 "**Verbatims sourcés** :" if p['verbatims'] else "**Verbatims** : aucun signal fort pour ce profil (à enrichir via missions signaux).",
-*[f"> « {(t + ' — ' + sn).strip()[:220]} »  \n> Source : {u}" for t, sn, u in p['verbatims']],
+*[("> « " + (t + " — " + sn).strip()[:220] + " »" + chr(10) + "> Source : " + str(u)) for t, sn, u in p['verbatims']],
 ""]) for p in personas)}
 
 ## 3. Marché & concurrents
