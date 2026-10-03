@@ -7,15 +7,31 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qeynox
+          POSTGRES_PASSWORD: qeynox
+          POSTGRES_DB: qeynox
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qeynox -d qeynox"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      QEYNOX_TEST_DATABASE_URL: postgresql://qeynox:qeynox@127.0.0.1:5432/qeynox
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: runtime import
-        run: pip install requests
+        run: pip install requests -r requirements-core.txt
       - name: syntax
-        run: python -m compileall -q engine tools web scripts mcp_server.py qeynox.py
+        run: python -m compileall -q engine tools web scripts core mcp_server.py qeynox.py
       - name: tests
         run: python -m unittest discover -s tests -v
       - name: secret guard
