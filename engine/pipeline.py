@@ -94,6 +94,9 @@ def run_pipeline(slug: str, cfg: dict) -> None:
         stack_dir = os.path.join(stacks_dir(), slug)
         os.makedirs(stack_dir, exist_ok=True)
 
+        analysis = None
+        current_stage: dict[str, str | None] = {"id": None}
+
         def mark(stage_id: str, status: str, log: str = "") -> None:
             for st in pipe["stages"]:
                 if st["id"] == stage_id:
@@ -101,15 +104,17 @@ def run_pipeline(slug: str, cfg: dict) -> None:
                     st["finished"] = now_iso()
                     if status == "running":
                         st["started"] = now_iso()
+                        current_stage["id"] = stage_id
+                    elif current_stage["id"] == stage_id:
+                        current_stage["id"] = None
                     if log:
                         st["log"] = log[-8000:]
             write_pipeline(slug, pipe)
 
-        analysis = None
         try:
-            # 1. récupération du dépôt
+            # 1. récupération du dépôt — workdir = stack, le clone vit dans stack/repo
             mark("clone", "running")
-            repo_path, repo_mode = repo_scan.prepare_repo(cfg["source"], os.path.join(stack_dir, "repo"))
+            repo_path, repo_mode = repo_scan.prepare_repo(cfg["source"], stack_dir)
             mark("clone", "done", f"{repo_path} (mode: {repo_mode})")
 
             # 2. analyse statique
@@ -180,8 +185,11 @@ def run_pipeline(slug: str, cfg: dict) -> None:
                     s["site_url"] = out["data"].get("site")
             save_registry(rows)
         except Exception as exc:
+            message = str(exc)[:500]
+            if current_stage["id"]:
+                mark(current_stage["id"], "error", message)
             pipe["status"] = "error"
-            pipe["error"] = str(exc)[:500]
+            pipe["error"] = message
             write_pipeline(slug, pipe)
             rows = load_registry()
             for s in rows:

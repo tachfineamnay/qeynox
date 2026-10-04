@@ -251,17 +251,14 @@ def top_scored_keywords(path: str, limit: int = 40) -> list[dict]:
     )
 
 
-def legacy_top_keyword_column(path: str, limit: int) -> list[tuple]:
-    """Requête historique des loops (`SELECT keyword`), colonne absente du schéma.
-
-    L'appelant attrape l'erreur et retombe sur la marque. Conservé tel quel.
-    """
+def top_keyword_rows(path: str, limit: int) -> list[tuple]:
+    """Top mots-clés `(kw,)` pour la boucle trends. La colonne du schéma est `kw`."""
     if not path or not os.path.exists(path):
         return []
     con = connect(path, init=False)
     try:
         rows = con.execute(
-            "SELECT keyword FROM keywords ORDER BY score DESC LIMIT ?", (limit,)
+            "SELECT kw FROM keywords ORDER BY score DESC LIMIT ?", (limit,)
         ).fetchall()
         return [tuple(row) for row in rows]
     finally:
