@@ -149,6 +149,7 @@ def test_git_url_allowlist():
         "--upload-pack=touch",
         "file:///etc/passwd",
         "ssh://git@github.com/org/repo.git",
+        "https://user:github_pat_embedded@github.com/org/repo.git",
         "https://github.com/org/../../etc/passwd",
         "git@github.com:../../etc/passwd",
         "https://",

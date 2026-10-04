@@ -20,6 +20,7 @@ TOOLS_DIR = os.path.join(ROOT, "tools")
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+from engine.git_auth import apply_clone_auth, redact  # noqa: E402
 from engine.paths import logs_dir  # noqa: E402
 from engine.safety import safe_cli_value, safe_geo  # noqa: E402
 
@@ -152,7 +153,7 @@ def _logs_dir() -> str:
     return logs_dir()
 
 
-def _journal(result: ToolResult, argv: list[str], cwd: str | None) -> None:
+def _journal(result: ToolResult, argv: list[str], cwd: str | None, secret: str = "") -> None:
     try:
         folder = _logs_dir()
         os.makedirs(folder, exist_ok=True)
@@ -163,8 +164,8 @@ def _journal(result: ToolResult, argv: list[str], cwd: str | None) -> None:
             "timed_out": result.timed_out,
             "duration_s": result.duration_s,
             "pid": result.pid,
-            "cwd": cwd,
-            "argv": argv,
+            "cwd": redact(cwd or "", secret) or None,
+            "argv": [redact(arg, secret) for arg in argv],
         }
         with open(os.path.join(folder, "tool-runs.jsonl"), "a", encoding="utf-8") as handle:
             handle.write(json.dumps(line, ensure_ascii=False) + "\n")
@@ -196,8 +197,10 @@ def run_tool(
     argv = _argv(name, params)
     limit = TIMEOUTS.get(name, 300) if timeout is None else timeout
     run_env = dict(os.environ if env is None else env)
+    secret = ""
     if name == "git_clone":
         run_env.setdefault("GIT_TERMINAL_PROMPT", "0")
+        secret = apply_clone_auth(run_env, str(params.get("url") or ""))
     started = time.monotonic()
     log_handle = None
     try:
@@ -222,7 +225,8 @@ def run_tool(
                     stdout=_decode(exc.stdout), stderr=_decode(exc.stderr), timed_out=True,
                     duration_s=round(time.monotonic() - started, 3), log_path=None,
                 )
-            _journal(result, argv, cwd)
+            _scrub(result, secret, log_path)
+            _journal(result, argv, cwd, secret)
             return result
         if background:
             proc = subprocess.Popen(
@@ -238,7 +242,8 @@ def run_tool(
                 timed_out=False, duration_s=round(time.monotonic() - started, 3),
                 log_path=log_path, pid=proc.pid,
             )
-            _journal(result, argv, cwd)
+            _scrub(result, secret, log_path)
+            _journal(result, argv, cwd, secret)
             return result
 
         stdout_target = log_handle if log_handle else subprocess.PIPE
@@ -275,8 +280,25 @@ def run_tool(
     finally:
         if log_handle:
             log_handle.close()
-    _journal(result, argv, cwd)
+    _scrub(result, secret, log_path)
+    _journal(result, argv, cwd, secret)
     return result
+
+
+def _scrub(result: ToolResult, secret: str, log_path: str | None = None) -> None:
+    result.stdout = redact(result.stdout, secret)
+    result.stderr = redact(result.stderr, secret)
+    if not log_path or not secret or not os.path.isfile(log_path):
+        return
+    try:
+        with open(log_path, encoding="utf-8", errors="replace") as handle:
+            text = handle.read()
+        cleaned = redact(text, secret)
+        if cleaned != text:
+            with open(log_path, "w", encoding="utf-8") as handle:
+                handle.write(cleaned)
+    except OSError:
+        pass
 
 
 def result_dict(result: ToolResult) -> dict:

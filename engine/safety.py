@@ -159,6 +159,8 @@ def validate_git_url(source: str) -> str:
         host = (parsed.hostname or "").lower()
         if parsed.scheme not in ("http", "https") or not host or host.startswith("-"):
             raise ValueError("URL git refusée")
+        if parsed.username or parsed.password:
+            raise ValueError("URL git refusée")
         if not parsed.path or parsed.path == "/":
             raise ValueError("URL git refusée")
         if any(seg == ".." for seg in parsed.path.split("/")):

@@ -185,7 +185,8 @@ def run_pipeline(slug: str, cfg: dict) -> None:
                     s["site_url"] = out["data"].get("site")
             save_registry(rows)
         except Exception as exc:
-            message = str(exc)[:500]
+            from engine.git_auth import git_token, redact
+            message = redact(str(exc), git_token())[:500]
             if current_stage["id"]:
                 mark(current_stage["id"], "error", message)
             pipe["status"] = "error"
@@ -203,6 +204,10 @@ def start_pipeline_async(slug: str, cfg: dict) -> None:
 
 
 def create_stack(name: str, source: str, site_url: str = "", seeds: list[str] | None = None) -> dict:
+    from engine.repo_scan import is_git_url
+    from engine.safety import validate_git_url
+    if is_git_url(source):
+        source = validate_git_url(source)
     base = slugify(name)
     slug, i = base, 2
     while get_stack(slug):
