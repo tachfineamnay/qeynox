@@ -197,8 +197,8 @@ def program_call(prog: dict, slug: str) -> tuple[str, dict] | None:
 
 def _top_kws(slug: str, n: int) -> list[tuple]:
     try:
-        from engine.repository import legacy_top_keyword_column
-        return legacy_top_keyword_column(os.path.join(stacks_dir(), slug, "data", "gtm.db"), n)
+        from engine.repository import top_keyword_rows
+        return top_keyword_rows(os.path.join(stacks_dir(), slug, "data", "gtm.db"), n)
     except Exception:
         return []
 

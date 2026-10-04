@@ -62,7 +62,11 @@ def is_git_url(source: str) -> bool:
 
 
 def prepare_repo(source: str, workdir: str) -> tuple[str, str]:
-    """Retourne (chemin du dépôt, mode d'obtention). Nettoie si besoin."""
+    """Retourne (chemin du dépôt, mode d'obtention).
+
+    `workdir` est le dossier du stack. Un clone ou un zip est écrit dans
+    `workdir/repo` (pas `workdir/repo/repo`).
+    """
     source = source.strip().strip('"').strip("'")
     if os.path.isdir(os.path.expanduser(source)):
         return os.path.expanduser(source), "local"
@@ -359,9 +363,8 @@ def scan_repo(repo: str) -> dict:
 
 def run(source: str, stack_dir: str) -> dict:
     """Pipeline d'analyse complet : préparation + scan + écriture des artefacts."""
-    workdir = os.path.join(stack_dir, "repo")
-    os.makedirs(workdir, exist_ok=True)
-    repo, mode = prepare_repo(source, workdir)
+    os.makedirs(stack_dir, exist_ok=True)
+    repo, mode = prepare_repo(source, stack_dir)
     analysis = scan_repo(repo)
     analysis["source"] = source
     analysis["source_mode"] = mode

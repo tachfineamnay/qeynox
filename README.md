@@ -80,3 +80,9 @@ Le serveur écoute `127.0.0.1` par défaut (`QEYNOX_BIND` pour un conteneur). S'
 Les clones git n'acceptent que `http(s)` et `git@hôte:chemin`. Les archives zip ne peuvent pas écrire hors du dossier cible. Les URL de site passées à l'audit doivent être des http(s) publics (pas de loopback, lien-local, ni réseau privé).
 
 Rien ne quitte la machine hors requêtes de recherche publiques. Les personas et concurrents sont des hypothèses sourcées.
+
+Limites connues, laissées en l'état :
+
+- `dossier/data.json` est réécrit à chaque génération. Les copies immuables sont `dossier/versions/gtm-dossier-vNNNN.*`, avec `latest.json` comme pointeur.
+- Le jeton saisi dans l'UI reste dans `sessionStorage` (perdu avec la session du navigateur).
+- L'URL de site est contrôlée sans résolution DNS à la création du stack. Le fetch revalide chaque redirection ; une fenêtre de DNS rebinding reste possible.
