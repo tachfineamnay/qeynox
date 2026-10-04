@@ -34,8 +34,24 @@ const INTENTS = [["","Toutes"],["commercial","Commercial"],["info","Info"],["tra
 const AGENT_META = {goc:{n:"GOC",e:"🧭"},scout:{n:"SCOUT",e:"🔎"},scribe:{n:"SCRIBE",e:"✍️"},signal:{n:"SIGNAL",e:"📣"},pilot:{n:"PILOT",e:"📊"}};
 const STAGE_ICON = {done:"✓", running:"◐", error:"✕", skipped:"–", pending:"·"};
 
+function authHeaders(base) {
+  const headers = Object.assign({}, base || {});
+  const token = sessionStorage.getItem("qx-token");
+  if (token) headers.Authorization = "Bearer " + token;
+  return headers;
+}
 async function api(path, opts) {
-  const r = await fetch(path, opts);
+  opts = opts || {};
+  const init = Object.assign({}, opts, { headers: authHeaders(opts.headers) });
+  delete init._retried;
+  let r = await fetch(path, init);
+  if (r.status === 401 && !opts._retried) {
+    const entered = window.prompt("Token QeyNox requis (QEYNOX_API_TOKEN)");
+    if (entered && entered.trim()) {
+      sessionStorage.setItem("qx-token", entered.trim());
+      return api(path, Object.assign({}, opts, { _retried: true }));
+    }
+  }
   if (!r.ok) { let m; try { m = (await r.json()).error; } catch {} throw new Error(m || `HTTP ${r.status}`); }
   return r.json();
 }
@@ -341,12 +357,26 @@ async function renderKeywords() {
       <div class="search"><span class="ic">${I.search}</span><input id="kw-q" placeholder="Rechercher un mot-clé…" value="${esc(state.q)}"></div>
       <div class="filter-chips">${INTENTS.map(([v, l]) => `<button class="fchip ${state.intent === v ? "on" : ""}" data-intent="${v}">${l}</button>`).join("")}</div>
       <div class="spacer"></div>
-      <a class="btn subtle" href="/api/export/keywords.csv${qs()}">Export CSV</a>
+      <button class="btn subtle" type="button" id="export-csv">Export CSV</button>
     </div>
     <div id="kw-table">${skeleton(3)}</div>`;
+  $("#export-csv").addEventListener("click", exportKeywordsCsv);
   c.querySelectorAll("[data-intent]").forEach(b => b.addEventListener("click", () => { state.intent = b.dataset.intent; renderKeywords(); }));
   $("#kw-q").addEventListener("input", debounce(() => { state.q = $("#kw-q").value; loadKwTable(); }, 250));
   await loadKwTable();
+}
+async function exportKeywordsCsv() {
+  try {
+    const r = await fetch("/api/export/keywords.csv" + qs(), { headers: authHeaders() });
+    if (r.status === 401) { await api("/api/stacks"); return exportKeywordsCsv(); }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const blob = await r.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "qeynox-keywords.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (e) { toast("Export impossible", e.message, "err"); }
 }
 async function loadKwTable() {
   const el = $("#kw-table"); if (!el) return;

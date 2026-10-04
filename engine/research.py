@@ -17,7 +17,6 @@ import re
 import subprocess
 import sys
 import time
-from collections import Counter
 from urllib.parse import parse_qs, unquote, urlparse
 
 ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,7 +26,7 @@ STACKS_DIR = os.path.join(QEYNOX_ROOT, "stacks")
 if TOOLS_DIR not in sys.path:
     sys.path.insert(0, TOOLS_DIR)
 
-from gtm_common import UA, autocomplete, domain_of, fetch_text, searx_search, searxng_url  # noqa: E402
+from gtm_common import UA, domain_of, fetch_text, safe_get, searx_search, searxng_url  # noqa: E402
 import requests  # noqa: E402
 
 RESEARCH_DIR = lambda stack: os.path.join(STACKS_DIR, stack, "research")  # noqa: E731
@@ -305,7 +304,7 @@ def stage_aeo(stack: str, analysis: dict) -> dict:
         return result
     raw_html = ""
     try:
-        r = requests.get(site, headers={"User-Agent": UA}, timeout=18)
+        r = safe_get(site, timeout=18, headers={"User-Agent": UA})
         raw_html = r.text[:500_000]
         result["reachable"] = True
     except Exception as exc:
@@ -325,7 +324,7 @@ def stage_aeo(stack: str, analysis: dict) -> dict:
     }
     for path, key in (("/robots.txt", "robots_txt"), ("/sitemap.xml", "sitemap"), ("/llms.txt", "llms_txt")):
         try:
-            rr = requests.get(site + path, headers={"User-Agent": UA}, timeout=10)
+            rr = safe_get(site + path, headers={"User-Agent": UA}, timeout=10)
             checks[key] = rr.status_code == 200 and len(rr.text) > 10
         except Exception:
             checks[key] = False

@@ -23,8 +23,10 @@ from datetime import datetime, timezone
 
 ROOT = os.environ.get("QEYNOX_ROOT") or os.path.dirname(os.path.abspath(__file__))
 STACKS = os.path.join(ROOT, "stacks")
-TOOLS = os.path.join(ROOT, "tools")
+TOOLS_DIR = os.path.join(ROOT, "tools")
 sys.path.insert(0, ROOT)
+
+from engine.safety import safe_cli_value, safe_geo, safe_slug  # noqa: E402
 
 SERVER_INFO = {"name": "qeynox", "version": "1.0.0"}
 PROTOCOL = "2024-11-05"
@@ -140,18 +142,21 @@ def tool_launch_tool(a: dict) -> str:
     if tool not in scripts:
         return f"outil inconnu: {tool} (choix: {', '.join(scripts)})"
     script, flag = scripts[tool]
-    args = [sys.executable, os.path.join(TOOLS, script[0])]
+    args = [sys.executable, os.path.join(TOOLS_DIR, script[0])]
     items = a.get("seeds") or a.get("queries") or a.get("kws") or []
     if tool == "competitors":
         args.append("--scan")
     else:
         for it in (items or [])[:10]:
-            args += [flag, str(it)]
+            args += [flag, safe_cli_value(str(it), field="paramètre")]
         if tool == "serp":
-            args = [sys.executable, os.path.join(TOOLS, "serp_rank.py"),
-                    "--from-store", "--limit", str(int(a.get("limit", 20)))]
+            limit = int(a.get("limit", 20))
+            if limit < 1 or limit > 100:
+                return "limit hors bornes (1-100)"
+            args = [sys.executable, os.path.join(TOOLS_DIR, "serp_rank.py"),
+                    "--from-store", "--limit", str(limit)]
         if tool == "trends":
-            args += ["--geo", str(a.get("geo", "FR"))]
+            args += ["--geo", safe_geo(str(a.get("geo", "FR")))]
     db = os.path.join(STACKS, slug, "data", "gtm.db")
     cwd = os.path.join(STACKS, slug)
     os.makedirs(cwd, exist_ok=True)
@@ -175,30 +180,39 @@ def tool_propose_decision(a: dict) -> str:
     return f"décision enregistrée: stacks/{slug}/output/{fn} (en attente de validation admin)"
 
 
+def _guard(fn, needs_slug: bool = True):
+    def wrapper(args):
+        args = dict(args or {})
+        if needs_slug:
+            args["slug"] = safe_slug(str(args.get("slug", "")))
+        return fn(args)
+    return wrapper
+
+
 TOOLS = {
     "list_stacks": (tool_list_stacks, "Liste les stacks QeyNox (slug, nom, statut).", {"type": "object", "properties": {}}),
-    "get_stack_summary": (tool_get_stack_summary, "Synthèse d'un stack: marque, site, prix, pipeline, compteurs, AEO.",
+    "get_stack_summary": (_guard(tool_get_stack_summary), "Synthèse d'un stack: marque, site, prix, pipeline, compteurs, AEO.",
                           {"type": "object", "properties": {"slug": {"type": "string"}}, "required": ["slug"]}),
-    "get_keywords": (tool_get_keywords, "Mots-clés scorés d'un stack (filtre intent: commercial|info|transactional|brand).",
+    "get_keywords": (_guard(tool_get_keywords), "Mots-clés scorés d'un stack (filtre intent: commercial|info|transactional|brand).",
                      {"type": "object", "properties": {"slug": {"type": "string"}, "intent": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["slug"]}),
-    "get_signals": (tool_get_signals, "Verbatims/signaux de marché d'un stack.",
+    "get_signals": (_guard(tool_get_signals), "Verbatims/signaux de marché d'un stack.",
                     {"type": "object", "properties": {"slug": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["slug"]}),
-    "get_competitors": (tool_get_competitors, "Concurrents détectés + confiance de la donnée.",
+    "get_competitors": (_guard(tool_get_competitors), "Concurrents détectés + confiance de la donnée.",
                         {"type": "object", "properties": {"slug": {"type": "string"}}, "required": ["slug"]}),
-    "get_aeo": (tool_get_aeo, "Audit AEO/GEO (score, checks, recommandations).",
+    "get_aeo": (_guard(tool_get_aeo), "Audit AEO/GEO (score, checks, recommandations).",
                 {"type": "object", "properties": {"slug": {"type": "string"}}, "required": ["slug"]}),
-    "get_dossier": (tool_get_dossier, "Le dossier GTM complet (markdown).",
+    "get_dossier": (_guard(tool_get_dossier), "Le dossier GTM complet (markdown).",
                     {"type": "object", "properties": {"slug": {"type": "string"}, "max_chars": {"type": "integer"}}, "required": ["slug"]}),
-    "get_synthesis": (tool_get_synthesis, "La synthèse stratégique LLM du stack.",
+    "get_synthesis": (_guard(tool_get_synthesis), "La synthèse stratégique LLM du stack.",
                       {"type": "object", "properties": {"slug": {"type": "string"}}, "required": ["slug"]}),
-    "launch_tool": (tool_launch_tool, "Lance un outil du swarm en fond (keywords|social|competitors|serp|trends).",
+    "launch_tool": (_guard(tool_launch_tool), "Lance un outil du swarm en fond (keywords|social|competitors|serp|trends).",
                     {"type": "object", "properties": {"slug": {"type": "string"}, "tool": {"type": "string"},
                                                       "seeds": {"type": "array", "items": {"type": "string"}},
                                                       "queries": {"type": "array", "items": {"type": "string"}},
                                                       "kws": {"type": "array", "items": {"type": "string"}},
                                                       "geo": {"type": "string"}, "limit": {"type": "integer"}},
                      "required": ["slug", "tool"]}),
-    "propose_decision": (tool_propose_decision, "Propose une décision à l'admin (human-in-the-loop). Elle apparaît dans ses Rapports.",
+    "propose_decision": (_guard(tool_propose_decision), "Propose une décision à l'admin (human-in-the-loop). Elle apparaît dans ses Rapports.",
                          {"type": "object", "properties": {"slug": {"type": "string"}, "title": {"type": "string"}, "body_md": {"type": "string"}},
                           "required": ["slug", "title", "body_md"]}),
 }

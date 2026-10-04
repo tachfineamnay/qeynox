@@ -21,8 +21,18 @@ Thumbs.db
 .coverage
 htmlcov/
 
-# Graphify generated cache
-graphify-out/cache/
+# Graphify generated output
+graphify-out/
+
+# Runtime / tenant data (never commit stacks, databases, or logs)
+stacks/*
+!stacks/.gitkeep
+logs/
+output/
+*.db
+*.sqlite
+*.sqlite3
+web/missions.json
 
 # Logs
 *.log

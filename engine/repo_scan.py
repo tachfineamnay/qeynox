@@ -13,11 +13,12 @@ import re
 import shutil
 import subprocess
 import sys
-import zipfile
 from collections import Counter
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import urlparse
+
+from .safety import safe_extract_zip, validate_git_url
 
 SKIP_DIRS = {
     ".git", "node_modules", "__pycache__", ".venv", "venv", "env", "dist", "build",
@@ -69,8 +70,7 @@ def prepare_repo(source: str, workdir: str) -> tuple[str, str]:
         dest = os.path.join(workdir, "repo")
         if os.path.exists(dest):
             shutil.rmtree(dest)
-        with zipfile.ZipFile(os.path.expanduser(source)) as z:
-            z.extractall(dest)
+        safe_extract_zip(os.path.expanduser(source), dest)
         # si l'archive contient un seul dossier racine, le descendre
         entries = os.listdir(dest)
         if len(entries) == 1 and os.path.isdir(os.path.join(dest, entries[0])):
@@ -82,8 +82,10 @@ def prepare_repo(source: str, workdir: str) -> tuple[str, str]:
         dest = os.path.join(workdir, "repo")
         if os.path.exists(dest):
             shutil.rmtree(dest)
-        cmd = ["git", "clone", "--depth", "1", source, dest]
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        validate_git_url(source)
+        cmd = ["git", "clone", "--depth", "1", "--", source, dest]
+        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
         if p.returncode != 0:
             raise RuntimeError(f"git clone a échoué: {p.stderr.strip()[:300]}")
         return dest, "git"
@@ -110,11 +112,14 @@ class PageParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         if tag == "title":
-            self._in = "title"; self._buf = []
+            self._in = "title"
+            self._buf = []
         elif tag == "h1":
-            self._in = "h1"; self._buf = []
+            self._in = "h1"
+            self._buf = []
         elif tag == "h2":
-            self._in = "h2"; self._buf = []
+            self._in = "h2"
+            self._buf = []
         elif tag == "meta":
             name = (a.get("name") or "").lower()
             prop = (a.get("property") or "").lower()
@@ -123,7 +128,8 @@ class PageParser(HTMLParser):
             elif prop.startswith("og:") or name.startswith("twitter:"):
                 self.og[prop or name] = (a.get("content") or "")[:300]
         elif tag == "a" and a.get("href"):
-            self._href = a["href"]; self._link_text = []
+            self._href = a["href"]
+            self._link_text = []
         elif tag == "script" and (a.get("type") or "").endswith("ld+json"):
             self.has_jsonld = True
 
@@ -202,7 +208,7 @@ def detect_manifests(repo: str) -> dict:
         if "requirements.txt" in files:
             try:
                 with open(os.path.join(root, "requirements.txt"), encoding="utf-8") as f:
-                    reqs = [l.strip().lower() for l in f if l.strip() and not l.startswith("#")]
+                    reqs = [line.strip().lower() for line in f if line.strip() and not line.startswith("#")]
                 manifests["raw"]["requirements.txt"] = reqs[:25]
                 for line in reqs:
                     name = re.split(r"[<>=\[\s]", line)[0]

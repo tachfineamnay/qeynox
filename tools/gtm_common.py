@@ -10,7 +10,7 @@ import re
 import sys
 import time
 from html.parser import HTMLParser
-from urllib.parse import urlparse, quote_plus
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -161,9 +161,34 @@ class _TextExtractor(HTMLParser):
         self.parts.append(t)
 
 
+def _validate_public_http_url(url: str, *, resolve: bool = True) -> str:
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from engine.safety import validate_public_http_url
+    return validate_public_http_url(url, resolve=resolve)
+
+
+def safe_get(url: str, *, timeout: int = 20, headers: dict | None = None):
+    """GET http(s) public, en validant chaque redirection."""
+    headers = headers or {"User-Agent": UA}
+    current = url
+    response = None
+    for _hop in range(5):
+        _validate_public_http_url(current, resolve=True)
+        response = requests.get(current, headers=headers, timeout=timeout, allow_redirects=False)
+        if response.status_code not in (301, 302, 303, 307, 308):
+            return response
+        location = response.headers.get("Location")
+        if not location:
+            return response
+        current = urljoin(current, location)
+    raise ValueError("trop de redirections")
+
+
 def fetch_text(url: str, timeout: int = 20) -> tuple[str, str]:
     """Télécharge une page et retourne (titre, texte visible)."""
-    r = requests.get(url, headers={"User-Agent": UA}, timeout=timeout)
+    r = safe_get(url, timeout=timeout)
     r.raise_for_status()
     p = _TextExtractor()
     p.feed(r.text)

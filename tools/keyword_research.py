@@ -126,7 +126,7 @@ def main() -> None:
                            ["kw", "intent", "score", "source", "parent", "trend"],
                            args.out, "csv")
     print(f"\n✅ {len(rows)} mots-clés (score ≥ {args.min_score}) → {out_path}")
-    print(f"   Base SQLite mise à jour: top 10 —")
+    print("   Base SQLite mise à jour: top 10 —")
     for r in rows[:10]:
         print(f"   {r['score']:>5}  [{r['intent']:<12}] {r['kw']}")
     log_run("keyword_research", " ".join(args.seed))
