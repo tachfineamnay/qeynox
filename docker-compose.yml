@@ -17,6 +17,7 @@ x-qeynox: &qeynox
     GTM_WEB_PORT: "8765"
     QEYNOX_API_TOKEN: ${QEYNOX_API_TOKEN:-}
     GTM_HOOK_TOKEN: ${GTM_HOOK_TOKEN:-}
+    QEYNOX_GIT_TOKEN: ${QEYNOX_GIT_TOKEN:-}
     QEYNOX_STACKS_DIR: /data/stacks
     QEYNOX_LOGS_DIR: /data/logs
     QEYNOX_MISSIONS_FILE: /data/missions.json

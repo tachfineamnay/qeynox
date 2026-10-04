@@ -47,8 +47,19 @@ Les coller dans l'UI Coolify (elles servent à l'interpolation du compose). Part
 | `SEARXNG_URL` | `http://searxng:8080` |
 | `GTM_LANG` / `GTM_GL` | `fr` / `FR` |
 | `QEYNOX_LLM` | `none` tant qu'aucun LLM n'est branché. |
+| `QEYNOX_GIT_TOKEN` | optionnel. PAT GitHub fine-grained, lecture seule, pour les dépôts privés. Vide = clones publics seulement. |
 
-`QEYNOX_LLM_API_KEY` reste vide. Ce n'est pas un secret à mettre dans Git.
+`QEYNOX_LLM_API_KEY` et `QEYNOX_GIT_TOKEN` ne vont jamais dans Git. Les saisir dans l'UI Coolify.
+
+### Dépôts GitHub privés
+
+Pour onboarder un dépôt privé (`https://github.com/tachfineamnay/SocioPulseV1`, `LumiraV2`, ou un autre) :
+
+1. GitHub → Settings → Developer settings → Fine-grained personal access tokens.
+2. Ressource : seulement les dépôts à cloner. Permission : **Contents: Read**. Rien d'autre.
+3. Coller le jeton dans `QEYNOX_GIT_TOKEN`.
+
+Le clone reste `git clone --depth 1 -- https://github.com/...`. Le jeton part dans l'environnement du processus git, comme en-tête `Authorization` limité à `https://github.com/` (`GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*`). Il n'est pas ajouté à l'URL, à l'argv, au journal `logs/tool-runs.jsonl`, aux fichiers du stack, ni au message d'erreur. Une URL qui contient déjà un identifiant (`https://user:token@github.com/...`) est refusée. Un clone `git@github.com:...` ou vers un autre hôte n'envoie pas ce jeton. Git 2.31 ou plus récent est requis pour cette passe d'environnement (l'image Debian bookworm l'a).
 
 ## 3. Volume
 
