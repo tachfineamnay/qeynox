@@ -20,6 +20,7 @@ TOOLS_DIR = os.path.join(ROOT, "tools")
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+from engine.paths import logs_dir  # noqa: E402
 from engine.safety import safe_cli_value, safe_geo  # noqa: E402
 
 TIMEOUTS = {
@@ -148,7 +149,7 @@ def _argv(name: str, params: dict) -> list[str]:
 
 
 def _logs_dir() -> str:
-    return os.environ.get("QEYNOX_LOGS_DIR") or os.path.join(ROOT, "logs")
+    return logs_dir()
 
 
 def _journal(result: ToolResult, argv: list[str], cwd: str | None) -> None:

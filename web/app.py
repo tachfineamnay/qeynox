@@ -26,10 +26,10 @@ WEB_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(WEB_DIR, "static")
 QEYNOX_ROOT = os.path.dirname(WEB_DIR)
 TOOLS_DIR = os.path.join(QEYNOX_ROOT, "tools")
-STACKS_DIR = os.path.join(QEYNOX_ROOT, "stacks")
 sys.path.insert(0, QEYNOX_ROOT)
 
 from engine import pipeline as pl  # noqa: E402
+from engine.paths import logs_dir, missions_file, stacks_dir  # noqa: E402
 from engine import launch as launch_mod  # noqa: E402
 from engine.repo_scan import is_git_url  # noqa: E402
 from engine import repository as repo  # noqa: E402
@@ -48,7 +48,6 @@ from engine.safety import (  # noqa: E402
 )
 
 PORT = int(os.environ.get("GTM_WEB_PORT", "8765"))
-MISSIONS_FILE = os.path.join(WEB_DIR, "missions.json")
 _lock = threading.Lock()
 _missions: dict[int, dict] = {}
 
@@ -92,17 +91,18 @@ def now_iso() -> str:
 
 
 def stack_db(slug: str) -> str:
-    return os.path.join(STACKS_DIR, safe_slug(slug), "data", "gtm.db")
+    return os.path.join(stacks_dir(), safe_slug(slug), "data", "gtm.db")
 
 
 def stack_output(slug: str) -> str:
-    return os.path.join(STACKS_DIR, safe_slug(slug), "output")
+    return os.path.join(stacks_dir(), safe_slug(slug), "output")
 
 
 def load_missions() -> None:
-    if os.path.exists(MISSIONS_FILE):
+    path = missions_file()
+    if os.path.exists(path):
         try:
-            with open(MISSIONS_FILE, encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 for m in json.load(f):
                     _missions[int(m["id"])] = m
         except Exception:
@@ -110,20 +110,22 @@ def load_missions() -> None:
 
 
 def save_missions() -> None:
+    path = missions_file()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     with _lock:
-        with open(MISSIONS_FILE, "w", encoding="utf-8") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(sorted(_missions.values(), key=lambda m: m["id"]), f, ensure_ascii=False, indent=1)
 
 
 def run_mission(mid: int) -> None:
     m = _missions[mid]
     slug = m.get("stack") or ""
-    os.makedirs(os.path.join(QEYNOX_ROOT, "logs"), exist_ok=True)
-    log_path = os.path.join(QEYNOX_ROOT, "logs", f"mission-{mid:04d}.log")
+    os.makedirs(logs_dir(), exist_ok=True)
+    log_path = os.path.join(logs_dir(), f"mission-{mid:04d}.log")
     try:
         if slug:
             slug = safe_slug(slug)
-        db = stack_db(slug) if slug and os.path.isdir(os.path.join(STACKS_DIR, slug)) else os.environ.get("GTM_DB", os.path.join(TOOLS_DIR, "data", "gtm.db"))
+        db = stack_db(slug) if slug and os.path.isdir(os.path.join(stacks_dir(), slug)) else os.environ.get("GTM_DB", os.path.join(TOOLS_DIR, "data", "gtm.db"))
         env = {**os.environ, "GTM_DB": db, "GTM_LANG": "fr", "GTM_GL": "FR", "PYTHONUNBUFFERED": "1"}
         tool_name, tool_params = normalize_mission(m["type"], m.get("params") or {})
         ran = run_tool(
@@ -261,7 +263,7 @@ class Handler(BaseHTTPRequestHandler):
                     pipe = pl.read_pipeline(s["slug"])
                     s["pipeline_status"] = (pipe or {}).get("status", "queued")
                     s["stages"] = [{"id": st["id"], "label": st["label"], "status": st["status"]} for st in (pipe or {}).get("stages", [])]
-                    dossier_dir = os.path.join(STACKS_DIR, s["slug"], "dossier", "data.json")
+                    dossier_dir = os.path.join(stacks_dir(), s["slug"], "dossier", "data.json")
                     if os.path.exists(dossier_dir):
                         with open(dossier_dir, encoding="utf-8") as f:
                             s["dossier_data"] = json.load(f)
@@ -282,7 +284,7 @@ class Handler(BaseHTTPRequestHandler):
 
             m = re.match(r"^/api/stacks/([A-Za-z0-9][A-Za-z0-9_-]*)/context$", path)
             if m:
-                p = os.path.join(STACKS_DIR, m.group(1), "context", "repo-analysis.json")
+                p = os.path.join(stacks_dir(), m.group(1), "context", "repo-analysis.json")
                 if not os.path.exists(p):
                     return self._json({"error": "pas d'analyse"}, 404)
                 with open(p, encoding="utf-8") as f:
@@ -330,7 +332,7 @@ class Handler(BaseHTTPRequestHandler):
             m = re.match(r"^/api/missions/(\d+)/log$", path)
             if m:
                 mid = int(m.group(1))
-                log_path = os.path.join(QEYNOX_ROOT, "logs", f"mission-{mid:04d}.log")
+                log_path = os.path.join(logs_dir(), f"mission-{mid:04d}.log")
                 text = ""
                 if os.path.exists(log_path):
                     with open(log_path, encoding="utf-8", errors="replace") as f:
@@ -341,7 +343,7 @@ class Handler(BaseHTTPRequestHandler):
                 slug = self._query_slug(qs)
                 if slug is None:
                     return
-                root = stack_output(slug) if slug else STACKS_DIR
+                root = stack_output(slug) if slug else stacks_dir()
                 reports = []
                 if os.path.isdir(root):
                     for rdir, _dirs, files in os.walk(root):
@@ -364,7 +366,7 @@ class Handler(BaseHTTPRequestHandler):
                 if slug is None:
                     return
                 rel = (qs.get("path") or [""])[0]
-                root = os.path.abspath(stack_output(slug) if slug else STACKS_DIR)
+                root = os.path.abspath(stack_output(slug) if slug else stacks_dir())
                 try:
                     fp = safe_join(root, rel)
                 except ValueError:
@@ -490,7 +492,7 @@ class Handler(BaseHTTPRequestHandler):
 def main() -> None:
     assert_bind_allowed()
     load_missions()
-    os.makedirs(os.path.join(QEYNOX_ROOT, "logs"), exist_ok=True)
+    os.makedirs(logs_dir(), exist_ok=True)
     host = bind_host()
     srv = ThreadingHTTPServer((host, PORT), Handler)
     print(f"⬡ QeyNox — plateforme GTM swarm — http://{host}:{PORT}")

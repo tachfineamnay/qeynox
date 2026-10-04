@@ -21,15 +21,16 @@ from urllib.parse import parse_qs, unquote, urlparse
 ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
 QEYNOX_ROOT = os.path.dirname(ENGINE_DIR)
 TOOLS_DIR = os.path.join(QEYNOX_ROOT, "tools")
-STACKS_DIR = os.path.join(QEYNOX_ROOT, "stacks")
 if TOOLS_DIR not in sys.path:
     sys.path.insert(0, TOOLS_DIR)
+
+from engine.paths import stacks_dir  # noqa: E402
 
 from gtm_common import UA, domain_of, fetch_text, safe_get, searx_search, searxng_url  # noqa: E402
 import requests  # noqa: E402
 
-RESEARCH_DIR = lambda stack: os.path.join(STACKS_DIR, stack, "research")  # noqa: E731
-STACK_DB = lambda stack: os.path.join(STACKS_DIR, stack, "data", "gtm.db")  # noqa: E731
+RESEARCH_DIR = lambda stack: os.path.join(stacks_dir(), stack, "research")  # noqa: E731
+STACK_DB = lambda stack: os.path.join(stacks_dir(), stack, "data", "gtm.db")  # noqa: E731
 
 
 def _save(stack: str, name: str, data: dict) -> None:
@@ -176,7 +177,7 @@ def stage_keywords(stack: str, analysis: dict, extra_seeds: list[str] | None = N
 
 
 def stack_dir_of(stack: str) -> str:
-    return os.path.join(STACKS_DIR, stack)
+    return os.path.join(stacks_dir(), stack)
 
 
 def _market_noun(analysis: dict, seeds: list[str] | None = None) -> str:
@@ -351,7 +352,7 @@ STAGES = ["keywords", "signals", "competitors", "aeo"]
 
 if __name__ == "__main__":
     st = sys.argv[1]
-    ctx = json.load(open(os.path.join(STACKS_DIR, st, "context", "repo-analysis.json"), encoding="utf-8"))
+    ctx = json.load(open(os.path.join(stacks_dir(), st, "context", "repo-analysis.json"), encoding="utf-8"))
     for s in STAGES:
         fn = globals()[f"stage_{s}"]
         print(f"→ {s}…")

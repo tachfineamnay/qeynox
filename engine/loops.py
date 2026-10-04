@@ -30,9 +30,10 @@ from urllib.parse import urlparse
 
 ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(ENGINE_DIR, ".."))
-STACKS = os.path.join(ROOT, "stacks")
-LOGS = os.path.join(ROOT, "logs")
-HALT_FILE = os.path.join(STACKS, ".halt")
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from engine.paths import halt_file, logs_dir, stacks_dir  # noqa: E402
 
 CHECK_INTERVAL = 60          # secondes entre deux ticks du daemon
 RETRY_DELAY = 3600           # 1 h après un échec
@@ -68,9 +69,9 @@ def write_json(path, data):
 
 def list_stacks() -> list[str]:
     out = []
-    if os.path.isdir(STACKS):
-        for s in sorted(os.listdir(STACKS)):
-            d = os.path.join(STACKS, s)
+    if os.path.isdir(stacks_dir()):
+        for s in sorted(os.listdir(stacks_dir())):
+            d = os.path.join(stacks_dir(), s)
             if os.path.isdir(d) and os.path.exists(os.path.join(d, "data", "gtm.db")):
                 out.append(s)
     return out
@@ -78,11 +79,11 @@ def list_stacks() -> list[str]:
 
 def db_counts(slug: str) -> dict:
     from engine.repository import stack_counts
-    return stack_counts(os.path.join(STACKS, slug, "data", "gtm.db"))
+    return stack_counts(os.path.join(stacks_dir(), slug, "data", "gtm.db"))
 
 
 def stack_meta(slug: str) -> dict:
-    rows = read_json(os.path.join(STACKS, "registry.json"), [])
+    rows = read_json(os.path.join(stacks_dir(), "registry.json"), [])
     if not isinstance(rows, list):
         return {}
     for s in rows:
@@ -97,7 +98,7 @@ def stack_domain(slug: str) -> str:
 
 
 def brand_of(slug: str) -> str:
-    ctx = read_json(os.path.join(STACKS, slug, "context", "repo-analysis.json"), {})
+    ctx = read_json(os.path.join(stacks_dir(), slug, "context", "repo-analysis.json"), {})
     return (ctx.get("brand", {}) or {}).get("guess") or slug
 
 
@@ -105,8 +106,8 @@ def brand_of(slug: str) -> str:
 
 def default_programs(slug: str) -> list[dict]:
     """Construit les programmes depuis missions-suggested.json (auto-dispatch) + défauts."""
-    missions = read_json(os.path.join(STACKS, slug, "swarm", "missions-suggested.json"), [])
-    seeds = read_json(os.path.join(STACKS, slug, "swarm", "keywords-seeds.json"), {})
+    missions = read_json(os.path.join(stacks_dir(), slug, "swarm", "missions-suggested.json"), [])
+    seeds = read_json(os.path.join(stacks_dir(), slug, "swarm", "keywords-seeds.json"), {})
     validated = seeds.get("validated_seeds", [])
     programs: list[dict] = []
     used: list[str] = []
@@ -152,7 +153,7 @@ def default_programs(slug: str) -> list[dict]:
 
 def load_programs(slug: str) -> tuple[list[dict], bool]:
     """Retourne (programmes, freshly_dispatched)."""
-    path = os.path.join(STACKS, slug, "programs.json")
+    path = os.path.join(stacks_dir(), slug, "programs.json")
     progs = read_json(path, None)
     if progs:
         return progs, False
@@ -160,14 +161,14 @@ def load_programs(slug: str) -> tuple[list[dict], bool]:
     # Journaliser le dispatch des missions
     dispatched = [{"type": p["type"], "program": p["id"], "label": p["label"],
                    "every_h": p["every_h"], "dispatched_at": now()} for p in progs]
-    write_json(os.path.join(STACKS, slug, "swarm", "missions-dispatched.json"),
+    write_json(os.path.join(stacks_dir(), slug, "swarm", "missions-dispatched.json"),
                {"dispatched_at": now(), "programs": dispatched})
     write_json(path, progs)
     return progs, True
 
 
 def save_programs(slug: str, progs: list[dict]):
-    write_json(os.path.join(STACKS, slug, "programs.json"), progs)
+    write_json(os.path.join(stacks_dir(), slug, "programs.json"), progs)
 
 
 # --------------------------------------------------------------------------- exécution
@@ -197,7 +198,7 @@ def program_call(prog: dict, slug: str) -> tuple[str, dict] | None:
 def _top_kws(slug: str, n: int) -> list[tuple]:
     try:
         from engine.repository import legacy_top_keyword_column
-        return legacy_top_keyword_column(os.path.join(STACKS, slug, "data", "gtm.db"), n)
+        return legacy_top_keyword_column(os.path.join(stacks_dir(), slug, "data", "gtm.db"), n)
     except Exception:
         return []
 
@@ -205,7 +206,7 @@ def _top_kws(slug: str, n: int) -> list[tuple]:
 def source_fingerprint(slug: str) -> str:
     """Empreinte du dépôt source : HEAD git si dispo, sinon hash du fichier repo dir (L3)."""
     h = hashlib.sha256()
-    repo = os.path.join(STACKS, slug, "repo")
+    repo = os.path.join(stacks_dir(), slug, "repo")
     if os.path.isdir(repo):
         try:
             from engine.runner import run_tool
@@ -224,7 +225,7 @@ def source_fingerprint(slug: str) -> str:
                 except OSError:
                     pass
         return h.hexdigest()[:16]
-    ctx = os.path.join(STACKS, slug, "context", "repo-analysis.json")
+    ctx = os.path.join(stacks_dir(), slug, "context", "repo-analysis.json")
     if os.path.exists(ctx):
         h.update(open(ctx, "rb").read())
         return h.hexdigest()[:16]
@@ -238,7 +239,7 @@ def run_program(slug: str, prog: dict) -> dict:
     res = {"program": prog["id"], "type": prog["type"], "at": now(), "ok": False, "note": ""}
     if prog["type"] == "rescan":
         fp = source_fingerprint(slug)
-        state_prev = read_json(os.path.join(STACKS, slug, "loop_state.json"), {})
+        state_prev = read_json(os.path.join(stacks_dir(), slug, "loop_state.json"), {})
         prev = state_prev.get("source_fingerprint", "")
         res["ok"] = True
         if prev and fp and prev != fp:
@@ -260,7 +261,7 @@ def run_program(slug: str, prog: dict) -> dict:
         res["note"] = "type de programme inconnu"
         return res
     tool_name, tool_params = call
-    db = os.path.join(STACKS, slug, "data", "gtm.db")
+    db = os.path.join(stacks_dir(), slug, "data", "gtm.db")
     brand = brand_of(slug)
     env = {
         **os.environ,
@@ -271,12 +272,12 @@ def run_program(slug: str, prog: dict) -> dict:
         "GTM_BRAND_ALIASES": brand,
         "GTM_DOMAIN": stack_domain(slug),
     }
-    os.makedirs(LOGS, exist_ok=True)
-    log_path = os.path.join(LOGS, f"loop-{slug}-{prog['id']}-{datetime.now().strftime('%H%M%S')}.log")
+    os.makedirs(logs_dir(), exist_ok=True)
+    log_path = os.path.join(logs_dir(), f"loop-{slug}-{prog['id']}-{datetime.now().strftime('%H%M%S')}.log")
     from engine.runner import run_tool
     ran = run_tool(
         tool_name, tool_params,
-        cwd=os.path.join(STACKS, slug), env=env, log_path=log_path,
+        cwd=os.path.join(stacks_dir(), slug), env=env, log_path=log_path,
         timeout=RUN_TIMEOUTS.get(prog["type"], 300),
     )
     res["ok"] = ran.ok and not ran.timed_out
@@ -302,7 +303,7 @@ def health_score(slug: str, programs: list[dict]) -> tuple[int, list[str]]:
     sig = 20 if c["signals"] >= 30 else 12 if c["signals"] >= 10 else 4
     comp = 15 if c["competitors"] >= 3 else 8 if c["competitors"] >= 1 else 0
     aeo = 0
-    aeo_data = read_json(os.path.join(STACKS, slug, "research", "aeo.json"), {})
+    aeo_data = read_json(os.path.join(stacks_dir(), slug, "research", "aeo.json"), {})
     score_aeo = aeo_data.get("score") or (aeo_data.get("data", {}) or {}).get("score")
     if isinstance(score_aeo, (int, float)):
         aeo = round(score_aeo / 100 * 20)
@@ -322,7 +323,7 @@ def health_score(slug: str, programs: list[dict]) -> tuple[int, list[str]]:
                 if not p.get("enabled", True) and p.get("note") != "one-shot terminé"]
     if disabled:
         alerts.append("programmes désactivés (échecs répétés ?) : " + ", ".join(disabled))
-    if os.path.exists(HALT_FILE):
+    if os.path.exists(halt_file()):
         alerts.append("⚠️ KILL SWITCH ACTIF (stacks/.halt) — boucles en pause")
     return kw + sig + comp + aeo + fresh, alerts
 
@@ -346,7 +347,7 @@ def write_pulse(slug: str, results: list[dict], programs: list[dict], health: in
               f"- Programmes : {sum(1 for p in programs if p.get('enabled', True))} actifs / {len(programs)}", ""]
     if alerts:
         lines += ["## ⚠️ Alertes", ""] + [f"- {a}" for a in alerts] + [""]
-    out = os.path.join(STACKS, slug, "output")
+    out = os.path.join(stacks_dir(), slug, "output")
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "pulse.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
@@ -355,12 +356,12 @@ def write_pulse(slug: str, results: list[dict], programs: list[dict], health: in
 # --------------------------------------------------------------------------- cycle
 
 def cycle(slugs: list[str] | None = None) -> dict:
-    halt = os.path.exists(HALT_FILE)
+    halt = os.path.exists(halt_file())
     summary = {}
     for slug in (slugs or list_stacks()):
         progs, fresh_dispatch = load_programs(slug)
-        journal = os.path.join(STACKS, slug, "loop.jsonl")
-        state = read_json(os.path.join(STACKS, slug, "loop_state.json"),
+        journal = os.path.join(stacks_dir(), slug, "loop.jsonl")
+        state = read_json(os.path.join(stacks_dir(), slug, "loop_state.json"),
                           {"runs_today": 0, "runs_today_date": "", "source_fingerprint": ""})
         today = datetime.now().strftime("%Y-%m-%d")
         if state.get("runs_today_date") != today:
@@ -426,7 +427,7 @@ def cycle(slugs: list[str] | None = None) -> dict:
         state["last_cycle"] = now()
         state["health"] = health
         state["alerts"] = alerts
-        write_json(os.path.join(STACKS, slug, "loop_state.json"), state)
+        write_json(os.path.join(stacks_dir(), slug, "loop_state.json"), state)
         summary[slug] = {"runs": len([r for r in results if r["program"] != "(halt)"]),
                          "health": health, "halt": halt}
     return summary
@@ -436,8 +437,8 @@ def cycle(slugs: list[str] | None = None) -> dict:
 
 def cmd_status():
     for slug in list_stacks():
-        st = read_json(os.path.join(STACKS, slug, "loop_state.json"), {})
-        progs = read_json(os.path.join(STACKS, slug, "programs.json"), [])
+        st = read_json(os.path.join(stacks_dir(), slug, "loop_state.json"), {})
+        progs = read_json(os.path.join(stacks_dir(), slug, "programs.json"), [])
         print(f"\n=== {slug} — santé {st.get('health', '?')}/100 — dernier cycle {st.get('last_cycle', '—')} ===")
         for p in progs:
             flag = "✅" if p.get("enabled", True) else "⛔"
@@ -448,13 +449,13 @@ def cmd_status():
 def main():
     argv = sys.argv[1:]
     if "--halt" in argv:
-        os.makedirs(STACKS, exist_ok=True)
-        open(HALT_FILE, "w").close()
+        os.makedirs(stacks_dir(), exist_ok=True)
+        open(halt_file(), "w").close()
         print("kill switch ACTIVÉ — les boucles se mettent en pause au prochain cycle.")
         return
     if "--resume" in argv:
-        if os.path.exists(HALT_FILE):
-            os.remove(HALT_FILE)
+        if os.path.exists(halt_file()):
+            os.remove(halt_file())
         print("kill switch levé — boucles réactivées.")
         return
     if "--status" in argv:
