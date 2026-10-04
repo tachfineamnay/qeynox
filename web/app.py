@@ -33,6 +33,7 @@ sys.path.insert(0, QEYNOX_ROOT)
 from engine import pipeline as pl  # noqa: E402
 from engine import launch as launch_mod  # noqa: E402
 from engine.repo_scan import is_git_url  # noqa: E402
+from engine import repository as repo  # noqa: E402
 from engine.safety import (  # noqa: E402
     accepted_tokens,
     assert_bind_allowed,
@@ -180,32 +181,10 @@ def run_mission(mid: int) -> None:
     save_missions()
 
 
-# ---------------------------------------------------------------- DB helpers
-def db_rows(slug: str, sql: str, params: tuple = ()) -> list[dict]:
-    import sqlite3
-    path = stack_db(slug) if slug else os.path.join(TOOLS_DIR, "data", "gtm.db")
-    if not os.path.exists(path):
-        return []
-    con = sqlite3.connect(path)
-    con.row_factory = sqlite3.Row
-    try:
-        return [dict(r) for r in con.execute(sql, params).fetchall()]
-    finally:
-        con.close()
-
-
-def db_scalar(slug: str, sql: str, params: tuple = ()) -> int:
-    import sqlite3
-    path = stack_db(slug) if slug else os.path.join(TOOLS_DIR, "data", "gtm.db")
-    if not os.path.exists(path):
-        return 0
-    con = sqlite3.connect(path)
-    try:
-        return int(con.execute(sql, params).fetchone()[0])
-    except Exception:
-        return 0
-    finally:
-        con.close()
+def db_path_for(slug: str) -> str:
+    if slug:
+        return stack_db(slug)
+    return os.path.join(TOOLS_DIR, "data", "gtm.db")
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -297,17 +276,18 @@ class Handler(BaseHTTPRequestHandler):
                 slug = self._query_slug(qs)
                 if slug is None:
                     return
+                db_path = db_path_for(slug)
                 runs = []
-                for r in db_rows(slug, "SELECT tool, args, started_at, status FROM runs ORDER BY id DESC LIMIT 10"):
+                for r in repo.recent_runs(db_path, limit=10):
                     r["agent"] = AGENT_OF_TOOL.get(r["tool"])
                     runs.append(r)
                 running = [m for m in _missions.values() if m["status"] == "running"]
                 return self._json({
                     "kpis": {
-                        "keywords": db_scalar(slug, "SELECT COUNT(*) FROM keywords"),
-                        "keywords_commercial": db_scalar(slug, "SELECT COUNT(*) FROM keywords WHERE intent='commercial'"),
-                        "signals": db_scalar(slug, "SELECT COUNT(*) FROM signals"),
-                        "serp_checks": db_scalar(slug, "SELECT COUNT(*) FROM serp_runs"),
+                        "keywords": repo.count_keywords(db_path),
+                        "keywords_commercial": repo.count_keywords_intent(db_path, "commercial"),
+                        "signals": repo.count_signals(db_path),
+                        "serp_checks": repo.count_serp_runs(db_path),
                         "missions_running": len(running),
                     },
                     "recent_runs": runs,
@@ -354,7 +334,7 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 intent = (qs.get("intent") or [""])[0]
                 q = (qs.get("q") or [""])[0].lower()
-                rows = db_rows(slug, "SELECT kw, intent, score, source, parent, trend, last_seen FROM keywords ORDER BY score DESC LIMIT 1000")
+                rows = repo.keywords_for_ui(db_path_for(slug))
                 if intent:
                     rows = [r for r in rows if r["intent"] == intent]
                 if q:
@@ -365,16 +345,13 @@ class Handler(BaseHTTPRequestHandler):
                 slug = self._query_slug(qs)
                 if slug is None:
                     return
-                return self._json({"rows": db_rows(slug,
-                                                   "SELECT platform, title, url, snippet, score, seen_at FROM signals ORDER BY score DESC, id DESC LIMIT 200")})
+                return self._json({"rows": repo.signals_for_ui(db_path_for(slug))})
 
             if path == "/api/serp":
                 slug = self._query_slug(qs)
                 if slug is None:
                     return
-                rows = db_rows(slug,
-                               """SELECT kw, position, url, checked_at FROM serp_runs s
-                                  WHERE id IN (SELECT MAX(id) FROM serp_runs GROUP BY kw)""")
+                rows = repo.latest_serp(db_path_for(slug))
                 rows.sort(key=lambda r: (r["position"] is None, r["position"] if r["position"] is not None else 0, r["kw"]))
                 return self._json({"rows": rows[:200]})
 
@@ -382,9 +359,7 @@ class Handler(BaseHTTPRequestHandler):
                 slug = self._query_slug(qs)
                 if slug is None:
                     return
-                return self._json({"rows": db_rows(slug,
-                                                   """SELECT name, url, MAX(fetched_at) AS last_at, COUNT(*) AS versions
-                                                      FROM snapshots GROUP BY name ORDER BY name""")})
+                return self._json({"rows": repo.competitor_snapshots(db_path_for(slug))})
 
             if path == "/api/missions":
                 ms = sorted(_missions.values(), key=lambda m: -m["id"])[:100]
@@ -445,7 +420,7 @@ class Handler(BaseHTTPRequestHandler):
                 slug = self._query_slug(qs)
                 if slug is None:
                     return
-                rows = db_rows(slug, "SELECT kw, intent, score, source, parent, trend FROM keywords ORDER BY score DESC")
+                rows = repo.keywords_for_export(db_path_for(slug))
                 buf = _io.StringIO()
                 w = _csv.DictWriter(buf, fieldnames=["kw", "intent", "score", "source", "parent", "trend"])
                 w.writeheader()
