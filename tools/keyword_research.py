@@ -57,6 +57,8 @@ def intent_of(kw: str) -> str:
 
 def expand(seed: str, lang: str, gl: str, rounds: int, breadth: int, delay: float) -> dict[str, dict]:
     """BFS d'autocomplete. Retourne {kw: {hits: Counter, parents: set}}"""
+    if os.environ.get("QEYNOX_OFFLINE_SEARCH"):
+        delay = 0.0
     hits: dict[str, Counter] = {}
     parents: dict[str, set] = {}
     frontier = [seed.lower().strip()]
