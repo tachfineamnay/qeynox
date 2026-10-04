@@ -10,10 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from engine import dossier as dossier_mod
 from engine import pipeline as pl
 from engine import research
-from engine import synthesize
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "mini-repo"
 
@@ -21,10 +19,7 @@ FIXTURE = Path(__file__).resolve().parent / "fixtures" / "mini-repo"
 def _use_tmp_stacks(monkeypatch, tmp_path: Path) -> Path:
     stacks = tmp_path / "stacks"
     stacks.mkdir()
-    monkeypatch.setattr(pl, "STACKS_DIR", str(stacks))
-    monkeypatch.setattr(pl, "REGISTRY", str(stacks / "registry.json"))
-    for module in (research, dossier_mod, synthesize):
-        monkeypatch.setattr(module, "STACKS_DIR", str(stacks))
+    monkeypatch.setenv("QEYNOX_STACKS_DIR", str(stacks))
     return stacks
 
 

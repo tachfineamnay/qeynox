@@ -11,12 +11,11 @@ import os
 import re
 from datetime import datetime, timezone
 
-ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
-STACKS_DIR = os.path.join(ENGINE_DIR, "..", "stacks")
+from engine.paths import stacks_dir
 
 
 def _load(stack: str, name: str):
-    p = os.path.join(STACKS_DIR, stack, "research", f"{name}.json")
+    p = os.path.join(stacks_dir(), stack, "research", f"{name}.json")
     if os.path.exists(p):
         with open(p, encoding="utf-8") as f:
             return json.load(f)
@@ -24,7 +23,7 @@ def _load(stack: str, name: str):
 
 
 def _load_ctx(stack: str) -> dict:
-    with open(os.path.join(STACKS_DIR, stack, "context", "repo-analysis.json"), encoding="utf-8") as f:
+    with open(os.path.join(stacks_dir(), stack, "context", "repo-analysis.json"), encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -254,7 +253,7 @@ Moteur : {(sig or {}).get('engine', '—')} · {len((sig or {}).get('signals', [
         "competitors": (comp or {}).get("competitors", [])[:8],
         "aeo": aeo or {},
     }
-    out_dir = os.path.join(STACKS_DIR, stack, "dossier")
+    out_dir = os.path.join(stacks_dir(), stack, "dossier")
     os.makedirs(out_dir, exist_ok=True)
     version = _next_dossier_version(out_dir)
     name = f"gtm-dossier-v{version:04d}.md"
@@ -300,7 +299,7 @@ def _next_dossier_version(out_dir: str) -> int:
 
 def read_dossier_markdown(stack: str, *, max_chars: int | None = None) -> tuple[str, str] | None:
     """Dernière version (latest.json), sinon le markdown le plus récent du dossier."""
-    out_dir = os.path.join(STACKS_DIR, stack, "dossier")
+    out_dir = os.path.join(stacks_dir(), stack, "dossier")
     if not os.path.isdir(out_dir):
         return None
     pointer = os.path.join(out_dir, "latest.json")

@@ -1,0 +1,62 @@
+# QeyNox V1.5 — une image, deux processus, un volume.
+#
+# qeynox        HTTP (healthcheck /api/health). C'est le service à exposer.
+# qeynox-loops  daemon engine/loops.py. Même image, pas de port.
+#               Séparé pour qu'un cycle long ne soit pas lié au healthcheck HTTP
+#               et qu'un redémarrage de l'UI ne tue pas une veille en cours.
+# searxng       optionnel : docker compose --profile search up -d
+#
+# Le bind 0.0.0.0 exige QEYNOX_API_TOKEN (fail closed). Voir .env.example.
+
+x-qeynox: &qeynox
+  build: .
+  image: qeynox:1.5
+  restart: unless-stopped
+  environment:
+    QEYNOX_BIND: "0.0.0.0"
+    GTM_WEB_PORT: "8765"
+    QEYNOX_API_TOKEN: ${QEYNOX_API_TOKEN:-}
+    GTM_HOOK_TOKEN: ${GTM_HOOK_TOKEN:-}
+    QEYNOX_STACKS_DIR: /data/stacks
+    QEYNOX_LOGS_DIR: /data/logs
+    QEYNOX_MISSIONS_FILE: /data/missions.json
+    SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
+    GTM_LANG: ${GTM_LANG:-fr}
+    GTM_GL: ${GTM_GL:-FR}
+    QEYNOX_LLM: ${QEYNOX_LLM:-none}
+    QEYNOX_LLM_MODEL: ${QEYNOX_LLM_MODEL:-}
+    QEYNOX_OLLAMA_URL: ${QEYNOX_OLLAMA_URL:-}
+    QEYNOX_LLM_BASEURL: ${QEYNOX_LLM_BASEURL:-}
+    QEYNOX_LLM_API_KEY: ${QEYNOX_LLM_API_KEY:-}
+  volumes:
+    - qeynox-data:/data
+
+services:
+  qeynox:
+    <<: *qeynox
+    ports:
+      - "8765:8765"
+
+  qeynox-loops:
+    <<: *qeynox
+    command: ["python", "engine/loops.py", "--daemon"]
+    healthcheck:
+      disable: true
+    depends_on:
+      qeynox:
+        condition: service_started
+
+  searxng:
+    image: searxng/searxng:latest
+    profiles: ["search"]
+    restart: unless-stopped
+    ports:
+      - "8888:8080"
+    volumes:
+      - searxng-data:/etc/searxng
+    environment:
+      SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://localhost:8888/}
+
+volumes:
+  qeynox-data:
+  searxng-data:
