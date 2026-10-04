@@ -48,7 +48,7 @@ def test_normalize_mission_rejects_flag_injection():
 
 
 def test_dossier_versions_are_immutable(tmp_path, monkeypatch):
-    monkeypatch.setattr(dossier, "STACKS_DIR", str(tmp_path))
+    monkeypatch.setenv("QEYNOX_STACKS_DIR", str(tmp_path))
     slug = "demo"
     ctx_dir = tmp_path / slug / "context"
     ctx_dir.mkdir(parents=True)

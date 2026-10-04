@@ -14,12 +14,11 @@ import json
 import os
 from datetime import datetime, timezone
 
-ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
-STACKS_DIR = os.path.join(ENGINE_DIR, "..", "stacks")
+from engine.paths import stacks_dir
 
 
 def _load(stack: str, name: str, folder: str) -> dict:
-    p = os.path.join(STACKS_DIR, stack, folder, f"{name}.json")
+    p = os.path.join(stacks_dir(), stack, folder, f"{name}.json")
     if os.path.exists(p):
         with open(p, encoding="utf-8") as f:
             return json.load(f)
@@ -33,7 +32,7 @@ def validate_stack(slug: str) -> dict:
     if not ctx and not dossier:
         return {"ok": False, "error": "Aucun dossier à valider — lancez d'abord le pipeline."}
     brand = (dossier or {}).get("brand") or ctx.get("brand", {}).get("guess", slug)
-    swarm_dir = os.path.join(STACKS_DIR, slug, "swarm")
+    swarm_dir = os.path.join(stacks_dir(), slug, "swarm")
     os.makedirs(swarm_dir, exist_ok=True)
     today = datetime.now(timezone.utc).strftime("%d/%m/%Y")
 

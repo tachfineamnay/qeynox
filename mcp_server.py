@@ -20,11 +20,11 @@ import sys
 from datetime import datetime, timezone
 
 ROOT = os.environ.get("QEYNOX_ROOT") or os.path.dirname(os.path.abspath(__file__))
-STACKS = os.path.join(ROOT, "stacks")
 TOOLS_DIR = os.path.join(ROOT, "tools")
 sys.path.insert(0, ROOT)
 
 from engine import repository as repo  # noqa: E402
+from engine.paths import logs_dir, stacks_dir  # noqa: E402
 from engine.runner import run_tool  # noqa: E402
 from engine.safety import safe_cli_value, safe_geo, safe_slug  # noqa: E402
 
@@ -37,7 +37,7 @@ def now_iso() -> str:
 
 
 def stack_db(slug: str) -> str:
-    return os.path.join(STACKS, slug, "data", "gtm.db")
+    return os.path.join(stacks_dir(), slug, "data", "gtm.db")
 
 
 def read_json(path: str) -> dict:
@@ -48,7 +48,7 @@ def read_json(path: str) -> dict:
 
 
 def registry() -> list[dict]:
-    p = os.path.join(STACKS, "registry.json")
+    p = os.path.join(stacks_dir(), "registry.json")
     if os.path.exists(p):
         with open(p, encoding="utf-8") as f:
             data = json.load(f)
@@ -66,11 +66,11 @@ def tool_list_stacks(_: dict) -> str:
 def tool_get_stack_summary(a: dict) -> str:
     slug = a["slug"]
     entry = next((s for s in registry() if s.get("slug") == slug), {})
-    pipe = read_json(os.path.join(STACKS, slug, "pipeline.json"))
-    ctx = read_json(os.path.join(STACKS, slug, "context", "repo-analysis.json"))
-    kw = read_json(os.path.join(STACKS, slug, "research", "keywords.json"))
-    sig = read_json(os.path.join(STACKS, slug, "research", "signals.json"))
-    aeo = read_json(os.path.join(STACKS, slug, "research", "aeo.json"))
+    pipe = read_json(os.path.join(stacks_dir(), slug, "pipeline.json"))
+    ctx = read_json(os.path.join(stacks_dir(), slug, "context", "repo-analysis.json"))
+    kw = read_json(os.path.join(stacks_dir(), slug, "research", "keywords.json"))
+    sig = read_json(os.path.join(stacks_dir(), slug, "research", "signals.json"))
+    aeo = read_json(os.path.join(stacks_dir(), slug, "research", "aeo.json"))
     return json.dumps({
         "slug": slug, "status": entry.get("status"), "brand": ctx.get("brand", {}).get("guess"),
         "site": ctx.get("site_url"), "prices": ctx.get("product", {}).get("prices"),
@@ -90,14 +90,14 @@ def tool_get_signals(a: dict) -> str:
 
 
 def tool_get_competitors(a: dict) -> str:
-    data = read_json(os.path.join(STACKS, a["slug"], "research", "competitors.json"))
+    data = read_json(os.path.join(stacks_dir(), a["slug"], "research", "competitors.json"))
     return json.dumps({"category": data.get("category_query"),
                        "confidence": data.get("confidence", "ok"),
                        "competitors": data.get("competitors", [])}, ensure_ascii=False)
 
 
 def tool_get_aeo(a: dict) -> str:
-    return json.dumps(read_json(os.path.join(STACKS, a["slug"], "research", "aeo.json")), ensure_ascii=False)
+    return json.dumps(read_json(os.path.join(stacks_dir(), a["slug"], "research", "aeo.json")), ensure_ascii=False)
 
 
 def tool_get_dossier(a: dict) -> str:
@@ -109,7 +109,7 @@ def tool_get_dossier(a: dict) -> str:
 
 
 def tool_get_synthesis(a: dict) -> str:
-    return json.dumps(read_json(os.path.join(STACKS, a["slug"], "research", "synthesis.json")), ensure_ascii=False)
+    return json.dumps(read_json(os.path.join(stacks_dir(), a["slug"], "research", "synthesis.json")), ensure_ascii=False)
 
 
 def tool_launch_tool(a: dict) -> str:
@@ -141,11 +141,11 @@ def tool_launch_tool(a: dict) -> str:
         params = {"queries": [safe_cli_value(str(it), field="paramètre") for it in (items or [])[:10]]}
     else:
         params = {"seeds": [safe_cli_value(str(it), field="paramètre") for it in (items or [])[:10]]}
-    db = os.path.join(STACKS, slug, "data", "gtm.db")
-    cwd = os.path.join(STACKS, slug)
+    db = os.path.join(stacks_dir(), slug, "data", "gtm.db")
+    cwd = os.path.join(stacks_dir(), slug)
     os.makedirs(cwd, exist_ok=True)
-    os.makedirs(os.path.join(ROOT, "logs"), exist_ok=True)
-    log_path = os.path.join(ROOT, "logs", f"mcp-{slug}-{tool}-{datetime.now().strftime('%H%M%S')}.log")
+    os.makedirs(logs_dir(), exist_ok=True)
+    log_path = os.path.join(logs_dir(), f"mcp-{slug}-{tool}-{datetime.now().strftime('%H%M%S')}.log")
     env = {**os.environ, "GTM_DB": db, "GTM_LANG": "fr", "GTM_GL": "FR"}
     run_tool(names[tool], params, cwd=cwd, env=env, log_path=log_path, background=True)
     return f"{tool} lancé pour {slug} (log: {os.path.relpath(log_path, ROOT)})"
@@ -155,7 +155,7 @@ def tool_propose_decision(a: dict) -> str:
     """Un agent propose une décision → l'admin la retrouve dans les Rapports du stack."""
     slug = a["slug"]
     safe = re.sub(r"[^\wÀ-ÿ \-':!?]", "", str(a.get("title", "Proposition")))[:80]
-    out = os.path.join(STACKS, slug, "output")
+    out = os.path.join(stacks_dir(), slug, "output")
     os.makedirs(out, exist_ok=True)
     fn = f"decision-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}.md"
     with open(os.path.join(out, fn), "w", encoding="utf-8") as f:

@@ -19,12 +19,11 @@ import os
 import re
 import urllib.request
 
-ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
-STACKS_DIR = os.path.join(ENGINE_DIR, "..", "stacks")
+from engine.paths import stacks_dir
 
 
 def _load(stack: str, name: str) -> dict:
-    p = os.path.join(STACKS_DIR, stack, "research", f"{name}.json")
+    p = os.path.join(stacks_dir(), stack, "research", f"{name}.json")
     if os.path.exists(p):
         with open(p, encoding="utf-8") as f:
             return json.load(f)
@@ -32,7 +31,7 @@ def _load(stack: str, name: str) -> dict:
 
 
 def _context(stack: str) -> dict:
-    p = os.path.join(STACKS_DIR, stack, "context", "repo-analysis.json")
+    p = os.path.join(stacks_dir(), stack, "context", "repo-analysis.json")
     ctx = {}
     if os.path.exists(p):
         with open(p, encoding="utf-8") as f:
@@ -140,7 +139,7 @@ MODE = ["none"]
 
 def stage_synthese(stack: str, analysis: dict) -> dict:
     mode = os.environ.get("QEYNOX_LLM", "auto").lower()
-    out_dir = os.path.join(STACKS_DIR, stack, "research")
+    out_dir = os.path.join(stacks_dir(), stack, "research")
     os.makedirs(out_dir, exist_ok=True)
 
     def save(status: str, note: str, payload: dict | None = None, provider: str = "") -> dict:

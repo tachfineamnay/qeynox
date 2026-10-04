@@ -61,6 +61,18 @@ python engine/loops.py --halt
 
 Kill switch : `stacks/.halt`.
 
+## Déploiement
+
+Image non-root, volume `/data`, healthcheck `/api/health`. Le daemon de boucles est un second service de la même image.
+
+```bash
+cp .env.example .env          # définir QEYNOX_API_TOKEN
+docker compose up -d --build  # UI : http://127.0.0.1:8765
+docker compose --profile search up -d   # ajoute SearXNG
+```
+
+Runbook Coolify : [docs/runbooks/COOLIFY-DEPLOY.md](docs/runbooks/COOLIFY-DEPLOY.md).
+
 ## Sécurité
 
 Le serveur écoute `127.0.0.1` par défaut (`QEYNOX_BIND` pour un conteneur). S'il est lié à une autre adresse sans `QEYNOX_API_TOKEN`, il refuse de démarrer. Quand `QEYNOX_API_TOKEN` (ou l'ancien `GTM_HOOK_TOKEN`) est défini, toutes les routes `/api/*` sauf `/api/health` exigent `Authorization: Bearer`, `X-Qeynox-Token` ou `X-Lumira-Token`. L'UI demande le jeton au premier refus 401 (sessionStorage).

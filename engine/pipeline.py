@@ -13,9 +13,7 @@ import threading
 import traceback
 from datetime import datetime, timezone
 
-ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
-STACKS_DIR = os.path.join(ENGINE_DIR, "..", "stacks")
-REGISTRY = os.path.join(STACKS_DIR, "registry.json")
+from engine.paths import registry_path, stacks_dir
 
 _pipeline_lock = threading.Lock()  # un pipeline à la fois (outils partagés)
 
@@ -30,15 +28,16 @@ def slugify(name: str) -> str:
 
 
 def load_registry() -> list[dict]:
-    if os.path.exists(REGISTRY):
-        with open(REGISTRY, encoding="utf-8") as f:
+    path = registry_path()
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     return []
 
 
 def save_registry(rows: list[dict]) -> None:
-    os.makedirs(STACKS_DIR, exist_ok=True)
-    with open(REGISTRY, "w", encoding="utf-8") as f:
+    os.makedirs(stacks_dir(), exist_ok=True)
+    with open(registry_path(), "w", encoding="utf-8") as f:
         json.dump(rows, f, ensure_ascii=False, indent=1)
 
 
@@ -50,7 +49,7 @@ def get_stack(slug: str) -> dict | None:
 
 
 def pipeline_path(slug: str) -> str:
-    return os.path.join(STACKS_DIR, slug, "pipeline.json")
+    return os.path.join(stacks_dir(), slug, "pipeline.json")
 
 
 def init_pipeline(slug: str) -> dict:
@@ -92,7 +91,7 @@ def run_pipeline(slug: str, cfg: dict) -> None:
         pipe = read_pipeline(slug) or init_pipeline(slug)
         pipe["status"] = "running"
         write_pipeline(slug, pipe)
-        stack_dir = os.path.join(STACKS_DIR, slug)
+        stack_dir = os.path.join(stacks_dir(), slug)
         os.makedirs(stack_dir, exist_ok=True)
 
         def mark(stage_id: str, status: str, log: str = "") -> None:
@@ -207,5 +206,5 @@ def create_stack(name: str, source: str, site_url: str = "", seeds: list[str] | 
         "seeds": seeds or [], "status": "queued", "created_at": now_iso(),
     })
     save_registry(rows)
-    os.makedirs(os.path.join(STACKS_DIR, slug), exist_ok=True)
+    os.makedirs(os.path.join(stacks_dir(), slug), exist_ok=True)
     return {"slug": slug, "name": name}
