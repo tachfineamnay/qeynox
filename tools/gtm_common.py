@@ -96,7 +96,14 @@ def autocomplete(source: str, query: str, lang: str = DEFAULT_LANG, gl: str = DE
     """Suggestions (autocomplete) sans clé API.
 
     sources: google | ddg | youtube
+
+    QEYNOX_OFFLINE_SEARCH=1 renvoie des suggestions déterministes (tests, aucun réseau).
     """
+    if os.environ.get("QEYNOX_OFFLINE_SEARCH"):
+        q = (query or "").strip().lower()
+        if len(q) < 2:
+            return []
+        return [f"{q} avis", f"{q} prix", f"meilleur {q}", f"comment choisir {q}"]
     try:
         if source == "google":
             url = "https://suggestqueries.google.com/complete/search"
