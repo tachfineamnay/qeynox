@@ -159,12 +159,8 @@ def stage_keywords(stack: str, analysis: dict, extra_seeds: list[str] | None = N
     # lecture du top depuis la base du stack
     top = []
     try:
-        import sqlite3
-        con = sqlite3.connect(STACK_DB(stack))
-        con.row_factory = sqlite3.Row
-        top = [dict(r) for r in con.execute(
-            "SELECT kw, intent, score, source FROM keywords ORDER BY score DESC LIMIT 40")]
-        con.close()
+        from engine.repository import top_scored_keywords
+        top = top_scored_keywords(STACK_DB(stack), limit=40)
     except Exception:
         pass
     result = {"seeds": seeds, "top": top, "log_tail": log[-1500:]}

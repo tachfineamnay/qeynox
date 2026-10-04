@@ -17,7 +17,6 @@ import json
 import os
 import re
 import subprocess
-import sqlite3
 import sys
 from datetime import datetime, timezone
 
@@ -26,6 +25,7 @@ STACKS = os.path.join(ROOT, "stacks")
 TOOLS_DIR = os.path.join(ROOT, "tools")
 sys.path.insert(0, ROOT)
 
+from engine import repository as repo  # noqa: E402
 from engine.safety import safe_cli_value, safe_geo, safe_slug  # noqa: E402
 
 SERVER_INFO = {"name": "qeynox", "version": "1.0.0"}
@@ -36,16 +36,8 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def db_rows(slug: str, sql: str, params: tuple = ()) -> list[dict]:
-    path = os.path.join(STACKS, slug, "data", "gtm.db")
-    if not os.path.exists(path):
-        return []
-    con = sqlite3.connect(path)
-    con.row_factory = sqlite3.Row
-    try:
-        return [dict(r) for r in con.execute(sql, params).fetchall()]
-    finally:
-        con.close()
+def stack_db(slug: str) -> str:
+    return os.path.join(STACKS, slug, "data", "gtm.db")
 
 
 def read_json(path: str) -> dict:
@@ -89,20 +81,12 @@ def tool_get_stack_summary(a: dict) -> str:
 
 
 def tool_get_keywords(a: dict) -> str:
-    sql = "SELECT kw, intent, score, source FROM keywords"
-    params: list = []
-    if a.get("intent"):
-        sql += " WHERE intent = ?"
-        params.append(a["intent"])
-    sql += " ORDER BY score DESC LIMIT ?"
-    params.append(int(a.get("limit", 20)))
-    return json.dumps(db_rows(a["slug"], sql, tuple(params)), ensure_ascii=False)
+    rows = repo.keywords_for_agent(stack_db(a["slug"]), intent=a.get("intent"), limit=int(a.get("limit", 20)))
+    return json.dumps(rows, ensure_ascii=False)
 
 
 def tool_get_signals(a: dict) -> str:
-    return json.dumps(db_rows(a["slug"],
-                              "SELECT platform, title, url, snippet, score FROM signals ORDER BY score DESC, id DESC LIMIT ?",
-                              (int(a.get("limit", 10)),)), ensure_ascii=False)
+    return json.dumps(repo.signals_for_agent(stack_db(a["slug"]), limit=int(a.get("limit", 10))), ensure_ascii=False)
 
 
 def tool_get_competitors(a: dict) -> str:
