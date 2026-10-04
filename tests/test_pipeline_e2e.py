@@ -121,3 +121,6 @@ def test_onboarding_pipeline_produces_dossier(offline):
     text = markdowns[-1].read_text(encoding="utf-8")
     assert "Dossier GTM" in text
     assert (dossier_dir / "data.json").is_file()
+    pointer = json.loads((dossier_dir / "latest.json").read_text(encoding="utf-8"))
+    assert pointer["version"] >= 1
+    assert (dossier_dir / pointer["markdown"]).is_file()

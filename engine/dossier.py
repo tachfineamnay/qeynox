@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 
 ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -255,10 +256,71 @@ Moteur : {(sig or {}).get('engine', '—')} · {len((sig or {}).get('signals', [
     }
     out_dir = os.path.join(STACKS_DIR, stack, "dossier")
     os.makedirs(out_dir, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
-    path = os.path.join(out_dir, f"gtm-dossier-{stamp}.md")
+    version = _next_dossier_version(out_dir)
+    name = f"gtm-dossier-v{version:04d}.md"
+    ver_dir = os.path.join(out_dir, "versions")
+    os.makedirs(ver_dir, exist_ok=True)
+    path = os.path.join(ver_dir, name)
+    data_name = f"gtm-dossier-v{version:04d}.json"
     with open(path, "w", encoding="utf-8") as f:
         f.write(md)
+    with open(os.path.join(ver_dir, data_name), "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+    top_level = os.path.join(out_dir, name)
+    if not os.path.exists(top_level):
+        with open(top_level, "w", encoding="utf-8") as f:
+            f.write(md)
+    pointer = {
+        "version": version,
+        "markdown": f"versions/{name}",
+        "data": f"versions/{data_name}",
+        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    with open(os.path.join(out_dir, "latest.json"), "w", encoding="utf-8") as f:
+        json.dump(pointer, f, ensure_ascii=False, indent=1)
     with open(os.path.join(out_dir, "data.json"), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
-    return {"path": path, "data": data}
+    return {"path": path, "data": data, "version": version}
+
+
+_VERSION_RE = re.compile(r"^gtm-dossier-v(\d+)\.md$")
+
+
+def _next_dossier_version(out_dir: str) -> int:
+    best = 0
+    for folder in (out_dir, os.path.join(out_dir, "versions")):
+        if not os.path.isdir(folder):
+            continue
+        for fn in os.listdir(folder):
+            match = _VERSION_RE.match(fn)
+            if match:
+                best = max(best, int(match.group(1)))
+    return best + 1
+
+
+def read_dossier_markdown(stack: str, *, max_chars: int | None = None) -> tuple[str, str] | None:
+    """Dernière version (latest.json), sinon le markdown le plus récent du dossier."""
+    out_dir = os.path.join(STACKS_DIR, stack, "dossier")
+    if not os.path.isdir(out_dir):
+        return None
+    pointer = os.path.join(out_dir, "latest.json")
+    target = ""
+    if os.path.isfile(pointer):
+        try:
+            with open(pointer, encoding="utf-8") as handle:
+                meta = json.load(handle)
+            rel = str(meta.get("markdown") or "")
+            from engine.safety import safe_join
+            target = safe_join(out_dir, rel) if rel else ""
+        except (OSError, ValueError, json.JSONDecodeError):
+            target = ""
+    if not target or not os.path.isfile(target):
+        files = sorted(fn for fn in os.listdir(out_dir) if fn.endswith(".md"))
+        if not files:
+            return None
+        target = os.path.join(out_dir, files[-1])
+    with open(target, encoding="utf-8") as handle:
+        content = handle.read()
+    if max_chars is not None:
+        content = content[:max_chars]
+    return os.path.basename(target), content

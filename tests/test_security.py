@@ -167,11 +167,14 @@ def test_clone_rejects_option_injection_and_uses_end_of_options(monkeypatch, tmp
         class Proc:
             returncode = 0
             stderr = ""
+            stdout = ""
 
         return Proc()
 
+    from engine import runner
+
     monkeypatch.setattr(repo_scan.shutil, "which", lambda _name: "/usr/bin/git")
-    monkeypatch.setattr(repo_scan.subprocess, "run", fake_run)
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
     with pytest.raises(RuntimeError):
         repo_scan.prepare_repo("ext::sh -c id", str(tmp_path / "work"))
     assert calls == []

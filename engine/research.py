@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import subprocess
 import sys
 import time
 from urllib.parse import parse_qs, unquote, urlparse
@@ -145,17 +144,25 @@ def stage_keywords(stack: str, analysis: dict, extra_seeds: list[str] | None = N
     seeds = list(dict.fromkeys(seeds))[:6]
 
     env = {**os.environ, "GTM_DB": STACK_DB(stack), "GTM_LANG": "fr", "GTM_GL": "FR", "PYTHONUNBUFFERED": "1"}
-    cmd = [sys.executable, os.path.join(TOOLS_DIR, "keyword_research.py"),
-           *sum([["--seed", s] for s in seeds], []),
-           "--rounds", "1", "--breadth", "5", "--min-score", "3",
-           "--out", os.path.join("research", "keywords.csv")]
-    try:
-        p = subprocess.run(cmd, cwd=stack_dir_of(stack), env=env, capture_output=True, text=True, timeout=420)
-        log = (p.stdout or "") + (p.stderr or "")
-        if p.returncode != 0:
-            log += f"\n[exit {p.returncode}]"
-    except subprocess.TimeoutExpired as exc:
-        log = f"timeout: {exc}"
+    from engine.runner import run_tool
+    ran = run_tool(
+        "keyword_research",
+        {
+            "seeds": seeds,
+            "rounds": 1,
+            "breadth": 5,
+            "min_score": 3,
+            "out": os.path.join("research", "keywords.csv"),
+        },
+        cwd=stack_dir_of(stack),
+        env=env,
+        timeout=420,
+    )
+    log = (ran.stdout or "") + (ran.stderr or "")
+    if ran.timed_out:
+        log = "timeout: keyword_research exceeded 420s"
+    elif not ran.ok:
+        log += f"\n[exit {ran.returncode}]"
     # lecture du top depuis la base du stack
     top = []
     try:

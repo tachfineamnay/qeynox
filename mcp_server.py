@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import subprocess
 import sys
 from datetime import datetime, timezone
 
@@ -26,6 +25,7 @@ TOOLS_DIR = os.path.join(ROOT, "tools")
 sys.path.insert(0, ROOT)
 
 from engine import repository as repo  # noqa: E402
+from engine.runner import run_tool  # noqa: E402
 from engine.safety import safe_cli_value, safe_geo, safe_slug  # noqa: E402
 
 SERVER_INFO = {"name": "qeynox", "version": "1.0.0"}
@@ -101,12 +101,11 @@ def tool_get_aeo(a: dict) -> str:
 
 
 def tool_get_dossier(a: dict) -> str:
-    d = os.path.join(STACKS, a["slug"], "dossier")
-    files = sorted(f for f in os.listdir(d) if f.endswith(".md")) if os.path.isdir(d) else []
-    if not files:
+    from engine.dossier import read_dossier_markdown
+    found = read_dossier_markdown(a["slug"], max_chars=int(a.get("max_chars", 20000)))
+    if not found:
         return "aucun dossier pour ce stack"
-    with open(os.path.join(d, files[-1]), encoding="utf-8") as f:
-        return f.read()[: int(a.get("max_chars", 20000))]
+    return found[1]
 
 
 def tool_get_synthesis(a: dict) -> str:
@@ -116,39 +115,39 @@ def tool_get_synthesis(a: dict) -> str:
 def tool_launch_tool(a: dict) -> str:
     """Lance un outil du swarm en tâche de fond (keywords|social|competitors|serp|trends)."""
     slug, tool = a["slug"], a.get("tool", "keywords")
-    scripts = {
-        "keywords": (["keyword_research.py"], ["--seed"]),
-        "social": (["social_pulse.py"], ["--q"]),
-        "competitors": (["competitor_watch.py"], ["--scan"]),
-        "serp": (["serp_rank.py"], ["--kw"]),
-        "trends": (["trends_check.py"], ["--kw"]),
+    names = {
+        "keywords": "keyword_research",
+        "social": "social_pulse",
+        "competitors": "competitor_watch",
+        "serp": "serp_rank",
+        "trends": "trends_check",
     }
-    if tool not in scripts:
-        return f"outil inconnu: {tool} (choix: {', '.join(scripts)})"
-    script, flag = scripts[tool]
-    args = [sys.executable, os.path.join(TOOLS_DIR, script[0])]
+    if tool not in names:
+        return f"outil inconnu: {tool} (choix: {', '.join(names)})"
     items = a.get("seeds") or a.get("queries") or a.get("kws") or []
     if tool == "competitors":
-        args.append("--scan")
+        params: dict = {"scan": True}
+    elif tool == "serp":
+        limit = int(a.get("limit", 20))
+        if limit < 1 or limit > 100:
+            return "limit hors bornes (1-100)"
+        params = {"from_store": True, "limit": limit}
+    elif tool == "trends":
+        params = {
+            "kws": [safe_cli_value(str(it), field="paramètre") for it in (items or [])[:10]],
+            "geo": safe_geo(str(a.get("geo", "FR"))),
+        }
+    elif tool == "social":
+        params = {"queries": [safe_cli_value(str(it), field="paramètre") for it in (items or [])[:10]]}
     else:
-        for it in (items or [])[:10]:
-            args += [flag, safe_cli_value(str(it), field="paramètre")]
-        if tool == "serp":
-            limit = int(a.get("limit", 20))
-            if limit < 1 or limit > 100:
-                return "limit hors bornes (1-100)"
-            args = [sys.executable, os.path.join(TOOLS_DIR, "serp_rank.py"),
-                    "--from-store", "--limit", str(limit)]
-        if tool == "trends":
-            args += ["--geo", safe_geo(str(a.get("geo", "FR")))]
+        params = {"seeds": [safe_cli_value(str(it), field="paramètre") for it in (items or [])[:10]]}
     db = os.path.join(STACKS, slug, "data", "gtm.db")
     cwd = os.path.join(STACKS, slug)
     os.makedirs(cwd, exist_ok=True)
     os.makedirs(os.path.join(ROOT, "logs"), exist_ok=True)
     log_path = os.path.join(ROOT, "logs", f"mcp-{slug}-{tool}-{datetime.now().strftime('%H%M%S')}.log")
     env = {**os.environ, "GTM_DB": db, "GTM_LANG": "fr", "GTM_GL": "FR"}
-    with open(log_path, "w") as log:
-        subprocess.Popen(args, cwd=cwd, env=env, stdout=log, stderr=subprocess.STDOUT)
+    run_tool(names[tool], params, cwd=cwd, env=env, log_path=log_path, background=True)
     return f"{tool} lancé pour {slug} (log: {os.path.relpath(log_path, ROOT)})"
 
 
