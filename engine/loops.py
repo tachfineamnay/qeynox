@@ -23,7 +23,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import sqlite3
 import subprocess
 import sys
 import time
@@ -80,20 +79,8 @@ def list_stacks() -> list[str]:
 
 
 def db_counts(slug: str) -> dict:
-    db = os.path.join(STACKS, slug, "data", "gtm.db")
-    counts = {"keywords": 0, "signals": 0, "competitors": 0}
-    tables = {"keywords": "keywords", "signals": "signals", "competitors": "snapshots"}
-    try:
-        con = sqlite3.connect(db)
-        for key, table in tables.items():
-            try:
-                counts[key] = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-            except sqlite3.OperationalError:
-                pass
-        con.close()
-    except Exception:
-        pass
-    return counts
+    from engine.repository import stack_counts
+    return stack_counts(os.path.join(STACKS, slug, "data", "gtm.db"))
 
 
 def stack_meta(slug: str) -> dict:
@@ -221,10 +208,8 @@ def build_cmd(prog: dict, slug: str) -> list[str]:
 
 def _top_kws(slug: str, n: int) -> list[tuple]:
     try:
-        con = sqlite3.connect(os.path.join(STACKS, slug, "data", "gtm.db"))
-        rows = con.execute("SELECT keyword FROM keywords ORDER BY score DESC LIMIT ?", (n,)).fetchall()
-        con.close()
-        return rows
+        from engine.repository import legacy_top_keyword_column
+        return legacy_top_keyword_column(os.path.join(STACKS, slug, "data", "gtm.db"), n)
     except Exception:
         return []
 
