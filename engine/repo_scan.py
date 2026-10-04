@@ -11,13 +11,13 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import sys
 from collections import Counter
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
+from .runner import run_tool
 from .safety import safe_extract_zip, validate_git_url
 
 SKIP_DIRS = {
@@ -83,11 +83,12 @@ def prepare_repo(source: str, workdir: str) -> tuple[str, str]:
         if os.path.exists(dest):
             shutil.rmtree(dest)
         validate_git_url(source)
-        cmd = ["git", "clone", "--depth", "1", "--", source, dest]
-        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
-        if p.returncode != 0:
-            raise RuntimeError(f"git clone a échoué: {p.stderr.strip()[:300]}")
+        cloned = run_tool("git_clone", {"url": source, "dest": dest}, timeout=300)
+        if cloned.timed_out:
+            raise RuntimeError("git clone a expiré")
+        if not cloned.ok:
+            detail = (cloned.stderr or cloned.stdout or "échec").strip()
+            raise RuntimeError(f"git clone a échoué: {detail[:300]}")
         return dest, "git"
     raise RuntimeError(f"Source introuvable ou non supportée: {source}")
 

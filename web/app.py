@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import subprocess
 import sys
 import threading
 import urllib.parse
@@ -34,13 +33,13 @@ from engine import pipeline as pl  # noqa: E402
 from engine import launch as launch_mod  # noqa: E402
 from engine.repo_scan import is_git_url  # noqa: E402
 from engine import repository as repo  # noqa: E402
+from engine.runner import normalize_mission, run_tool  # noqa: E402
 from engine.safety import (  # noqa: E402
     accepted_tokens,
     assert_bind_allowed,
     bind_host,
     is_loopback,
     safe_cli_value,
-    safe_geo,
     safe_join,
     safe_slug,
     token_accepted,
@@ -116,47 +115,6 @@ def save_missions() -> None:
             json.dump(sorted(_missions.values(), key=lambda m: m["id"]), f, ensure_ascii=False, indent=1)
 
 
-def _bounded_int(value, default: int, lo: int, hi: int) -> int:
-    try:
-        n = int(value)
-    except (TypeError, ValueError):
-        n = default
-    return max(lo, min(hi, n))
-
-
-def _cli_list(values, field: str, limit: int) -> list[str]:
-    out = []
-    for raw in (values or [])[:limit]:
-        if isinstance(raw, str) and raw.strip():
-            out.append(safe_cli_value(raw, field=field))
-    return out
-
-
-def build_args(mtype: str, p: dict) -> list[str]:
-    if mtype == "keywords":
-        args = ["keyword_research.py"]
-        for seed in _cli_list(p.get("seeds", []), "graine", 10):
-            args += ["--seed", seed]
-        args += ["--rounds", str(_bounded_int(p.get("rounds", 1), 1, 1, 4)),
-                 "--breadth", str(_bounded_int(p.get("breadth", 6), 6, 1, 12))]
-        return args
-    if mtype == "social":
-        args = ["social_pulse.py"]
-        for query in _cli_list(p.get("queries", []), "requête", 8):
-            args += ["--q", query]
-        return args
-    if mtype == "competitors":
-        return ["competitor_watch.py", "--scan"]
-    if mtype == "serp":
-        return ["serp_rank.py", "--from-store", "--limit", str(_bounded_int(p.get("limit", 20), 20, 1, 100))]
-    if mtype == "trends":
-        args = ["trends_check.py"]
-        for kw in _cli_list(p.get("kws", []), "mot-clé", 5):
-            args += ["--kw", kw]
-        return args + ["--geo", safe_geo(str(p.get("geo") or "FR"))]
-    raise ValueError(mtype)
-
-
 def run_mission(mid: int) -> None:
     m = _missions[mid]
     slug = m.get("stack") or ""
@@ -167,12 +125,15 @@ def run_mission(mid: int) -> None:
             slug = safe_slug(slug)
         db = stack_db(slug) if slug and os.path.isdir(os.path.join(STACKS_DIR, slug)) else os.environ.get("GTM_DB", os.path.join(TOOLS_DIR, "data", "gtm.db"))
         env = {**os.environ, "GTM_DB": db, "GTM_LANG": "fr", "GTM_GL": "FR", "PYTHONUNBUFFERED": "1"}
-        with open(log_path, "w", encoding="utf-8") as log:
-            proc = subprocess.Popen([sys.executable, *build_args(m["type"], m.get("params", {}))],
-                                    cwd=TOOLS_DIR, env=env, stdout=log, stderr=subprocess.STDOUT)
-            m["pid"] = proc.pid
-            code = proc.wait()
-        m["status"] = "done" if code == 0 else "error"
+        tool_name, tool_params = normalize_mission(m["type"], m.get("params") or {})
+        ran = run_tool(
+            tool_name, tool_params, cwd=TOOLS_DIR, env=env, log_path=log_path,
+            on_start=lambda pid: m.__setitem__("pid", pid),
+        )
+        m["status"] = "done" if ran.ok else "error"
+        if ran.timed_out:
+            with open(log_path, "a", encoding="utf-8") as log:
+                log.write("\n[qeynox] timeout\n")
     except Exception as exc:  # noqa: BLE001
         m["status"] = "error"
         with open(log_path, "a", encoding="utf-8") as log:
@@ -312,13 +273,12 @@ class Handler(BaseHTTPRequestHandler):
 
             m = re.match(r"^/api/stacks/([A-Za-z0-9][A-Za-z0-9_-]*)/dossier$", path)
             if m:
-                slug = m.group(1)
-                dossier_dir = os.path.join(STACKS_DIR, slug, "dossier")
-                files = sorted(f for f in os.listdir(dossier_dir) if f.endswith(".md")) if os.path.isdir(dossier_dir) else []
-                if not files:
+                from engine.dossier import read_dossier_markdown
+                found = read_dossier_markdown(m.group(1))
+                if not found:
                     return self._json({"error": "pas de dossier"}, 404)
-                with open(os.path.join(dossier_dir, files[-1]), encoding="utf-8") as f:
-                    return self._json({"file": files[-1], "content": f.read()[:300_000]})
+                name, content = found
+                return self._json({"file": name, "content": content[:300_000]})
 
             m = re.match(r"^/api/stacks/([A-Za-z0-9][A-Za-z0-9_-]*)/context$", path)
             if m:
@@ -487,7 +447,7 @@ class Handler(BaseHTTPRequestHandler):
                     except ValueError:
                         return self._json({"error": "stack invalide"}, 400)
                 try:
-                    build_args(mtype, params)
+                    normalize_mission(mtype, params)
                 except ValueError as exc:
                     return self._json({"error": str(exc)}, 400)
                 params["seeds"] = [s.strip() for s in params.get("seeds", []) if isinstance(s, str) and s.strip()]

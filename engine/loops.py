@@ -23,7 +23,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -32,7 +31,6 @@ from urllib.parse import urlparse
 ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(ENGINE_DIR, ".."))
 STACKS = os.path.join(ROOT, "stacks")
-TOOLS = os.path.join(ROOT, "tools")
 LOGS = os.path.join(ROOT, "logs")
 HALT_FILE = os.path.join(STACKS, ".halt")
 
@@ -174,36 +172,26 @@ def save_programs(slug: str, progs: list[dict]):
 
 # --------------------------------------------------------------------------- exécution
 
-def build_cmd(prog: dict, slug: str) -> list[str]:
-    t, p = prog["type"], prog.get("params", {})
-    py = sys.executable
-    if t == "keywords":
-        cmd = [py, os.path.join(TOOLS, "keyword_research.py")]
-        for s in (p.get("seeds") or [])[:8]:
-            cmd += ["--seed", str(s)]
-        return cmd
-    if t == "social":
-        cmd = [py, os.path.join(TOOLS, "social_pulse.py")]
-        qs = p.get("queries") or [brand_of(slug)]
-        for q in qs[:5]:
-            cmd += ["--q", str(q)]
-        return cmd
-    if t == "competitors":
-        return [py, os.path.join(TOOLS, "competitor_watch.py"), "--scan"]
-    if t == "serp":
-        cmd = [py, os.path.join(TOOLS, "serp_rank.py"), "--from-store",
-               "--limit", str(int(p.get("limit", 20)))]
-        dom = stack_domain(slug)
-        if dom:
-            cmd += ["--domain", dom]
-        return cmd
-    if t == "trends":
-        kws = [r[0] for r in _top_kws(slug, 5)] or [brand_of(slug)]
-        cmd = [py, os.path.join(TOOLS, "trends_check.py")]
-        for k in kws:
-            cmd += ["--kw", k]
-        return cmd + ["--geo", "FR"]
-    return []
+def program_call(prog: dict, slug: str) -> tuple[str, dict] | None:
+    """Nom d'outil + paramètres pour engine.runner (même argv qu'avant)."""
+    kind, params = prog["type"], prog.get("params", {}) or {}
+    if kind == "keywords":
+        return "keyword_research", {"seeds": [str(s) for s in (params.get("seeds") or [])[:8]]}
+    if kind == "social":
+        queries = params.get("queries") or [brand_of(slug)]
+        return "social_pulse", {"queries": [str(q) for q in queries[:5]]}
+    if kind == "competitors":
+        return "competitor_watch", {"scan": True}
+    if kind == "serp":
+        call = {"from_store": True, "limit": int(params.get("limit", 20))}
+        domain = stack_domain(slug)
+        if domain:
+            call["domain"] = domain
+        return "serp_rank", call
+    if kind == "trends":
+        kws = [row[0] for row in _top_kws(slug, 5)] or [brand_of(slug)]
+        return "trends_check", {"kws": [str(k) for k in kws], "geo": "FR"}
+    return None
 
 
 def _top_kws(slug: str, n: int) -> list[tuple]:
@@ -220,10 +208,10 @@ def source_fingerprint(slug: str) -> str:
     repo = os.path.join(STACKS, slug, "repo")
     if os.path.isdir(repo):
         try:
-            head = subprocess.run(["git", "-C", repo, "rev-parse", "HEAD"],
-                                  capture_output=True, text=True, timeout=10).stdout.strip()
-            if head:
-                return head
+            from engine.runner import run_tool
+            head = run_tool("git_rev_parse", {"repo": repo}, timeout=10)
+            if head.ok and head.stdout.strip():
+                return head.stdout.strip()
         except Exception:
             pass
         for root, dirs, files in os.walk(repo):
@@ -267,10 +255,11 @@ def run_program(slug: str, prog: dict) -> dict:
         res["fingerprint"] = fp
         return res
 
-    cmd = build_cmd(prog, slug)
-    if not cmd:
+    call = program_call(prog, slug)
+    if not call:
         res["note"] = "type de programme inconnu"
         return res
+    tool_name, tool_params = call
     db = os.path.join(STACKS, slug, "data", "gtm.db")
     brand = brand_of(slug)
     env = {
@@ -284,15 +273,17 @@ def run_program(slug: str, prog: dict) -> dict:
     }
     os.makedirs(LOGS, exist_ok=True)
     log_path = os.path.join(LOGS, f"loop-{slug}-{prog['id']}-{datetime.now().strftime('%H%M%S')}.log")
-    try:
-        with open(log_path, "w") as log:
-            r = subprocess.run(cmd, cwd=os.path.join(STACKS, slug), env=env,
-                               stdout=log, stderr=subprocess.STDOUT,
-                               timeout=RUN_TIMEOUTS.get(prog["type"], 300))
-        res["ok"] = (r.returncode == 0)
-        res["note"] = "ok" if res["ok"] else f"exit {r.returncode} (log: {os.path.basename(log_path)})"
-    except subprocess.TimeoutExpired:
+    from engine.runner import run_tool
+    ran = run_tool(
+        tool_name, tool_params,
+        cwd=os.path.join(STACKS, slug), env=env, log_path=log_path,
+        timeout=RUN_TIMEOUTS.get(prog["type"], 300),
+    )
+    res["ok"] = ran.ok and not ran.timed_out
+    if ran.timed_out:
         res["note"] = f"timeout > {RUN_TIMEOUTS.get(prog['type'], 300)}s (log: {os.path.basename(log_path)})"
+    else:
+        res["note"] = "ok" if res["ok"] else f"exit {ran.returncode} (log: {os.path.basename(log_path)})"
     after = db_counts(slug)
     res["duration_s"] = round(time.time() - t0, 1)
     res["delta"] = {k: after[k] - before[k] for k in before if after[k] != before[k]}
