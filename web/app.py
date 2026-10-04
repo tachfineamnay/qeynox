@@ -4,9 +4,12 @@
 Onboardez un dépôt : analyse → deep research (mots-clés, signaux, concurrents, AEO/GEO)
 → dossier GTM → validation admin → lancement du swarm.
 
-    python3 app.py                     # http://0.0.0.0:8765  (GTM_WEB_PORT pour changer)
+    python3 app.py                     # http://127.0.0.1:8765
+    QEYNOX_BIND=0.0.0.0                # conteneur (exige QEYNOX_API_TOKEN)
+    GTM_WEB_PORT=8765
 
-Sécurité : prévu pour tourner en local/VPS derrière une auth (proxy/Tailscale).
+Sécurité : loopback par défaut. Hors loopback sans jeton, le processus s'arrête.
+Si un jeton est défini, toutes les routes /api/* sauf /api/health l'exigent.
 """
 from __future__ import annotations
 
@@ -17,7 +20,6 @@ import subprocess
 import sys
 import threading
 import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -30,9 +32,22 @@ sys.path.insert(0, QEYNOX_ROOT)
 
 from engine import pipeline as pl  # noqa: E402
 from engine import launch as launch_mod  # noqa: E402
+from engine.repo_scan import is_git_url  # noqa: E402
+from engine.safety import (  # noqa: E402
+    accepted_tokens,
+    assert_bind_allowed,
+    bind_host,
+    is_loopback,
+    safe_cli_value,
+    safe_geo,
+    safe_join,
+    safe_slug,
+    token_accepted,
+    validate_git_url,
+    validate_public_http_url,
+)
 
 PORT = int(os.environ.get("GTM_WEB_PORT", "8765"))
-HOOK_TOKEN = os.environ.get("GTM_HOOK_TOKEN", "")
 MISSIONS_FILE = os.path.join(WEB_DIR, "missions.json")
 _lock = threading.Lock()
 _missions: dict[int, dict] = {}
@@ -77,11 +92,11 @@ def now_iso() -> str:
 
 
 def stack_db(slug: str) -> str:
-    return os.path.join(STACKS_DIR, slug, "data", "gtm.db")
+    return os.path.join(STACKS_DIR, safe_slug(slug), "data", "gtm.db")
 
 
 def stack_output(slug: str) -> str:
-    return os.path.join(STACKS_DIR, slug, "output")
+    return os.path.join(STACKS_DIR, safe_slug(slug), "output")
 
 
 def load_missions() -> None:
@@ -100,27 +115,44 @@ def save_missions() -> None:
             json.dump(sorted(_missions.values(), key=lambda m: m["id"]), f, ensure_ascii=False, indent=1)
 
 
+def _bounded_int(value, default: int, lo: int, hi: int) -> int:
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        n = default
+    return max(lo, min(hi, n))
+
+
+def _cli_list(values, field: str, limit: int) -> list[str]:
+    out = []
+    for raw in (values or [])[:limit]:
+        if isinstance(raw, str) and raw.strip():
+            out.append(safe_cli_value(raw, field=field))
+    return out
+
+
 def build_args(mtype: str, p: dict) -> list[str]:
     if mtype == "keywords":
         args = ["keyword_research.py"]
-        for s in p.get("seeds", [])[:10]:
-            args += ["--seed", s]
-        args += ["--rounds", str(int(p.get("rounds", 1))), "--breadth", str(int(p.get("breadth", 6)))]
+        for seed in _cli_list(p.get("seeds", []), "graine", 10):
+            args += ["--seed", seed]
+        args += ["--rounds", str(_bounded_int(p.get("rounds", 1), 1, 1, 4)),
+                 "--breadth", str(_bounded_int(p.get("breadth", 6), 6, 1, 12))]
         return args
     if mtype == "social":
         args = ["social_pulse.py"]
-        for q in p.get("queries", [])[:8]:
-            args += ["--q", q]
+        for query in _cli_list(p.get("queries", []), "requête", 8):
+            args += ["--q", query]
         return args
     if mtype == "competitors":
         return ["competitor_watch.py", "--scan"]
     if mtype == "serp":
-        return ["serp_rank.py", "--from-store", "--limit", str(int(p.get("limit", 20)))]
+        return ["serp_rank.py", "--from-store", "--limit", str(_bounded_int(p.get("limit", 20), 20, 1, 100))]
     if mtype == "trends":
         args = ["trends_check.py"]
-        for k in p.get("kws", [])[:5]:
-            args += ["--kw", k]
-        return args + ["--geo", (p.get("geo") or "FR").upper()]
+        for kw in _cli_list(p.get("kws", []), "mot-clé", 5):
+            args += ["--kw", kw]
+        return args + ["--geo", safe_geo(str(p.get("geo") or "FR"))]
     raise ValueError(mtype)
 
 
@@ -129,9 +161,11 @@ def run_mission(mid: int) -> None:
     slug = m.get("stack") or ""
     os.makedirs(os.path.join(QEYNOX_ROOT, "logs"), exist_ok=True)
     log_path = os.path.join(QEYNOX_ROOT, "logs", f"mission-{mid:04d}.log")
-    db = stack_db(slug) if slug and os.path.isdir(os.path.join(STACKS_DIR, slug)) else os.environ.get("GTM_DB", os.path.join(TOOLS_DIR, "data", "gtm.db"))
-    env = {**os.environ, "GTM_DB": db, "GTM_LANG": "fr", "GTM_GL": "FR", "PYTHONUNBUFFERED": "1"}
     try:
+        if slug:
+            slug = safe_slug(slug)
+        db = stack_db(slug) if slug and os.path.isdir(os.path.join(STACKS_DIR, slug)) else os.environ.get("GTM_DB", os.path.join(TOOLS_DIR, "data", "gtm.db"))
+        env = {**os.environ, "GTM_DB": db, "GTM_LANG": "fr", "GTM_GL": "FR", "PYTHONUNBUFFERED": "1"}
         with open(log_path, "w", encoding="utf-8") as log:
             proc = subprocess.Popen([sys.executable, *build_args(m["type"], m.get("params", {}))],
                                     cwd=TOOLS_DIR, env=env, stdout=log, stderr=subprocess.STDOUT)
@@ -175,7 +209,7 @@ def db_scalar(slug: str, sql: str, params: tuple = ()) -> int:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "QeyNox/1.0"
+    server_version = "QeyNox/1.5"
 
     def _send(self, code: int, body: bytes, ctype: str, extra: dict | None = None) -> None:
         self.send_response(code)
@@ -190,9 +224,37 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, obj, code: int = 200) -> None:
         self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
 
+    def _presented_token(self) -> str:
+        auth = self.headers.get("Authorization") or ""
+        if auth[:7].lower() == "bearer ":
+            return auth[7:].strip()
+        return (self.headers.get("X-Qeynox-Token") or self.headers.get("X-Lumira-Token") or "").strip()
+
+    def _require_auth(self, path: str) -> bool:
+        if path == "/api/health" or not path.startswith("/api/"):
+            return True
+        if not accepted_tokens() or token_accepted(self._presented_token()):
+            return True
+        self._json({"error": "authentification requise"}, 401)
+        return False
+
+    def _query_slug(self, qs: dict) -> str | None:
+        raw = (qs.get("stack") or [""])[0]
+        if not str(raw).strip():
+            return ""
+        try:
+            return safe_slug(str(raw))
+        except ValueError:
+            self._json({"error": "stack invalide"}, 400)
+            return None
+
     def _static(self, rel: str) -> None:
-        path = os.path.normpath(os.path.join(STATIC_DIR, rel.lstrip("/")))
-        if not path.startswith(STATIC_DIR) or not os.path.isfile(path):
+        rel = urllib.parse.unquote(rel)
+        try:
+            path = safe_join(STATIC_DIR, rel)
+        except ValueError:
+            return self._json({"error": "introuvable"}, 404)
+        if not os.path.isfile(path):
             return self._json({"error": "introuvable"}, 404)
         ctype = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
                  ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml",
@@ -215,7 +277,10 @@ class Handler(BaseHTTPRequestHandler):
     # ------------------------------------------------------------- GET
     def do_GET(self) -> None:  # noqa: N802
         path, _, query = self.path.partition("?")
+        path = urllib.parse.unquote(path)
         qs = urllib.parse.parse_qs(query)
+        if not self._require_auth(path):
+            return
         try:
             if path in ("/", "/index.html"):
                 return self._static("index.html")
@@ -226,10 +291,12 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/health":
                 from engine.research import searxng_available
-                return self._json({"searxng": searxng_available(), "time": now_iso()})
+                return self._json({"ok": True, "searxng": searxng_available(), "time": now_iso()})
 
             if path == "/api/state":
-                slug = (qs.get("stack") or [""])[0]
+                slug = self._query_slug(qs)
+                if slug is None:
+                    return
                 runs = []
                 for r in db_rows(slug, "SELECT tool, args, started_at, status FROM runs ORDER BY id DESC LIMIT 10"):
                     r["agent"] = AGENT_OF_TOOL.get(r["tool"])
@@ -259,11 +326,11 @@ class Handler(BaseHTTPRequestHandler):
                             s["dossier_data"] = json.load(f)
                 return self._json({"rows": rows})
 
-            m = re.match(r"^/api/stacks/([\w-]+)/pipeline$", path)
+            m = re.match(r"^/api/stacks/([A-Za-z0-9][A-Za-z0-9_-]*)/pipeline$", path)
             if m:
                 return self._json({"pipeline": pl.read_pipeline(m.group(1))})
 
-            m = re.match(r"^/api/stacks/([\w-]+)/dossier$", path)
+            m = re.match(r"^/api/stacks/([A-Za-z0-9][A-Za-z0-9_-]*)/dossier$", path)
             if m:
                 slug = m.group(1)
                 dossier_dir = os.path.join(STACKS_DIR, slug, "dossier")
@@ -273,7 +340,7 @@ class Handler(BaseHTTPRequestHandler):
                 with open(os.path.join(dossier_dir, files[-1]), encoding="utf-8") as f:
                     return self._json({"file": files[-1], "content": f.read()[:300_000]})
 
-            m = re.match(r"^/api/stacks/([\w-]+)/context$", path)
+            m = re.match(r"^/api/stacks/([A-Za-z0-9][A-Za-z0-9_-]*)/context$", path)
             if m:
                 p = os.path.join(STACKS_DIR, m.group(1), "context", "repo-analysis.json")
                 if not os.path.exists(p):
@@ -282,7 +349,9 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"analysis": json.load(f)})
 
             if path == "/api/keywords":
-                slug = (qs.get("stack") or [""])[0]
+                slug = self._query_slug(qs)
+                if slug is None:
+                    return
                 intent = (qs.get("intent") or [""])[0]
                 q = (qs.get("q") or [""])[0].lower()
                 rows = db_rows(slug, "SELECT kw, intent, score, source, parent, trend, last_seen FROM keywords ORDER BY score DESC LIMIT 1000")
@@ -293,18 +362,27 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"rows": rows})
 
             if path == "/api/signals":
-                return self._json({"rows": db_rows((qs.get("stack") or [""])[0],
+                slug = self._query_slug(qs)
+                if slug is None:
+                    return
+                return self._json({"rows": db_rows(slug,
                                                    "SELECT platform, title, url, snippet, score, seen_at FROM signals ORDER BY score DESC, id DESC LIMIT 200")})
 
             if path == "/api/serp":
-                rows = db_rows((qs.get("stack") or [""])[0],
+                slug = self._query_slug(qs)
+                if slug is None:
+                    return
+                rows = db_rows(slug,
                                """SELECT kw, position, url, checked_at FROM serp_runs s
                                   WHERE id IN (SELECT MAX(id) FROM serp_runs GROUP BY kw)""")
                 rows.sort(key=lambda r: (r["position"] is None, r["position"] if r["position"] is not None else 0, r["kw"]))
                 return self._json({"rows": rows[:200]})
 
             if path == "/api/competitors":
-                return self._json({"rows": db_rows((qs.get("stack") or [""])[0],
+                slug = self._query_slug(qs)
+                if slug is None:
+                    return
+                return self._json({"rows": db_rows(slug,
                                                    """SELECT name, url, MAX(fetched_at) AS last_at, COUNT(*) AS versions
                                                       FROM snapshots GROUP BY name ORDER BY name""")})
 
@@ -325,30 +403,38 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"id": mid, "log": text, "status": _missions.get(mid, {}).get("status", "?")})
 
             if path == "/api/reports":
-                slug = (qs.get("stack") or [""])[0]
+                slug = self._query_slug(qs)
+                if slug is None:
+                    return
                 root = stack_output(slug) if slug else STACKS_DIR
                 reports = []
-                for rdir, _dirs, files in os.walk(root):
-                    if os.path.join("repo") + os.sep in rdir:
-                        continue
-                    for fn in files:
-                        if fn.endswith((".md", ".csv")) and "logs" not in rdir:
-                            fp = os.path.join(rdir, fn)
-                            reports.append({"path": os.path.relpath(fp, root if slug else QEYNOX_ROOT),
-                                            "stack": slug or os.path.relpath(rdir, QEYNOX_ROOT).split(os.sep)[1],
-                                            "name": fn,
-                                            "mtime": datetime.fromtimestamp(os.path.getmtime(fp), timezone.utc).isoformat(),
-                                            "size": os.path.getsize(fp)})
+                if os.path.isdir(root):
+                    for rdir, _dirs, files in os.walk(root):
+                        if os.path.join("repo") + os.sep in rdir:
+                            continue
+                        for fn in files:
+                            if fn.endswith((".md", ".csv")) and "logs" not in rdir:
+                                fp = os.path.join(rdir, fn)
+                                reports.append({"path": os.path.relpath(fp, root if slug else QEYNOX_ROOT),
+                                                "stack": slug or os.path.relpath(rdir, QEYNOX_ROOT).split(os.sep)[1],
+                                                "name": fn,
+                                                "mtime": datetime.fromtimestamp(os.path.getmtime(fp), timezone.utc).isoformat(),
+                                                "size": os.path.getsize(fp)})
                 reports.sort(key=lambda r: r["mtime"], reverse=True)
                 return self._json({"rows": reports[:200]})
 
             m = re.match(r"^/api/report$", path)
             if m:
-                slug = (qs.get("stack") or [""])[0]
+                slug = self._query_slug(qs)
+                if slug is None:
+                    return
                 rel = (qs.get("path") or [""])[0]
                 root = os.path.abspath(stack_output(slug) if slug else STACKS_DIR)
-                fp = os.path.normpath(os.path.join(root, rel))
-                if not fp.startswith(root) or not os.path.isfile(fp):
+                try:
+                    fp = safe_join(root, rel)
+                except ValueError:
+                    return self._json({"error": "introuvable"}, 404)
+                if not os.path.isfile(fp):
                     return self._json({"error": "introuvable"}, 404)
                 with open(fp, encoding="utf-8", errors="replace") as f:
                     return self._json({"path": rel, "content": f.read()[:200_000]})
@@ -356,7 +442,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/export/keywords.csv":
                 import csv as _csv
                 import io as _io
-                slug = (qs.get("stack") or [""])[0]
+                slug = self._query_slug(qs)
+                if slug is None:
+                    return
                 rows = db_rows(slug, "SELECT kw, intent, score, source, parent, trend FROM keywords ORDER BY score DESC")
                 buf = _io.StringIO()
                 w = _csv.DictWriter(buf, fieldnames=["kw", "intent", "score", "source", "parent", "trend"])
@@ -371,58 +459,92 @@ class Handler(BaseHTTPRequestHandler):
 
     # ------------------------------------------------------------- POST
     def do_POST(self) -> None:  # noqa: N802
+        path = urllib.parse.unquote(self.path.split("?", 1)[0])
+        if not self._require_auth(path):
+            return
         try:
-            if self.path == "/api/stacks":
+            if path == "/api/stacks":
                 body = self._body()
                 name = str(body.get("name", "")).strip()
                 source = str(body.get("source", "")).strip()
                 if not name or not source:
                     return self._json({"error": "nom et source requis"}, 400)
-                seeds = [s.strip() for s in body.get("seeds", []) if isinstance(s, str) and s.strip()][:8]
-                created = pl.create_stack(name, source, str(body.get("site_url", "")).strip(), seeds)
+                if is_git_url(source):
+                    try:
+                        validate_git_url(source)
+                    except ValueError as exc:
+                        return self._json({"error": str(exc)}, 400)
+                site = str(body.get("site_url", "")).strip()
+                if site:
+                    try:
+                        validate_public_http_url(site, resolve=False)
+                    except ValueError as exc:
+                        return self._json({"error": str(exc)}, 400)
+                seeds = []
+                for raw in body.get("seeds", [])[:8]:
+                    if isinstance(raw, str) and raw.strip():
+                        seeds.append(safe_cli_value(raw, field="graine"))
+                created = pl.create_stack(name, source, site, seeds)
                 pl.init_pipeline(created["slug"])
                 pl.start_pipeline_async(created["slug"], {"source": source, "name": name,
-                                                          "site_url": body.get("site_url", ""), "seeds": seeds})
+                                                          "site_url": site, "seeds": seeds})
                 return self._json({"ok": True, "stack": created}, 201)
 
-            m = re.match(r"^/api/stacks/([\w-]+)/validate$", self.path)
+            m = re.match(r"^/api/stacks/([A-Za-z0-9][A-Za-z0-9_-]*)/validate$", path)
             if m:
                 result = launch_mod.validate_stack(m.group(1))
                 return self._json(result, 200 if result.get("ok") else 400)
 
-            if self.path == "/api/missions":
+            if path == "/api/missions":
                 body = self._body()
                 mtype = body.get("type", "")
                 if mtype not in MISSION_TYPES:
                     return self._json({"error": "type de mission inconnu"}, 400)
                 params = body.get("params", {}) or {}
-                if mtype == "keywords" and not [s for s in params.get("seeds", []) if s.strip()]:
+                if mtype == "keywords" and not [s for s in params.get("seeds", []) if isinstance(s, str) and s.strip()]:
                     return self._json({"error": "au moins une graine requise"}, 400)
                 if mtype == "trends" and not params.get("kws"):
                     return self._json({"error": "au moins un mot-clé requis"}, 400)
+                stack = str(body.get("stack") or "")
+                if stack:
+                    try:
+                        stack = safe_slug(stack)
+                    except ValueError:
+                        return self._json({"error": "stack invalide"}, 400)
+                try:
+                    build_args(mtype, params)
+                except ValueError as exc:
+                    return self._json({"error": str(exc)}, 400)
                 params["seeds"] = [s.strip() for s in params.get("seeds", []) if isinstance(s, str) and s.strip()]
                 params["queries"] = [s.strip() for s in params.get("queries", []) if isinstance(s, str) and s.strip()]
                 params["kws"] = [s.strip() for s in params.get("kws", []) if isinstance(s, str) and s.strip()]
                 with _lock:
                     mid = (max(_missions, default=0)) + 1
-                    m = {"id": mid, "type": mtype, "label": MISSION_TYPES[mtype]["label"],
-                         "agent": MISSION_TYPES[mtype]["agent"], "stack": body.get("stack", ""),
-                         "params": params, "status": "running", "started": now_iso(), "finished": None}
-                    _missions[mid] = m
+                    mission = {"id": mid, "type": mtype, "label": MISSION_TYPES[mtype]["label"],
+                               "agent": MISSION_TYPES[mtype]["agent"], "stack": stack,
+                               "params": params, "status": "running", "started": now_iso(), "finished": None}
+                    _missions[mid] = mission
                 save_missions()
                 threading.Thread(target=run_mission, args=(mid,), daemon=True).start()
-                return self._json({"ok": True, "mission": m}, 201)
+                return self._json({"ok": True, "mission": mission}, 201)
 
-            if self.path == "/api/hooks/agent":
-                if HOOK_TOKEN and self.headers.get("X-Lumira-Token") != HOOK_TOKEN:
-                    return self._json({"error": "token invalide"}, 401)
+            if path == "/api/hooks/agent":
                 body = self._body()
-                slug = re.sub(r"[^\w-]", "", str(body.get("stack", "")))
+                raw_slug = str(body.get("stack", "")).strip()
+                slug = ""
+                if raw_slug:
+                    try:
+                        slug = safe_slug(raw_slug)
+                    except ValueError:
+                        return self._json({"error": "stack invalide"}, 400)
                 out_root = stack_output(slug) if slug else os.path.join(QEYNOX_ROOT, "output")
                 os.makedirs(out_root, exist_ok=True)
                 fn = f"agent-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}.md"
+                title = str(body.get("title", "Livrable agent"))[:200]
+                agent = str(body.get("agent", "agent"))[:80]
+                body_md = str(body.get("body_md", ""))[:100_000]
                 with open(os.path.join(out_root, fn), "w", encoding="utf-8") as f:
-                    f.write(f"# {body.get('title', 'Livrable agent')}\n\n> Poussé par **{body.get('agent','agent')}**\n\n{body.get('body_md','')}\n")
+                    f.write(f"# {title}\n\n> Poussé par **{agent}**\n\n{body_md}\n")
                 return self._json({"ok": True, "file": fn}, 201)
 
             return self._json({"error": "introuvable"}, 404)
@@ -431,11 +553,21 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    assert_bind_allowed()
     load_missions()
     os.makedirs(os.path.join(QEYNOX_ROOT, "logs"), exist_ok=True)
-    srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"⬡ QeyNox — plateforme GTM swarm — http://0.0.0.0:{PORT}")
+    host = bind_host()
+    srv = ThreadingHTTPServer((host, PORT), Handler)
+    print(f"⬡ QeyNox — plateforme GTM swarm — http://{host}:{PORT}")
+    if not accepted_tokens() and is_open_local(host):
+        print("  auth : désactivée (loopback, pas de QEYNOX_API_TOKEN)")
+    else:
+        print("  auth : jeton requis sur /api/* (sauf /api/health)")
     srv.serve_forever()
+
+
+def is_open_local(host: str) -> bool:
+    return is_loopback(host) and not accepted_tokens()
 
 
 if __name__ == "__main__":

@@ -89,7 +89,6 @@ def run_pipeline(slug: str, cfg: dict) -> None:
     from engine import repo_scan, research, dossier as dossier_mod, synthesize  # imports tardifs
 
     with _pipeline_lock:
-        reg = get_stack(slug)
         pipe = read_pipeline(slug) or init_pipeline(slug)
         pipe["status"] = "running"
         write_pipeline(slug, pipe)

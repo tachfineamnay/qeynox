@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from datetime import datetime, timezone
 
 ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))

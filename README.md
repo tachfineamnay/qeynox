@@ -14,7 +14,7 @@ Repo produit
 ## Démarrage
 
 ```bash
-python qeynox.py serve                 # UI : http://127.0.0.1:8765
+python qeynox.py serve                 # UI : http://127.0.0.1:8765  (QEYNOX_BIND, GTM_WEB_PORT)
 python qeynox.py onboard --name "Mon Produit" --repo /chemin/ou/url.git \
         --site https://exemple.com --seed "mot-clé marché"
 python qeynox.py status
@@ -63,4 +63,8 @@ Kill switch : `stacks/.halt`.
 
 ## Sécurité
 
-Local / VPS derrière auth si exposé. `GTM_HOOK_TOKEN` pour le hook agents. Rien ne quitte la machine hors requêtes de recherche publiques. Les personas et concurrents sont des hypothèses sourcées.
+Le serveur écoute `127.0.0.1` par défaut (`QEYNOX_BIND` pour un conteneur). S'il est lié à une autre adresse sans `QEYNOX_API_TOKEN`, il refuse de démarrer. Quand `QEYNOX_API_TOKEN` (ou l'ancien `GTM_HOOK_TOKEN`) est défini, toutes les routes `/api/*` sauf `/api/health` exigent `Authorization: Bearer`, `X-Qeynox-Token` ou `X-Lumira-Token`. L'UI demande le jeton au premier refus 401 (sessionStorage).
+
+Les clones git n'acceptent que `http(s)` et `git@hôte:chemin`. Les archives zip ne peuvent pas écrire hors du dossier cible. Les URL de site passées à l'audit doivent être des http(s) publics (pas de loopback, lien-local, ni réseau privé).
+
+Rien ne quitte la machine hors requêtes de recherche publiques. Les personas et concurrents sont des hypothèses sourcées.
