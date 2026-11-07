@@ -32,7 +32,7 @@ class DomainTests(unittest.TestCase):
         org_id, project_id = _ids()
         spec_id, run_id = uuid4(), uuid4()
         org = Organization(id=org_id, name="  Acme  ", slug="acme")
-        project = Project(id=project_id, organization_id=org_id, name="Mon Produit", slug="mon-produit")
+        _project = Project(id=project_id, organization_id=org_id, name="Mon Produit", slug="mon-produit")
         context = BusinessContext(
             id=uuid4(),
             organization_id=org_id,

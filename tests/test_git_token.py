@@ -104,7 +104,7 @@ def test_without_token_clone_argv_is_unchanged(monkeypatch, tmp_path):
 def test_credential_in_url_is_refused_before_it_is_stored(tmp_path, monkeypatch):
     secret = "github_pat_EMBEDDEDSECRET99"
     monkeypatch.setenv("QEYNOX_STACKS_DIR", str(tmp_path / "stacks"))
-    url = f"https://x-access-token:{secret}@github.com/tachfineamnay/LumiraV2.git"
+    url = "https://x-access-token:" + secret + "@github.com/tachfineamnay/LumiraV2.git"
     with pytest.raises(ValueError):
         validate_git_url(url)
     from engine import pipeline as pl

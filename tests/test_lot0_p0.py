@@ -1,4 +1,9 @@
-"""Régressions des bugs P0 legacy prouvés sur main, sans réseau externe."""
+"""Régressions des bugs P0 legacy prouvés sur main, sans réseau externe.
+
+Réécrit pour l'API consolidée V1.5 (engine.paths dynamiques, engine.runner,
+engine.safety) : les patchs de constantes de module de l'ancienne branche sont
+remplacés par les variables d'environnement runtime équivalentes.
+"""
 from __future__ import annotations
 
 import io
@@ -18,9 +23,12 @@ import engine.loops as loops
 import engine.pipeline as pipeline
 import engine.repo_scan as repo_scan
 import engine.research as research
+import engine.runner as runner
+import engine.safety as safety
 import engine.synthesize as synthesize
 import mcp_server
-import tools.gtm_store as gtm_store
+from engine import repository as repo
+from tools import gtm_store
 import web.app as app
 
 
@@ -55,12 +63,6 @@ class Lot0Tests(unittest.TestCase):
         self._saved.append((obj, name, getattr(obj, name)))
         setattr(obj, name, value)
 
-    def _restore_module(self, name: str, previous: object) -> None:
-        if previous is None:
-            sys.modules.pop(name, None)
-        else:
-            sys.modules[name] = previous
-
     def setenv(self, key: str, value: str | None) -> None:
         self._env.append((key, os.environ.get(key)))
         if value is None:
@@ -68,25 +70,25 @@ class Lot0Tests(unittest.TestCase):
         else:
             os.environ[key] = value
 
-    def test_top_kws_reads_kw_column(self) -> None:
+    def tempdir(self) -> str:
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp, True)
-        self.patch(loops, "STACKS", tmp)
+        return tmp
+
+    def test_top_kws_reads_kw_column(self) -> None:
+        tmp = self.tempdir()
+        self.setenv("QEYNOX_STACKS_DIR", tmp)
         os.makedirs(os.path.join(tmp, "demo", "data"))
-        con = sqlite3.connect(os.path.join(tmp, "demo", "data", "gtm.db"))
-        con.execute("CREATE TABLE keywords (kw TEXT PRIMARY KEY, score REAL)")
-        con.execute("INSERT INTO keywords (kw, score) VALUES ('seo local', 9)")
-        con.commit()
+        con = repo.connect(os.path.join(tmp, "demo", "data", "gtm.db"))
+        repo.upsert_keywords(con, [{"kw": "seo local", "score": 9}])
         con.close()
         rows = loops._top_kws("demo", 5)
         self.assertEqual([r[0] for r in rows], ["seo local"])
 
     def test_upsert_fills_metadata_without_wiping_blanks(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
-        con = sqlite3.connect(os.path.join(tmp, "gtm.db"))
+        tmp = self.tempdir()
+        con = repo.connect(os.path.join(tmp, "gtm.db"))
         con.row_factory = sqlite3.Row
-        con.executescript(gtm_store.SCHEMA)
         gtm_store.upsert_keywords(con, [{"kw": "Alpha", "source": "seed", "score": 2}])
         gtm_store.upsert_keywords(con, [{
             "kw": "alpha", "source": "google", "intent": "commercial", "parent": "seed", "score": 1,
@@ -105,8 +107,8 @@ class Lot0Tests(unittest.TestCase):
         con.close()
 
     def test_rescan_next_run_survives_cycle_save(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
+        tmp = self.tempdir()
+        self.setenv("QEYNOX_STACKS_DIR", tmp)
         slug = "demo"
         stack = os.path.join(tmp, slug)
         os.makedirs(stack)
@@ -119,7 +121,6 @@ class Lot0Tests(unittest.TestCase):
             json.dump(progs, f)
         with open(os.path.join(stack, "loop_state.json"), "w", encoding="utf-8") as f:
             json.dump({"source_fingerprint": "old"}, f)
-        self.patch(loops, "STACKS", tmp)
         self.patch(loops, "source_fingerprint", lambda _slug: "new")
         loaded, _fresh = loops.load_programs(slug)
         rescan = next(p for p in loaded if p["type"] == "rescan")
@@ -131,51 +132,58 @@ class Lot0Tests(unittest.TestCase):
         self.assertTrue(by_type["competitors"].get("next_run"))
 
     def test_fingerprint_follows_nested_clone_remote(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
-        bare = os.path.join(tmp, "bare.git")
-        work = os.path.join(tmp, "work")
-        os.makedirs(bare)
-        os.makedirs(work)
-        git("init", "--bare", cwd=bare)
-        git("init", cwd=work)
-        with open(os.path.join(work, "readme.txt"), "w", encoding="utf-8") as f:
-            f.write("v1\n")
-        git("add", "readme.txt", cwd=work)
-        git("commit", "-m", "v1", cwd=work)
-        git("branch", "-M", "main", cwd=work)
-        git("remote", "add", "origin", bare, cwd=work)
-        git("push", "-u", "origin", "main", cwd=work)
-        git("symbolic-ref", "HEAD", "refs/heads/main", cwd=bare)
+        """Le fingerprint suit l'état amont (FETCH_HEAD) plutôt qu'un HEAD local périmé.
+
+        Le transport git distant n'est pas requis : on rejoue la situation d'un
+        `git push` amont en écrivant FETCH_HEAD, puis on neutralise seulement le
+        `git fetch` (un échec de fetch vide FETCH_HEAD et masquerait le scénario).
+        """
+        tmp = self.tempdir()
+        stacks = os.path.join(tmp, "stacks")
+        self.setenv("QEYNOX_STACKS_DIR", stacks)
+        self.setenv("QEYNOX_LOGS_DIR", os.path.join(tmp, "logs"))
         slug = "demo"
-        clone = os.path.join(tmp, "stacks", slug, "repo", "repo")
-        os.makedirs(os.path.dirname(clone))
-        remote = "file:///" + bare.replace("\\", "/").lstrip("/")
-        subprocess.run(
-            ["git", "clone", "--depth", "1", "--branch", "main", remote, clone],
-            check=True, capture_output=True, text=True, env=GIT_ENV,
-        )
+        clone = os.path.join(stacks, slug, "repo", "repo")
+        os.makedirs(clone)
+        git("init", cwd=clone)
+        with open(os.path.join(clone, "readme.txt"), "w", encoding="utf-8") as f:
+            f.write("v1\n")
+        git("add", "readme.txt", cwd=clone)
+        git("commit", "-m", "v1", cwd=clone)
+        git("branch", "-M", "main", cwd=clone)
         first = subprocess.run(
             ["git", "-C", clone, "rev-parse", "HEAD"],
             check=True, capture_output=True, text=True,
         ).stdout.strip()
-        self.patch(loops, "STACKS", os.path.join(tmp, "stacks"))
         self.assertEqual(loops.source_fingerprint(slug), first)
-        with open(os.path.join(work, "readme.txt"), "w", encoding="utf-8") as f:
+        with open(os.path.join(clone, "readme.txt"), "w", encoding="utf-8") as f:
             f.write("v2\n")
-        git("add", "readme.txt", cwd=work)
-        git("commit", "-m", "v2", cwd=work)
-        git("push", "origin", "main", cwd=work)
+        git("add", "readme.txt", cwd=clone)
+        git("commit", "-m", "v2", cwd=clone)
         second = subprocess.run(
-            ["git", "-C", work, "rev-parse", "HEAD"],
+            ["git", "-C", clone, "rev-parse", "HEAD"],
             check=True, capture_output=True, text=True,
         ).stdout.strip()
         self.assertNotEqual(first, second)
+        # HEAD local redevient obsolète, FETCH_HEAD reflète le push amont.
+        git("reset", "--hard", first, cwd=clone)
+        with open(os.path.join(clone, ".git", "FETCH_HEAD"), "w", encoding="utf-8") as f:
+            f.write(f"{second}\t\tbranch 'main' of example\n")
+        real_run_tool = runner.run_tool
+
+        def no_fetch(name, params=None, **kwargs):
+            if name == "git_fetch":
+                return runner.ToolResult(
+                    name=name, ok=False, returncode=1, stdout="", stderr="offline test",
+                    timed_out=False, duration_s=0,
+                )
+            return real_run_tool(name, params, **kwargs)
+
+        self.patch(runner, "run_tool", no_fetch)
         self.assertEqual(loops.source_fingerprint(slug), second)
 
     def test_fingerprint_local_source_not_inside_stack(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
+        tmp = self.tempdir()
         src = os.path.join(tmp, "outside")
         os.makedirs(src)
         with open(os.path.join(src, "a.txt"), "w", encoding="utf-8") as f:
@@ -185,7 +193,7 @@ class Lot0Tests(unittest.TestCase):
         os.makedirs(ctx)
         with open(os.path.join(ctx, "repo-analysis.json"), "w", encoding="utf-8") as f:
             json.dump({"source": src, "source_mode": "local"}, f)
-        self.patch(loops, "STACKS", os.path.join(tmp, "stacks"))
+        self.setenv("QEYNOX_STACKS_DIR", os.path.join(tmp, "stacks"))
         before = loops.source_fingerprint(slug)
         with open(os.path.join(src, "a.txt"), "w", encoding="utf-8") as f:
             f.write("two")
@@ -194,21 +202,18 @@ class Lot0Tests(unittest.TestCase):
         self.assertNotEqual(before, after)
         self.assertTrue(after)
 
-    def test_create_stack_stores_redacted_git_url(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
-        self.patch(pipeline, "STACKS_DIR", tmp)
-        self.patch(pipeline, "REGISTRY", os.path.join(tmp, "registry.json"))
+    def test_create_stack_refuses_credentials_instead_of_storing_them(self) -> None:
+        tmp = self.tempdir()
+        self.setenv("QEYNOX_STACKS_DIR", tmp)
         raw = "https://user:sekret@github.com/acme/private.git"
-        pipeline.create_stack("Demo", raw, "https://example.com")
-        blob = open(pipeline.REGISTRY, encoding="utf-8").read()
-        self.assertNotIn("sekret", blob)
-        self.assertNotIn("user:sekret", blob)
-        self.assertIn("github.com/acme/private.git", blob)
+        with self.assertRaises(ValueError):
+            pipeline.create_stack("Demo", raw, "https://example.com")
+        self.assertFalse(os.path.exists(os.path.join(tmp, "registry.json")))
 
     def test_scan_and_pipeline_do_not_persist_git_credentials(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
+        tmp = self.tempdir()
+        self.setenv("QEYNOX_STACKS_DIR", tmp)
+        self.setenv("QEYNOX_LOGS_DIR", os.path.join(tmp, "logs"))
         raw = "https://user:sekret@github.com/acme/private.git"
         seen: dict[str, str] = {}
 
@@ -238,8 +243,6 @@ class Lot0Tests(unittest.TestCase):
         self.assertNotIn("sekret", scanned)
         self.assertIn("sekret", seen["clone_source"])
 
-        self.patch(pipeline, "STACKS_DIR", tmp)
-        self.patch(pipeline, "REGISTRY", os.path.join(tmp, "registry.json"))
         os.makedirs(os.path.join(tmp, "demo"), exist_ok=True)
         pipeline.save_registry([{
             "slug": "demo", "name": "Demo", "source": "redacted-already",
@@ -261,30 +264,34 @@ class Lot0Tests(unittest.TestCase):
         pipeline.run_pipeline("demo", {"source": raw, "name": "Demo", "site_url": "", "seeds": []})
         analysis = open(os.path.join(tmp, "demo", "context", "repo-analysis.json"), encoding="utf-8").read()
         pipe = open(os.path.join(tmp, "demo", "pipeline.json"), encoding="utf-8").read()
-        registry = open(pipeline.REGISTRY, encoding="utf-8").read()
+        registry = open(os.path.join(tmp, "registry.json"), encoding="utf-8").read()
         self.assertNotIn("sekret", analysis)
         self.assertNotIn("sekret", pipe)
         self.assertNotIn("sekret", registry)
         self.assertIn("sekret", seen["clone_source"])
 
+    def _restore_module(self, name: str, previous: object) -> None:
+        if previous is None:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = previous
+
     def test_clone_error_scrubs_credentials(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
-        raw = "https://user:sekret@github.com/acme/private.git"
+        tmp = self.tempdir()
+        raw = "https://github.com/acme/private.git"
 
         class Proc:
             returncode = 1
             stdout = ""
-            stderr = f"fatal: Authentication failed for '{raw}'"
+            stderr = "fatal: Authentication failed for 'https://user:sekret@github.com/acme/private.git'"
 
-        self.patch(repo_scan.subprocess, "run", lambda *a, **k: Proc())
+        self.patch(runner.subprocess, "run", lambda *a, **k: Proc())
         with self.assertRaises(RuntimeError) as caught:
             repo_scan.prepare_repo(raw, tmp)
         self.assertNotIn("sekret", str(caught.exception))
 
     def test_zip_slip_is_rejected(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
+        tmp = self.tempdir()
         zpath = os.path.join(tmp, "evil.zip")
         with zipfile.ZipFile(zpath, "w") as zf:
             zf.writestr("../../outside.txt", "pwned")
@@ -304,8 +311,7 @@ class Lot0Tests(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(extracted, "readme.md")))
 
     def test_report_and_static_stay_inside_root(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
+        tmp = self.tempdir()
         root = os.path.join(tmp, "output")
         os.makedirs(root)
         inside = os.path.join(root, "note.md")
@@ -314,16 +320,20 @@ class Lot0Tests(unittest.TestCase):
         secret = os.path.join(tmp, "secret.txt")
         with open(secret, "w", encoding="utf-8") as f:
             f.write("no")
-        self.assertEqual(app.resolve_under(root, "note.md"), os.path.normpath(inside))
-        self.assertIsNone(app.resolve_under(root, "../secret.txt"))
-        self.assertIsNone(app.resolve_under(root, "..\\secret.txt"))
-        self.assertFalse(app.contained(root, secret))
+        self.assertEqual(
+            os.path.normcase(safety.safe_join(root, "note.md")),
+            os.path.normcase(os.path.realpath(inside)),
+        )
+        with self.assertRaises(ValueError):
+            safety.safe_join(root, "../secret.txt")
+        with self.assertRaises(ValueError):
+            safety.safe_join(root, "..\\secret.txt")
 
     def test_invalid_stack_slug_is_rejected(self) -> None:
-        self.assertIsNone(app.normalize_slug("../demo"))
-        self.assertIsNone(app.normalize_slug("demo/../x"))
-        self.assertEqual(app.normalize_slug(""), "")
-        self.assertEqual(app.normalize_slug("demo-1"), "demo-1")
+        for bad in ("../demo", "demo/../x", ""):
+            with self.assertRaises(ValueError):
+                app.safe_slug(bad)
+        self.assertEqual(app.safe_slug("demo-1"), "demo-1")
         resp = mcp_server.handle({
             "jsonrpc": "2.0", "id": 1, "method": "tools/call",
             "params": {"name": "get_keywords", "arguments": {"slug": "../x"}},
@@ -333,17 +343,15 @@ class Lot0Tests(unittest.TestCase):
         self.assertIn("invalide", text)
 
     def test_web_mission_cwd_is_the_stack(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
+        tmp = self.tempdir()
+        self.setenv("QEYNOX_STACKS_DIR", tmp)
+        self.setenv("QEYNOX_MISSIONS_FILE", os.path.join(tmp, "missions.json"))
+        self.setenv("QEYNOX_LOGS_DIR", os.path.join(tmp, "logs"))
         slug = "demo"
         stack = os.path.join(tmp, slug)
         os.makedirs(os.path.join(stack, "context"))
         with open(os.path.join(stack, "context", "repo-analysis.json"), "w", encoding="utf-8") as f:
             json.dump({"brand": {"guess": "DemoBrand"}}, f)
-        self.patch(app, "STACKS_DIR", tmp)
-        self.patch(app, "MISSIONS_FILE", os.path.join(tmp, "missions.json"))
-        self.patch(app.pl, "STACKS_DIR", tmp)
-        self.patch(app.pl, "REGISTRY", os.path.join(tmp, "registry.json"))
         app.pl.save_registry([{
             "slug": slug, "name": "Demo", "site_url": "https://www.example.com",
             "source": "local", "status": "active",
@@ -351,16 +359,18 @@ class Lot0Tests(unittest.TestCase):
         captured: dict = {}
 
         class Proc:
-            def __init__(self, cmd, cwd=None, env=None, stdout=None, stderr=None):
+            returncode = 0
+
+            def __init__(self, cmd, cwd=None, env=None, stdout=None, stderr=None, text=None):
                 captured["cmd"] = cmd
                 captured["cwd"] = cwd
                 captured["env"] = env
                 self.pid = 7
 
-            def wait(self):
-                return 0
+            def communicate(self, timeout=None):
+                return "", ""
 
-        self.patch(app.subprocess, "Popen", Proc)
+        self.patch(runner.subprocess, "Popen", Proc)
         cases = [
             ("keywords", {"seeds": ["graine"]}, "keyword_research.py", ["--seed", "graine", "--rounds", "1", "--breadth", "6"]),
             ("competitors", {}, "competitor_watch.py", ["--scan"]),
@@ -383,11 +393,11 @@ class Lot0Tests(unittest.TestCase):
         self.assertEqual(captured["env"]["GTM_DOMAIN"], "example.com")
 
     def test_web_mission_runs_absolute_script_inside_the_stack(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
+        tmp = self.tempdir()
         tools = os.path.join(tmp, "tools")
+        stacks = os.path.join(tmp, "stacks")
         slug = "demo"
-        stack = os.path.join(tmp, "stacks", slug)
+        stack = os.path.join(stacks, slug)
         os.makedirs(tools)
         os.makedirs(os.path.join(stack, "context"))
         script = os.path.join(tools, "keyword_research.py")
@@ -398,10 +408,10 @@ class Lot0Tests(unittest.TestCase):
                 "Path('probe.txt').write_text(os.getcwd() + '\\n' + os.path.abspath(__file__), encoding='utf-8')\n"
             )
         self.patch(app, "TOOLS_DIR", tools)
-        self.patch(app, "STACKS_DIR", os.path.join(tmp, "stacks"))
-        self.patch(app, "MISSIONS_FILE", os.path.join(tmp, "missions.json"))
-        self.patch(app.pl, "STACKS_DIR", os.path.join(tmp, "stacks"))
-        self.patch(app.pl, "REGISTRY", os.path.join(tmp, "registry.json"))
+        self.patch(runner, "TOOLS_DIR", tools)
+        self.setenv("QEYNOX_STACKS_DIR", stacks)
+        self.setenv("QEYNOX_MISSIONS_FILE", os.path.join(tmp, "missions.json"))
+        self.setenv("QEYNOX_LOGS_DIR", os.path.join(tmp, "logs"))
         app.pl.save_registry([])
         app._missions.clear()
         app._missions[1] = {
@@ -416,20 +426,23 @@ class Lot0Tests(unittest.TestCase):
         self.assertEqual(os.path.normcase(os.path.normpath(ran)), os.path.normcase(script))
 
     def test_web_mission_rejects_escaping_slug(self) -> None:
-        tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmp, True)
-        self.patch(app, "STACKS_DIR", tmp)
+        tmp = self.tempdir()
+        self.setenv("QEYNOX_STACKS_DIR", tmp)
+        self.setenv("QEYNOX_MISSIONS_FILE", os.path.join(tmp, "missions.json"))
+        self.setenv("QEYNOX_LOGS_DIR", os.path.join(tmp, "logs"))
         called = {"n": 0}
 
         class Proc:
+            returncode = 0
+
             def __init__(self, *a, **k):
                 called["n"] += 1
                 self.pid = 1
 
-            def wait(self):
-                return 0
+            def communicate(self, timeout=None):
+                return "", ""
 
-        self.patch(app.subprocess, "Popen", Proc)
+        self.patch(runner.subprocess, "Popen", Proc)
         app._missions.clear()
         app._missions[2] = {
             "id": 2, "type": "keywords", "stack": "..",
@@ -440,6 +453,12 @@ class Lot0Tests(unittest.TestCase):
         self.assertEqual(app._missions[2]["status"], "error")
 
     def test_server_defaults_to_loopback(self) -> None:
+        tmp = self.tempdir()
+        self.setenv("QEYNOX_LOGS_DIR", os.path.join(tmp, "logs"))
+        self.setenv("QEYNOX_MISSIONS_FILE", os.path.join(tmp, "missions.json"))
+        self.setenv("QEYNOX_BIND", None)
+        self.setenv("QEYNOX_API_TOKEN", None)
+        self.setenv("GTM_HOOK_TOKEN", None)
         captured: dict = {}
 
         class Srv:
@@ -450,11 +469,11 @@ class Lot0Tests(unittest.TestCase):
                 return None
 
         self.patch(app, "ThreadingHTTPServer", Srv)
-        self.setenv("GTM_WEB_HOST", None)
         with redirect_stdout(io.StringIO()):
             app.main()
         self.assertEqual(captured["addr"][0], "127.0.0.1")
-        self.setenv("GTM_WEB_HOST", "0.0.0.0")
+        self.setenv("QEYNOX_BIND", "0.0.0.0")
+        self.setenv("QEYNOX_API_TOKEN", "jeton-de-test")
         with redirect_stdout(io.StringIO()):
             app.main()
         self.assertEqual(captured["addr"][0], "0.0.0.0")

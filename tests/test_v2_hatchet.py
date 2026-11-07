@@ -16,7 +16,12 @@ from psycopg.rows import dict_row
 from core.application.orchestration import JobOrchestrator
 from core.application.service import CoreService
 from core.domain.model import DomainError, JobRun
-from core.hatchet.adapter import HatchetAdapter
+
+try:  # hatchet-sdk reste une dépendance d'orchestration optionnelle à l'import
+    from core.hatchet.adapter import HatchetAdapter
+except RuntimeError:  # pragma: no cover - SDK non installé (voir requirements-core.txt)
+    HatchetAdapter = None  # type: ignore[assignment]
+
 from core.postgres.migrate import apply as migrate
 from core.postgres.repository import PostgresCoreRepository
 from tests.test_v2_postgres import _database_url
@@ -68,6 +73,7 @@ class TransitionTests(unittest.TestCase):
                     self.assertFalse(name == "hatchet_sdk" or name.startswith("hatchet_sdk."))
 
 
+@unittest.skipIf(HatchetAdapter is None, "hatchet-sdk non installé (voir requirements-core.txt)")
 class HatchetRuntimeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:

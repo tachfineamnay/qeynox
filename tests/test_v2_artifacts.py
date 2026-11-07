@@ -9,10 +9,16 @@ from core.application.service import CoreService
 from core.domain.model import (
     Approval,
     ArtifactVersion,
+    BusinessContext,
     Conflict,
+    ContextSnapshot,
     DomainError,
     Feedback,
+    JobRun,
+    JobSpec,
     NotInOrganization,
+    Organization,
+    Project,
 )
 from core.postgres.migrate import _statements
 

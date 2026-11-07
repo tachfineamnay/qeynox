@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import tempfile
 import unittest
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -20,14 +19,19 @@ WHEN = datetime(2026, 10, 3, 18, 0, tzinfo=timezone.utc)
 
 
 def _database_url() -> tuple[str, object | None]:
+    """URL PostgreSQL de test, fournie par l'environnement.
+
+    `QEYNOX_TEST_DATABASE_URL` est défini par le service PostgreSQL de la CI
+    (ou par docker compose en local). Sans lui, ces tests sont explicitement
+    SKIPPED afin de ne jamais être annoncés PASS sans base réelle.
+    """
     url = os.environ.get("QEYNOX_TEST_DATABASE_URL")
     if url:
         return url, None
-    import pgserver
-
-    directory = tempfile.mkdtemp(prefix="qeynox-pg-")
-    server = pgserver.get_server(directory, cleanup_mode="delete")
-    return server.get_uri(), server
+    raise unittest.SkipTest(
+        "QEYNOX_TEST_DATABASE_URL absent : tests PostgreSQL non exécutés "
+        "(démarrer le service postgres de la CI ou docker compose)"
+    )
 
 
 class PostgresCoreTests(unittest.TestCase):

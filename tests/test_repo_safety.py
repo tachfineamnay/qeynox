@@ -62,13 +62,15 @@ class RepoSafetyTests(unittest.TestCase):
     def test_missing_registry_is_an_empty_list(self) -> None:
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp, True)
-        old_dir, old_reg = pipeline.STACKS_DIR, pipeline.REGISTRY
-        pipeline.STACKS_DIR = tmp
-        pipeline.REGISTRY = os.path.join(tmp, "registry.json")
+        old = os.environ.get("QEYNOX_STACKS_DIR")
+        os.environ["QEYNOX_STACKS_DIR"] = tmp
         try:
             self.assertEqual(pipeline.load_registry(), [])
         finally:
-            pipeline.STACKS_DIR, pipeline.REGISTRY = old_dir, old_reg
+            if old is None:
+                os.environ.pop("QEYNOX_STACKS_DIR", None)
+            else:
+                os.environ["QEYNOX_STACKS_DIR"] = old
 
     def test_secret_guard_flags_tokens_and_clears_the_repo(self) -> None:
         self.assertTrue(secret_guard.scan_text("aws AKIA" + "IOSFODNN7EXAMPLE"))
