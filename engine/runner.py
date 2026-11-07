@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -31,6 +32,7 @@ TIMEOUTS = {
     "serp_rank": 420,
     "trends_check": 120,
     "git_clone": 300,
+    "git_fetch": 30,
     "git_rev_parse": 10,
 }
 
@@ -144,8 +146,13 @@ def _argv(name: str, params: dict) -> list[str]:
         return args
     if name == "git_clone":
         return ["git", "clone", "--depth", "1", "--", str(params["url"]), str(params["dest"])]
+    if name == "git_fetch":
+        return ["git", "-C", str(params["repo"]), "fetch", "--quiet", "origin"]
     if name == "git_rev_parse":
-        return ["git", "-C", str(params["repo"]), "rev-parse", "HEAD"]
+        ref = str(params.get("ref") or "HEAD")
+        if ref.startswith("-") or not re.fullmatch(r"[A-Za-z0-9._/-]+", ref):
+            raise ValueError("ref git invalide")
+        return ["git", "-C", str(params["repo"]), "rev-parse", ref]
     raise ValueError(f"outil inconnu: {name}")
 
 

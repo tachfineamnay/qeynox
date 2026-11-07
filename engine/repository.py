@@ -95,8 +95,17 @@ def upsert_keywords(con: sqlite3.Connection, rows: list[dict]) -> int:
             """INSERT INTO keywords (kw, source, intent, score, trend, parent, first_seen, last_seen)
                VALUES (?,?,?,?,?,?,?,?)
                ON CONFLICT(kw) DO UPDATE SET
+                 source = CASE
+                   WHEN excluded.source IS NOT NULL AND TRIM(excluded.source) != ''
+                   THEN excluded.source ELSE keywords.source END,
+                 intent = CASE
+                   WHEN excluded.intent IS NOT NULL AND TRIM(excluded.intent) NOT IN ('', '?')
+                   THEN excluded.intent ELSE keywords.intent END,
                  score = MAX(COALESCE(keywords.score,0), COALESCE(excluded.score,0)),
                  trend = COALESCE(excluded.trend, keywords.trend),
+                 parent = CASE
+                   WHEN excluded.parent IS NOT NULL AND TRIM(excluded.parent) != ''
+                   THEN excluded.parent ELSE keywords.parent END,
                  last_seen = excluded.last_seen""",
             (
                 kw, row.get("source"), row.get("intent"), row.get("score", 0),

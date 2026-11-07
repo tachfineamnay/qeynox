@@ -203,36 +203,70 @@ def _top_kws(slug: str, n: int) -> list[tuple]:
         return []
 
 
-def source_fingerprint(slug: str) -> str:
-    """Empreinte du dépôt source : HEAD git si dispo, sinon hash du fichier repo dir (L3)."""
-    h = hashlib.sha256()
-    repo = os.path.join(stacks_dir(), slug, "repo")
-    if os.path.isdir(repo):
-        try:
-            from engine.runner import run_tool
-            head = run_tool("git_rev_parse", {"repo": repo}, timeout=10)
-            if head.ok and head.stdout.strip():
-                return head.stdout.strip()
-        except Exception:
-            pass
-        for root, dirs, files in os.walk(repo):
-            dirs[:] = [d for d in dirs if d not in (".git", "node_modules", "__pycache__")]
-            for f in sorted(files):
-                p = os.path.join(root, f)
-                try:
-                    h.update(f.encode())
-                    h.update(str(os.path.getmtime(p)).encode())
-                except OSError:
-                    pass
-        return h.hexdigest()[:16]
-    ctx = os.path.join(stacks_dir(), slug, "context", "repo-analysis.json")
-    if os.path.exists(ctx):
-        h.update(open(ctx, "rb").read())
-        return h.hexdigest()[:16]
+def _mtime_fingerprint(root: str) -> str:
+    digest = hashlib.sha256()
+    seen = 0
+    for dirpath, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in (".git", "node_modules", "__pycache__")]
+        for fname in sorted(files):
+            path = os.path.join(dirpath, fname)
+            try:
+                digest.update(fname.encode())
+                digest.update(str(os.path.getmtime(path)).encode())
+                seen += 1
+            except OSError:
+                pass
+    return digest.hexdigest()[:16] if seen else ""
+
+
+def _repo_candidates(slug: str) -> list[str]:
+    """Dossiers candidats : clone (stack/repo), ancien clone imbriqué, source locale."""
+    found: list[str] = []
+    ctx = read_json(os.path.join(stacks_dir(), slug, "context", "repo-analysis.json"), {})
+    src = os.path.expanduser(str(ctx.get("source") or ""))
+    if ctx.get("source_mode") == "local" and src and os.path.isdir(src):
+        found.append(src)
+    for path in (os.path.join(stacks_dir(), slug, "repo", "repo"), os.path.join(stacks_dir(), slug, "repo")):
+        if os.path.isdir(path) and path not in found:
+            found.append(path)
+    return found
+
+
+def _git_fingerprint(repo: str) -> str:
+    """HEAD du remote si joignable (fetch), sinon HEAD local — via le runner unique."""
+    from engine.runner import run_tool
+    if not os.path.exists(os.path.join(repo, ".git")):
+        return ""
+    run_tool("git_fetch", {"repo": repo}, timeout=30)
+    for ref in ("FETCH_HEAD", "origin/HEAD", "origin/main", "origin/master", "HEAD"):
+        head = run_tool("git_rev_parse", {"repo": repo, "ref": ref}, timeout=10)
+        if head.ok and head.stdout.strip():
+            return head.stdout.strip()
     return ""
 
 
-def run_program(slug: str, prog: dict) -> dict:
+def source_fingerprint(slug: str) -> str:
+    """Empreinte du vrai checkout : remote HEAD, HEAD local, ou mtime du dossier source."""
+    parent = os.path.abspath(os.path.join(stacks_dir(), slug, "repo"))
+    for repo in _repo_candidates(slug):
+        head = _git_fingerprint(repo)
+        if head:
+            return head
+        if os.path.abspath(repo) == parent and os.path.isdir(os.path.join(parent, "repo")):
+            continue
+        digest = _mtime_fingerprint(repo)
+        if digest:
+            return digest
+    ctx = os.path.join(stacks_dir(), slug, "context", "repo-analysis.json")
+    if os.path.exists(ctx):
+        digest = hashlib.sha256()
+        with open(ctx, "rb") as fh:
+            digest.update(fh.read())
+        return digest.hexdigest()[:16]
+    return ""
+
+
+def run_program(slug: str, prog: dict, programs: list[dict] | None = None) -> dict:
     """Exécute un programme de façon SYNCHRONE (la boucle doit savoir si ça a marché)."""
     t0 = time.time()
     before = db_counts(slug)
@@ -244,10 +278,12 @@ def run_program(slug: str, prog: dict) -> dict:
         res["ok"] = True
         if prev and fp and prev != fp:
             res["note"] = "changement source détecté → re-scan research déclenché"
-            for other in load_programs(slug)[0]:
+            target = programs if programs is not None else load_programs(slug)[0]
+            for other in target:
                 if other["type"] in ("keywords", "competitors") and other.get("enabled"):
                     other["next_run"] = now()   # re-scan immédiat
-            save_programs(slug, load_programs(slug)[0])
+            if programs is None:
+                save_programs(slug, target)
         elif not fp:
             res["note"] = "pas de source fingerprintable (site-only) — ignoré"
         else:
@@ -388,7 +424,7 @@ def cycle(slugs: list[str] | None = None) -> dict:
                                     "note": f"plafond {MAX_RUNS_PER_DAY} runs/jour atteint — reporté",
                                     "duration_s": 0})
                     break
-                r = run_program(slug, p)
+                r = run_program(slug, p, progs)
                 results.append(r)
                 state["runs_today"] += 1
                 if r["ok"]:

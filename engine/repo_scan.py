@@ -15,7 +15,7 @@ import sys
 from collections import Counter
 from datetime import datetime, timezone
 from html.parser import HTMLParser
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit, urlunsplit
 
 from .runner import run_tool
 from .safety import safe_extract_zip, validate_git_url
@@ -61,6 +61,30 @@ def is_git_url(source: str) -> bool:
     return bool(re.match(r"^(https?://|git@)[^\s]+", source)) and not source.endswith(".zip")
 
 
+_GIT_USERINFO = re.compile(r"(https?://)[^\s/@]+(?::[^\s/@]*)?@")
+
+
+def redact_git_url(source: str) -> str:
+    """Retire user:token@ des URL https avant toute persistance."""
+    source = (source or "").strip()
+    if not is_git_url(source):
+        return source
+    try:
+        parts = urlsplit(source)
+    except ValueError:
+        return _GIT_USERINFO.sub(r"\1", source)
+    if parts.scheme in ("http", "https") and "@" in parts.netloc:
+        host = parts.hostname or ""
+        netloc = f"{host}:{parts.port}" if parts.port else host
+        return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+    return source
+
+
+def scrub_git_credentials(text: str) -> str:
+    """Masque les credentials HTTP(S) susceptibles d'apparaître dans un message."""
+    return _GIT_USERINFO.sub(r"\1", text or "")
+
+
 def prepare_repo(source: str, workdir: str) -> tuple[str, str]:
     """Retourne (chemin du dépôt, mode d'obtention).
 
@@ -91,10 +115,10 @@ def prepare_repo(source: str, workdir: str) -> tuple[str, str]:
         if cloned.timed_out:
             raise RuntimeError("git clone a expiré")
         if not cloned.ok:
-            detail = (cloned.stderr or cloned.stdout or "échec").strip()
+            detail = scrub_git_credentials((cloned.stderr or cloned.stdout or "échec").strip())
             raise RuntimeError(f"git clone a échoué: {detail[:300]}")
         return dest, "git"
-    raise RuntimeError(f"Source introuvable ou non supportée: {source}")
+    raise RuntimeError(f"Source introuvable ou non supportée: {scrub_git_credentials(source)}")
 
 
 class PageParser(HTMLParser):
@@ -366,7 +390,7 @@ def run(source: str, stack_dir: str) -> dict:
     os.makedirs(stack_dir, exist_ok=True)
     repo, mode = prepare_repo(source, stack_dir)
     analysis = scan_repo(repo)
-    analysis["source"] = source
+    analysis["source"] = redact_git_url(source)
     analysis["source_mode"] = mode
     ctx_dir = os.path.join(stack_dir, "context")
     os.makedirs(ctx_dir, exist_ok=True)
