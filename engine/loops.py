@@ -210,9 +210,13 @@ def source_fingerprint(slug: str) -> str:
     if os.path.isdir(repo):
         try:
             from engine.runner import run_tool
-            head = run_tool("git_rev_parse", {"repo": repo}, timeout=10)
-            if head.ok and head.stdout.strip():
-                return head.stdout.strip()
+            # Empreinte de l'état distant quand il est joignable : un HEAD local
+            # périmé masquerait un `git push` et le re-scan ne partirait jamais.
+            run_tool("git_fetch", {"repo": repo}, timeout=30)
+            for ref in ("origin/HEAD", "origin/main", "origin/master", "HEAD"):
+                head = run_tool("git_rev_parse", {"repo": repo, "ref": ref}, timeout=10)
+                if head.ok and head.stdout.strip():
+                    return head.stdout.strip()
         except Exception:
             pass
         for root, dirs, files in os.walk(repo):
@@ -244,10 +248,11 @@ def run_program(slug: str, prog: dict) -> dict:
         res["ok"] = True
         if prev and fp and prev != fp:
             res["note"] = "changement source détecté → re-scan research déclenché"
-            for other in load_programs(slug)[0]:
+            programs, _ = load_programs(slug)
+            for other in programs:
                 if other["type"] in ("keywords", "competitors") and other.get("enabled"):
                     other["next_run"] = now()   # re-scan immédiat
-            save_programs(slug, load_programs(slug)[0])
+            save_programs(slug, programs)
         elif not fp:
             res["note"] = "pas de source fingerprintable (site-only) — ignoré"
         else:

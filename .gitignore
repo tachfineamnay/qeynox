@@ -18,21 +18,39 @@ Thumbs.db
 
 # Tests / cache
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 
-# Graphify generated output
+# Graphify generated output (cache, graphe, rapports, sauvegardes datées)
 graphify-out/
 
-# Runtime / tenant data (never commit stacks, databases, or logs)
+# Logs
+*.log
+logs/
+
+# Runtime / tenant data (jamais de stacks, bases ou logs versionnés)
 stacks/*
 !stacks/.gitkeep
-logs/
+data/
+tools/data/
+tools/output/
 output/
 *.db
 *.sqlite
 *.sqlite3
 web/missions.json
 
-# Logs
-*.log
+# Surcharges locales du catalogue (les .example restent versionnés)
+catalog/custom.json
+catalog/overrides.json
+
+# Secrets
+.env
+*.pem
+*.key
+id_rsa
+id_ed25519
+credentials.json
+secrets.json

@@ -27,6 +27,11 @@ def slugify(name: str) -> str:
     return s or "stack"
 
 
+def redact_source(source: str) -> str:
+    """Retire les credentials HTTP(S) d'une source avant persistance/log."""
+    return re.sub(r"(?i)^(https?://)[^/@\s]+@", r"\1", str(source or ""))
+
+
 def load_registry() -> list[dict]:
     path = registry_path()
     if os.path.exists(path):
@@ -120,7 +125,7 @@ def run_pipeline(slug: str, cfg: dict) -> None:
             # 2. analyse statique
             mark("scan", "running")
             analysis = repo_scan.scan_repo(repo_path)
-            analysis["source"] = cfg["source"]
+            analysis["source"] = redact_source(cfg["source"])
             analysis["source_mode"] = repo_mode
             if cfg.get("name"):  # le nom donné par l'admin est la marque de référence
                 analysis["brand"]["guess"] = cfg["name"]
@@ -215,7 +220,7 @@ def create_stack(name: str, source: str, site_url: str = "", seeds: list[str] | 
         i += 1
     rows = load_registry()
     rows.append({
-        "slug": slug, "name": name, "source": source, "site_url": site_url,
+        "slug": slug, "name": name, "source": redact_source(source), "site_url": site_url,
         "seeds": seeds or [], "status": "queued", "created_at": now_iso(),
     })
     save_registry(rows)

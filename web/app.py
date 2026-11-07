@@ -125,11 +125,15 @@ def run_mission(mid: int) -> None:
     try:
         if slug:
             slug = safe_slug(slug)
-        db = stack_db(slug) if slug and os.path.isdir(os.path.join(stacks_dir(), slug)) else os.environ.get("GTM_DB", os.path.join(TOOLS_DIR, "data", "gtm.db"))
+        stack_dir = os.path.join(stacks_dir(), slug) if slug else ""
+        valid_stack = bool(stack_dir and os.path.isdir(stack_dir))
+        db = stack_db(slug) if valid_stack else os.environ.get("GTM_DB", os.path.join(TOOLS_DIR, "data", "gtm.db"))
         env = {**os.environ, "GTM_DB": db, "GTM_LANG": "fr", "GTM_GL": "FR", "PYTHONUNBUFFERED": "1"}
         tool_name, tool_params = normalize_mission(m["type"], m.get("params") or {})
+        # CWD = dossier du stack quand il existe : les outils écrivent leurs
+        # artefacts à côté du dépôt analysé, jamais dans le code partagé.
         ran = run_tool(
-            tool_name, tool_params, cwd=TOOLS_DIR, env=env, log_path=log_path,
+            tool_name, tool_params, cwd=stack_dir if valid_stack else TOOLS_DIR, env=env, log_path=log_path,
             on_start=lambda pid: m.__setitem__("pid", pid),
         )
         m["status"] = "done" if ran.ok else "error"

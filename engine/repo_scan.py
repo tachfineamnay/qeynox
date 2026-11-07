@@ -61,6 +61,11 @@ def is_git_url(source: str) -> bool:
     return bool(re.match(r"^(https?://|git@)[^\s]+", source)) and not source.endswith(".zip")
 
 
+def redact_git_text(text: str) -> str:
+    """Masque les credentials HTTP(S) susceptibles d'apparaître dans une URL Git."""
+    return re.sub(r"(?i)(https?://)[^/@\s]+@", r"\1", str(text or ""))
+
+
 def prepare_repo(source: str, workdir: str) -> tuple[str, str]:
     """Retourne (chemin du dépôt, mode d'obtention).
 
@@ -91,10 +96,10 @@ def prepare_repo(source: str, workdir: str) -> tuple[str, str]:
         if cloned.timed_out:
             raise RuntimeError("git clone a expiré")
         if not cloned.ok:
-            detail = (cloned.stderr or cloned.stdout or "échec").strip()
+            detail = redact_git_text((cloned.stderr or cloned.stdout or "échec").strip())
             raise RuntimeError(f"git clone a échoué: {detail[:300]}")
         return dest, "git"
-    raise RuntimeError(f"Source introuvable ou non supportée: {source}")
+    raise RuntimeError(f"Source introuvable ou non supportée: {redact_git_text(source)}")
 
 
 class PageParser(HTMLParser):
