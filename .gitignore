@@ -3,10 +3,18 @@ __pycache__/
 *.py[cod]
 *.pyo
 
-# Environnement
+# Secrets — templates tracked: tools/config.example.env, catalog/overrides.example.json
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+id_rsa
+id_ed25519
+credentials.json
+secrets.json
+
+# Environnement local
 venv/
 .venv/
 
@@ -16,7 +24,7 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Tests / cache
+# Caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -26,9 +34,13 @@ htmlcov/
 # Graphify generated output (cache, graphe, rapports, sauvegardes datées)
 graphify-out/
 
-# Logs
+# Logs, sorties, temporaires
 *.log
 logs/
+*.tmp
+*.temp
+tmp/
+temp/
 
 # Runtime / tenant data (jamais de stacks, bases ou logs versionnés)
 stacks/*

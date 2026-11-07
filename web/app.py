@@ -90,6 +90,33 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def mission_env(slug: str, db: str) -> dict:
+    """Environnement d'une mission : DB, marque et domaine du stack."""
+    env = {**os.environ, "GTM_DB": db, "GTM_LANG": "fr", "GTM_GL": "FR", "PYTHONUNBUFFERED": "1"}
+    if not slug:
+        return env
+    try:
+        slug = safe_slug(slug)
+    except ValueError:
+        return env
+    brand = slug
+    ctx_path = os.path.join(stacks_dir(), slug, "context", "repo-analysis.json")
+    if os.path.exists(ctx_path):
+        try:
+            with open(ctx_path, encoding="utf-8") as fh:
+                ctx = json.load(fh)
+            brand = ((ctx.get("brand") or {}).get("guess")) or slug
+        except (OSError, json.JSONDecodeError):
+            pass
+    site = str((pl.get_stack(slug) or {}).get("site_url") or "")
+    host = urllib.parse.urlparse(site).netloc.lower().removeprefix("www.")
+    env["GTM_BRAND"] = brand
+    env["GTM_BRAND_ALIASES"] = brand
+    if host:
+        env["GTM_DOMAIN"] = host
+    return env
+
+
 def stack_db(slug: str) -> str:
     return os.path.join(stacks_dir(), safe_slug(slug), "data", "gtm.db")
 
@@ -128,7 +155,7 @@ def run_mission(mid: int) -> None:
         stack_dir = os.path.join(stacks_dir(), slug) if slug else ""
         valid_stack = bool(stack_dir and os.path.isdir(stack_dir))
         db = stack_db(slug) if valid_stack else os.environ.get("GTM_DB", os.path.join(TOOLS_DIR, "data", "gtm.db"))
-        env = {**os.environ, "GTM_DB": db, "GTM_LANG": "fr", "GTM_GL": "FR", "PYTHONUNBUFFERED": "1"}
+        env = mission_env(slug, db)
         tool_name, tool_params = normalize_mission(m["type"], m.get("params") or {})
         # CWD = dossier du stack quand il existe : les outils écrivent leurs
         # artefacts à côté du dépôt analysé, jamais dans le code partagé.
