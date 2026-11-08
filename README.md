@@ -1,8 +1,10 @@
 # QeyNox
 
-Le code actuel est la **V1 legacy** : onboard d’un dépôt, research, dossier GTM, validation humaine, veilles. La **cible actuelle est V2.1**, écrite dans [docs/PRD-v2.md](docs/PRD-v2.md). Elle n’est pas implémentée.
+**Statut : BETA50** — le runtime V1.5 est utilisable de bout en bout en auto-hébergé : onboard d’un dépôt, research, dossier GTM, validation humaine, swarm de missions, boucles et MCP. Le **contrat de livraison BETA50** (périmètre, flags, API, UI, limites, critères d’acceptation) est dans [docs/beta50/BETA50_CONTRACT.md](docs/beta50/BETA50_CONTRACT.md).
 
-[docs/PRD-v1.md](docs/PRD-v1.md) décrit la V1. Là où il parle d’un plan d’actions, de jobs, d’un ContextPack ou d’Hermes branché sur chaque tâche, ce n’est pas le comportement du code.
+Le **Domain Core V2** (`core/`) est présent et testé comme bibliothèque interne (domaine, providers, PostgreSQL, Hatchet) mais **n’est pas exposé** par les surfaces BETA50. La cible V2.1 complète reste décrite dans [docs/PRD-v2.md](docs/PRD-v2.md) et [docs/05-IMPLEMENTATION-ROADMAP.md](docs/05-IMPLEMENTATION-ROADMAP.md).
+
+[docs/PRD-v1.md](docs/PRD-v1.md) décrit la V1. Là où il parle d’un plan d’actions, de jobs, d’un ContextPack ou d’Hermes branché sur chaque tâche, ce n’est pas le comportement livré en BETA50.
 
 ## Démarrage
 
@@ -17,7 +19,14 @@ python qeynox.py arms list
 
 SearXNG n’est pas fourni avec le dépôt. S’il répond sur `SEARXNG_URL` (défaut `http://127.0.0.1:8888`), une partie de la research l’utilise. Sinon le pipeline replie sur Bing puis DuckDuckGo. `social_pulse` et `serp_rank` ont besoin de SearXNG.
 
-Copiez `tools/config.example.env` vers `.env`. `HERMES_API_URL` est une variable réservée : aucun job ne l’appelle.
+Copiez `tools/config.example.env` vers `.env`. `HERMES_API_URL` / `HERMES_API_KEY` sont **réservés** : aucun code BETA50 ne les lit (worker Hermes hors périmètre).
+
+## BETA50
+
+- Contrat : [docs/beta50/BETA50_CONTRACT.md](docs/beta50/BETA50_CONTRACT.md) (source machine : [BETA50_CONTRACT.json](docs/beta50/BETA50_CONTRACT.json))
+- Plan d’acceptation et résultats : [docs/beta50/BETA50_ACCEPTANCE.md](docs/beta50/BETA50_ACCEPTANCE.md)
+- Souveraineté par défaut : `QEYNOX_LLM=none` (aucun appel LLM), `QEYNOX_OFFLINE_SEARCH=1` pour les démos/CI.
+- Hors BETA50 : surfaces produit V2 (projets, jobs, artefacts, exécution), PostgreSQL source de vérité, Hatchet activé, multi-tenant.
 
 ## Catalogue de bras
 

@@ -1,0 +1,278 @@
+{
+  "milestone": "BETA50",
+  "version": 1,
+  "date": "2026-11-08",
+  "status": "GO_LOCAL",
+  "positioning": "Première bêta auto-hébergée de QeyNox : le runtime V1.5 (onboarding, dossier GTM, validation humaine, swarm de missions, boucles, MCP, UI) est utilisable de bout en bout en local. Le Domain Core V2 est présent comme bibliothèque interne mais n'est pas exposé par une surface produit.",
+  "runtime": {
+    "python": "3.12+",
+    "web": "stdlib http.server (aucun framework)",
+    "storage": "SQLite par stack + fichiers JSON versionnés",
+    "tenancy": "mono-tenant local (un propriétaire, N stacks)",
+    "network": "aucune sortie hors recherches web publiques ; QEYNOX_LLM=none par défaut"
+  },
+  "surfaces": [
+    {"id": "web", "entrypoint": "python qeynox.py serve", "audience": "humain (admin)"},
+    {"id": "cli", "entrypoint": "python qeynox.py <cmd>", "audience": "opérateur"},
+    {"id": "api", "entrypoint": "http://127.0.0.1:8765/api/*", "audience": "UI + intégrations locales"},
+    {"id": "mcp", "entrypoint": "python mcp_server.py", "audience": "clients IA locaux"},
+    {"id": "loops", "entrypoint": "python engine/loops.py --daemon", "audience": "scheduler interne"},
+    {"id": "deploy", "entrypoint": "docker compose up -d --build", "audience": "hébergement Coolify/VPS"}
+  ],
+  "features": [
+    {
+      "id": "F01",
+      "name": "Onboarding d'un dépôt (local, git, zip)",
+      "surfaces": ["web", "cli", "api"],
+      "status": "in",
+      "evidence": ["engine/pipeline.py", "engine/repo_scan.py", "web/app.py", "qeynox.py", "tests/test_pipeline_e2e.py"]
+    },
+    {
+      "id": "F02",
+      "name": "Pipeline déterministe 8 étapes (clone, scan, keywords, signals, competitors, aeo, synthese, dossier)",
+      "surfaces": ["web", "cli", "api"],
+      "status": "in",
+      "evidence": ["engine/pipeline.py", "engine/research.py", "tests/test_pipeline_e2e.py"]
+    },
+    {
+      "id": "F03",
+      "name": "Dossier GTM versionné et immuable (dossier/versions + latest.json)",
+      "surfaces": ["web", "cli", "api"],
+      "status": "in",
+      "evidence": ["engine/dossier.py", "tests/test_runner.py"]
+    },
+    {
+      "id": "F04",
+      "name": "Validation humaine du dossier → workspace swarm (BUSINESS.md, personas.md, graines, missions suggérées)",
+      "surfaces": ["web", "cli", "api"],
+      "status": "in",
+      "evidence": ["engine/launch.py", "web/app.py", "qeynox.py"]
+    },
+    {
+      "id": "F05",
+      "name": "Missions du swarm (keywords, social, competitors, serp, trends) avec logs en direct",
+      "surfaces": ["web", "api", "mcp"],
+      "status": "in",
+      "evidence": ["engine/runner.py", "tools/keyword_research.py", "tools/social_pulse.py", "tools/competitor_watch.py", "tools/serp_rank.py", "tools/trends_check.py", "web/app.py"]
+    },
+    {
+      "id": "F06",
+      "name": "UI web 9 vues (stacks, dashboard, mots-clés, signaux, concurrents, SERP, missions, rapports, agents)",
+      "surfaces": ["web"],
+      "status": "in",
+      "evidence": ["web/static/index.html", "web/static/app.js", "web/static/style.css"]
+    },
+    {
+      "id": "F07",
+      "name": "Rapports : liste par stack et flotte, lecteur markdown/CSV, export CSV des mots-clés",
+      "surfaces": ["web", "api"],
+      "status": "in",
+      "evidence": ["web/app.py", "web/static/app.js", "tests/test_beta50_contract.py"]
+    },
+    {
+      "id": "F08",
+      "name": "Boucles : heartbeat, re-scan sur changement de source, retry, plafonds, kill switch",
+      "surfaces": ["loops", "cli"],
+      "status": "in",
+      "evidence": ["engine/loops.py", "tests/test_lot0_p0.py"]
+    },
+    {
+      "id": "F09",
+      "name": "Serveur MCP lecture + launch_tool + propose_decision",
+      "surfaces": ["mcp"],
+      "status": "in",
+      "evidence": ["mcp_server.py", "tests/test_security.py"]
+    },
+    {
+      "id": "F10",
+      "name": "Catalogue de bras versionné (list/get/add/enable/disable)",
+      "surfaces": ["cli"],
+      "status": "in",
+      "evidence": ["engine/arms.py", "catalog/arms.json", "catalog/overrides.example.json"]
+    },
+    {
+      "id": "F11",
+      "name": "Garde-fous sécurité : bind loopback, jeton API, allowlist git, anti zip-slip, anti SSRF, redaction credentials",
+      "surfaces": ["web", "api", "cli"],
+      "status": "in",
+      "evidence": ["engine/safety.py", "engine/git_auth.py", "scripts/secret_guard.py", "tests/test_security.py", "tests/test_git_token.py"]
+    },
+    {
+      "id": "F12",
+      "name": "Déploiement Docker Compose (web + loops + SearXNG optionnel) et runbook Coolify",
+      "surfaces": ["deploy"],
+      "status": "in",
+      "evidence": ["Dockerfile", "docker-compose.yml", "docker/entrypoint.sh", "docs/runbooks/COOLIFY-DEPLOY.md"]
+    },
+    {
+      "id": "F13",
+      "name": "Souveraineté : aucune sortie LLM par défaut (QEYNOX_LLM=none) et recherche offline pour démos/CI",
+      "surfaces": ["web", "cli", "api"],
+      "status": "in",
+      "evidence": ["engine/synthesize.py", ".env.example", "tests/test_beta50_contract.py"]
+    },
+    {
+      "id": "F14",
+      "name": "Domain Core V2 (domaine, providers, artefacts, PostgreSQL, Hatchet) — bibliothèque interne non exposée",
+      "surfaces": ["internal"],
+      "status": "internal",
+      "evidence": ["core/domain/model.py", "core/application/service.py", "core/postgres/repository.py", "core/hatchet/adapter.py", "tests/test_v2_domain.py"]
+    }
+  ],
+  "non_goals": [
+    "Surfaces produit V2 : projets, JobSpec/JobRun web, Artifact versions web, Regenerate, Approve, ExecutionSpec/ExecutionRun, evidence",
+    "PostgreSQL comme source de vérité du runtime BETA50",
+    "Activation du runtime durable Hatchet (l'adaptateur reste interne et testé)",
+    "Authentification multi-tenant, rôles, organisations",
+    "Facturation, analytics, OpenTelemetry/Langfuse",
+    "FastAPI / refonte du serveur web",
+    "Exécution Hermes par job (HERMES_API_URL/API_KEY réservés, non utilisés)",
+    "Plan.json d'actions typées et exécution/evidence/outcome"
+  ],
+  "apis": [
+    {"method": "GET", "path": "/api/health", "auth": "public", "ui": true, "purpose": "Liveness + disponibilité SearXNG"},
+    {"method": "GET", "path": "/api/state", "auth": "token", "ui": true, "purpose": "KPI, runs récents, flotte d'agents"},
+    {"method": "GET", "path": "/api/stacks", "auth": "token", "ui": true, "purpose": "Registre des stacks + pipeline + dossier_data"},
+    {"method": "GET", "path": "/api/stacks/{slug}/pipeline", "auth": "token", "ui": true, "purpose": "Étapes du pipeline"},
+    {"method": "GET", "path": "/api/stacks/{slug}/dossier", "auth": "token", "ui": true, "purpose": "Dernier dossier GTM markdown"},
+    {"method": "GET", "path": "/api/stacks/{slug}/context", "auth": "token", "ui": true, "purpose": "Analyse statique du dépôt"},
+    {"method": "GET", "path": "/api/keywords", "auth": "token", "ui": true, "purpose": "Mots-clés scorés (filtres intent/q)"},
+    {"method": "GET", "path": "/api/signals", "auth": "token", "ui": true, "purpose": "Signaux/verbatims stockés"},
+    {"method": "GET", "path": "/api/serp", "auth": "token", "ui": true, "purpose": "Dernières positions SERP"},
+    {"method": "GET", "path": "/api/competitors", "auth": "token", "ui": true, "purpose": "Snapshots concurrents"},
+    {"method": "GET", "path": "/api/missions", "auth": "token", "ui": true, "purpose": "Missions (flotte entière) + types disponibles"},
+    {"method": "GET", "path": "/api/missions/{id}/log", "auth": "token", "ui": true, "purpose": "Log de mission"},
+    {"method": "GET", "path": "/api/reports", "auth": "token", "ui": true, "purpose": "Livrables (stack sélectionné ou flotte)"},
+    {"method": "GET", "path": "/api/report", "auth": "token", "ui": true, "purpose": "Contenu d'un livrable markdown/CSV"},
+    {"method": "GET", "path": "/api/export/keywords.csv", "auth": "token", "ui": true, "purpose": "Export CSV des mots-clés"},
+    {"method": "POST", "path": "/api/stacks", "auth": "token", "ui": true, "purpose": "Créer un stack + lancer le pipeline"},
+    {"method": "POST", "path": "/api/stacks/{slug}/validate", "auth": "token", "ui": true, "purpose": "Valider le dossier et créer le swarm"},
+    {"method": "POST", "path": "/api/missions", "auth": "token", "ui": true, "purpose": "Lancer une mission outillée"},
+    {"method": "POST", "path": "/api/hooks/agent", "auth": "token", "ui": false, "purpose": "Dépôt d'un livrable par un agent externe"}
+  ],
+  "ui_views": [
+    {"id": "stacks", "purpose": "Onboarding, pipeline, validation du dossier"},
+    {"id": "dashboard", "purpose": "KPI, missions, activité récente"},
+    {"id": "keywords", "purpose": "Univers de mots-clés, filtres intent, export"},
+    {"id": "signals", "purpose": "Verbatims issus des missions sociales"},
+    {"id": "competitors", "purpose": "Veille concurrents"},
+    {"id": "serp", "purpose": "Positions SERP"},
+    {"id": "missions", "purpose": "Lancement et logs"},
+    {"id": "reports", "purpose": "Livrables markdown/CSV"},
+    {"id": "agents", "purpose": "Flotte et rôle des agents"}
+  ],
+  "flags": [
+    {"name": "QEYNOX_BIND", "default": "127.0.0.1", "kind": "user", "effect": "Adresse d'écoute ; hors loopback exige QEYNOX_API_TOKEN (fail closed).", "documented_in": [".env.example", "tools/config.example.env"]},
+    {"name": "QEYNOX_API_TOKEN", "default": "", "kind": "user", "secret": true, "effect": "Jeton Bearer/X-Qeynox-Token/X-Lumira-Token sur /api/* sauf /api/health.", "documented_in": [".env.example", "tools/config.example.env"]},
+    {"name": "GTM_HOOK_TOKEN", "default": "", "kind": "user", "secret": true, "effect": "Ancien nom de jeton, encore accepté.", "documented_in": [".env.example"]},
+    {"name": "GTM_WEB_PORT", "default": "8765", "kind": "user", "effect": "Port HTTP.", "documented_in": [".env.example", "tools/config.example.env"]},
+    {"name": "QEYNOX_ROOT", "default": "racine du dépôt", "kind": "user", "effect": "Racine code utilisée par paths/MCP si le processus démarre ailleurs.", "documented_in": [".env.example"]},
+    {"name": "QEYNOX_STACKS_DIR", "default": "<root>/stacks", "kind": "user", "effect": "Volume des stacks (données tenant).", "documented_in": [".env.example"]},
+    {"name": "QEYNOX_LOGS_DIR", "default": "<root>/logs", "kind": "user", "effect": "Répertoire des logs de missions/outils.", "documented_in": [".env.example"]},
+    {"name": "QEYNOX_MISSIONS_FILE", "default": "<root>/web/missions.json", "kind": "user", "effect": "État des missions UI.", "documented_in": [".env.example"]},
+    {"name": "QEYNOX_LLM", "default": "none", "kind": "user", "values": ["none", "auto", "ollama", "openai"], "effect": "none = aucune sortie LLM ; auto = Ollama puis OpenAI-compatible ; fournisseur forcé sinon.", "documented_in": [".env.example", "docker-compose.yml"]},
+    {"name": "QEYNOX_LLM_MODEL", "default": "", "kind": "user", "effect": "Modèle utilisé par la synthèse (défauts internes : mistral / gpt-4o-mini).", "documented_in": [".env.example"]},
+    {"name": "QEYNOX_OLLAMA_URL", "default": "http://127.0.0.1:11434", "kind": "user", "effect": "Endpoint Ollama pour QEYNOX_LLM=auto|ollama.", "documented_in": [".env.example"]},
+    {"name": "QEYNOX_LLM_BASEURL", "default": "https://api.openai.com/v1", "kind": "user", "effect": "Base OpenAI-compatible pour QEYNOX_LLM=auto|openai.", "documented_in": [".env.example"]},
+    {"name": "QEYNOX_LLM_API_KEY", "default": "", "kind": "user", "secret": true, "effect": "Clé API du fournisseur OpenAI-compatible.", "documented_in": [".env.example"]},
+    {"name": "QEYNOX_GIT_TOKEN", "default": "", "kind": "user", "secret": true, "effect": "PAT GitHub lecture seule pour cloner des dépôts privés (transmis hors URL/argv/logs).", "documented_in": [".env.example"]},
+    {"name": "SEARXNG_URL", "default": "http://127.0.0.1:8888", "kind": "user", "effect": "Moteur de recherche prioritaire ; sinon fallback Bing/DDG.", "documented_in": [".env.example", "tools/config.example.env"]},
+    {"name": "GTM_LANG", "default": "fr", "kind": "user", "effect": "Langue des recherches.", "documented_in": [".env.example", "tools/config.example.env"]},
+    {"name": "GTM_GL", "default": "FR", "kind": "user", "effect": "Pays des recherches.", "documented_in": [".env.example", "tools/config.example.env"]},
+    {"name": "QEYNOX_OFFLINE_SEARCH", "default": "", "kind": "user", "effect": "Mode démo/CI : remplace les recherches web par des résultats déterministes.", "documented_in": [".env.example"]},
+    {"name": "GTM_DB", "default": "data/gtm.db", "kind": "internal", "effect": "Base SQLite forcée par le runtime pour un outil.", "documented_in": ["tools/config.example.env"]},
+    {"name": "GTM_BRAND", "default": "", "kind": "internal", "effect": "Marque injectée dans l'environnement d'une mission.", "documented_in": []},
+    {"name": "GTM_BRAND_ALIASES", "default": "", "kind": "internal", "effect": "Alias de marque injectés dans l'environnement d'une mission.", "documented_in": []},
+    {"name": "GTM_DOMAIN", "default": "", "kind": "internal", "effect": "Domaine injecté dans l'environnement d'une mission.", "documented_in": []}
+  ],
+  "test_flags": ["QEYNOX_TEST_DATABASE_URL"],
+  "reserved_flags": [
+    {"name": "HERMES_API_URL", "reason": "Worker Hermes non branché en BETA50 (voir PRD V2, lot hors périmètre)."},
+    {"name": "HERMES_API_KEY", "reason": "Worker Hermes non branché en BETA50."}
+  ],
+  "mcp_tools": [
+    "list_stacks", "get_stack_summary", "get_keywords", "get_signals", "get_competitors",
+    "get_aeo", "get_dossier", "get_synthesis", "launch_tool", "propose_decision"
+  ],
+  "cli_commands": [
+    "qeynox.py serve", "qeynox.py onboard", "qeynox.py status", "qeynox.py validate",
+    "qeynox.py arms list|get|add|enable|disable",
+    "engine/loops.py --once|--daemon|--status|--halt|--resume"
+  ],
+  "contradictions": [
+    {
+      "id": "C1",
+      "summary": "QEYNOX_LLM valait 'auto' par défaut dans le code alors que .env.example, Dockerfile et docker-compose documentent 'none' (risque d'appels LLM non désirés).",
+      "status": "fixed",
+      "fix": "engine/synthesize.py : défaut 'none', valeurs inconnues ramenées à 'none'."
+    },
+    {
+      "id": "C2",
+      "summary": "La vue Rapports d'un stack était vide : /api/reports ne parcourait que stacks/<slug>/output/, jamais dossier/ ni research/.",
+      "status": "fixed",
+      "fix": "web/app.py : _report_root() = stacks/<slug> et /api/report lit la même racine."
+    },
+    {
+      "id": "C3",
+      "summary": "Vue Rapports flotte : chemins relatifs à la racine du dépôt alors que /api/report les lisait depuis stacks/ → tous les clics 404.",
+      "status": "fixed",
+      "fix": "Chemins toujours relatifs à la racine affichée (stacks/ ou stacks/<slug>), identique côté liste et lecteur."
+    },
+    {
+      "id": "C4",
+      "summary": "UI : URLs malformées sans stack sélectionné (/api/keywords&intent=…, /api/report&path=…) → 404 sur une installation fraîche.",
+      "status": "fixed",
+      "fix": "web/static/app.js : helper apiPath(path, params) ; plus aucune concaténation qs()+'&'."
+    },
+    {
+      "id": "C5",
+      "summary": "L'UI envoyait ?stack= à GET /api/missions qui l'ignore (liste flotte) — ambiguïté de contrat.",
+      "status": "documented",
+      "fix": "Contrat : GET /api/missions est flotte-wide ; l'UI n'envoie plus ce paramètre."
+    },
+    {
+      "id": "C6",
+      "summary": "README affirmait que la cible V2.1 n'était pas implémentée alors que core/ contient le Domain Core V2 (interne).",
+      "status": "fixed",
+      "fix": "README + docs/beta50 : distinction runtime exposé BETA50 vs V2 interne non exposé."
+    },
+    {
+      "id": "C7",
+      "summary": "Variables lues par le code mais absentes de .env.example (QEYNOX_ROOT, QEYNOX_OFFLINE_SEARCH, GTM_DB, GTM_BRAND…).",
+      "status": "fixed",
+      "fix": ".env.example + docs/beta50/BETA50_CONTRACT.md : matrice des flags complète avec défauts et effets."
+    },
+    {
+      "id": "C8",
+      "summary": "tools/config.example.env présentait HERMES_API_URL/API_KEY comme configurables alors qu'aucun code ne les lit.",
+      "status": "fixed",
+      "fix": "Marqués RÉSERVÉS dans le fichier + section reserved_flags du contrat."
+    },
+    {
+      "id": "C9",
+      "summary": "Après onboarding, la page Signaux peut être vide alors que le dossier contient des verbatims : la research écrit research/signals.json, la page lit la table SQLite remplie par la mission sociale.",
+      "status": "documented",
+      "fix": "Documenté dans le contrat (flux de données) : lancer une mission « Scan signaux sociaux » pour peupler la vue Signaux."
+    },
+    {
+      "id": "C10",
+      "summary": "`engine/loops.py --status` sans aucun stack n'affichait rien (CLI silencieuse, comportement indistinguable d'une erreur).",
+      "status": "fixed",
+      "fix": "engine/loops.py : message explicite « Aucun stack suivi » + test dédié."
+    }
+  ],
+  "acceptance_commands": [
+    "python -m compileall -q engine tools web scripts core mcp_server.py qeynox.py",
+    "python -m ruff check .",
+    "python -m pytest -q",
+    "node --check web/static/app.js",
+    "python scripts/secret_guard.py",
+    "python -m pytest -q tests/test_beta50_contract.py -v"
+  ],
+  "exit_criteria": [
+    "Aucune contradiction BETA50 au statut 'open'.",
+    "Toutes les commandes d'acceptation passent en local.",
+    "La suite pytest complète passe (les tests PostgreSQL internes restent SKIPPED sans QEYNOX_TEST_DATABASE_URL, jamais annoncés PASS).",
+    "Le parcours web de bout en bout est couvert par tests/test_beta50_contract.py (onboarding → dossier → rapports → validation → swarm → mission → hooks)."
+  ]
+}
