@@ -472,7 +472,11 @@ def cycle(slugs: list[str] | None = None) -> dict:
 # --------------------------------------------------------------------------- CLI
 
 def cmd_status():
-    for slug in list_stacks():
+    slugs = list_stacks()
+    if not slugs:
+        print("Aucun stack suivi — créez-en un : python3 qeynox.py onboard ...")
+        return
+    for slug in slugs:
         st = read_json(os.path.join(stacks_dir(), slug, "loop_state.json"), {})
         progs = read_json(os.path.join(stacks_dir(), slug, "programs.json"), [])
         print(f"\n=== {slug} — santé {st.get('health', '?')}/100 — dernier cycle {st.get('last_cycle', '—')} ===")

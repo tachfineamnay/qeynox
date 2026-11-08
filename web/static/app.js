@@ -140,7 +140,15 @@ function emptyState(title, text, action="") {
   return `<div class="empty"><div class="e-moon">${I.moon}</div><strong>${esc(title)}</strong><p>${text}</p>${action}</div>`;
 }
 function chipIntent(i) { const label = (INTENTS.find(([v]) => v === i) || [,"?"])[1]; return `<span class="chip ${i==="?"?"unknown":i}">${esc(label)}</span>`; }
-function qs() { return state.stack ? `?stack=${encodeURIComponent(state.stack)}` : ""; }
+function apiPath(path, params) {
+  const q = new URLSearchParams();
+  if (state.stack) q.set("stack", state.stack);
+  for (const [k, v] of Object.entries(params || {})) {
+    if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
+  }
+  const s = q.toString();
+  return s ? `${path}?${s}` : path;
+}
 
 /* ---------------------------------------------------------------- stack selector */
 async function refreshStackSelect() {
@@ -310,7 +318,7 @@ async function renderDashboard() {
   const c = $("#content"); c.innerHTML = skeleton(4);
   try {
     if (!state.stack) await refreshStackSelect();
-    const [st, ms] = await Promise.all([api(`/api/state${qs()}`), api(`/api/missions` + (state.stack ? `?stack=${state.stack}` : ""))]);
+    const [st, ms] = await Promise.all([api(apiPath("/api/state")), api(apiPath("/api/missions"))]);
     const k = st.kpis, running = ms.rows.filter(m => m.status === "running");
     const { rows: stacks } = await api("/api/stacks");
     const active = stacks.find(s => s.slug === state.stack);
@@ -367,7 +375,7 @@ async function renderKeywords() {
 }
 async function exportKeywordsCsv() {
   try {
-    const r = await fetch("/api/export/keywords.csv" + qs(), { headers: authHeaders() });
+    const r = await fetch(apiPath("/api/export/keywords.csv"), { headers: authHeaders() });
     if (r.status === 401) { await api("/api/stacks"); return exportKeywordsCsv(); }
     if (!r.ok) throw new Error("HTTP " + r.status);
     const blob = await r.blob();
@@ -380,7 +388,7 @@ async function exportKeywordsCsv() {
 }
 async function loadKwTable() {
   const el = $("#kw-table"); if (!el) return;
-  const { rows } = await api(`/api/keywords${qs()}&intent=${encodeURIComponent(state.intent)}&q=${encodeURIComponent(state.q)}`);
+  const { rows } = await api(apiPath("/api/keywords", { intent: state.intent, q: state.q }));
   if (!rows.length) {
     el.innerHTML = emptyState("Pas encore de mots-clés", "Lancez une mission « Expansion de mots-clés » — les graines validées du dossier sont pré-remplies.", `<button class="btn primary" data-mission="keywords">${I.plus} Lancer l'expansion</button>`);
     el.querySelector("[data-mission]").addEventListener("click", () => openMissionModal("keywords"));
@@ -399,7 +407,7 @@ async function loadKwTable() {
 /* ---------------------------------------------------------------- signaux */
 async function renderSignals() {
   const c = $("#content"); c.innerHTML = skeleton(3);
-  const { rows } = await api(`/api/signals${qs()}`);
+  const { rows } = await api(apiPath("/api/signals"));
   if (!rows.length) {
     c.innerHTML = emptyState("Aucun signal", "Lancez un scan — les verbatims réels alimentent hooks, contenu et personas.",
       `<button class="btn primary" data-mission="social">${I.plus} Lancer un scan</button>`);
@@ -418,7 +426,7 @@ async function renderSignals() {
 /* ---------------------------------------------------------------- concurrents */
 async function renderCompetitors() {
   const c = $("#content"); c.innerHTML = skeleton(3);
-  const { rows } = await api(`/api/competitors${qs()}`);
+  const { rows } = await api(apiPath("/api/competitors"));
   const head = `<div class="filters"><div class="spacer"></div><button class="btn primary" data-mission="competitors">${I.plus} Lancer la veille</button></div>`;
   if (!rows.length) {
     c.innerHTML = head + emptyState("Aucun concurrent surveillé", "La veille prend des snapshots des pages concurrents et détecte les changements (prix, offres, wording).");
@@ -437,7 +445,7 @@ async function renderCompetitors() {
 /* ---------------------------------------------------------------- serp */
 async function renderSerp() {
   const c = $("#content"); c.innerHTML = skeleton(3);
-  const { rows } = await api(`/api/serp${qs()}`);
+  const { rows } = await api(apiPath("/api/serp"));
   if (!rows.length) {
     c.innerHTML = emptyState("Aucune position suivie", "Construisez l'univers de mots-clés puis lancez la mission « Positions SERP » (SearXNG requis).",
       `<button class="btn primary" data-mission="serp">${I.plus} Vérifier les positions</button>`);
@@ -526,7 +534,7 @@ async function renderReports() {
   const c = $("#content");
   if (state.reportPath) return renderReportViewer();
   c.innerHTML = skeleton(2);
-  const { rows } = await api(`/api/reports${qs()}`);
+  const { rows } = await api(apiPath("/api/reports"));
   if (!rows.length) {
     c.innerHTML = emptyState("Aucun rapport", "Les livrables apparaissent ici : dossier GTM, veilles, livrables poussés par les agents.");
     return;
@@ -541,7 +549,7 @@ async function renderReports() {
 }
 async function renderReportViewer() {
   const c = $("#content"); c.innerHTML = skeleton(1);
-  const { content } = await api(`/api/report${qs()}&path=${encodeURIComponent(state.reportPath)}`);
+  const { content } = await api(apiPath("/api/report", { path: state.reportPath }));
   const isCsv = state.reportPath.endsWith(".csv");
   c.innerHTML = `
     <div class="back-row"><button class="btn subtle" id="rep-back"><span class="ic">${I.arrow}</span> Retour</button>
@@ -553,7 +561,7 @@ async function renderReportViewer() {
 /* ---------------------------------------------------------------- agents */
 async function renderAgents() {
   const c = $("#content"); c.innerHTML = skeleton(3);
-  const st = await api(`/api/state${qs()}`);
+  const st = await api(apiPath("/api/state"));
   const { rows: ms } = await api("/api/missions");
   const busy = new Set(ms.filter(m => m.status === "running").map(m => m.agent));
   c.innerHTML = `<div class="agents-grid">${st.agents.map(a => `
@@ -643,3 +651,4 @@ async function updateSearxDot() {
 }
 updateSearxDot(); setInterval(updateSearxDot, 15000);
 refreshStackSelect().then(() => setView("stacks"));
+

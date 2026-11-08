@@ -125,6 +125,44 @@ def stack_output(slug: str) -> str:
     return os.path.join(stacks_dir(), safe_slug(slug), "output")
 
 
+def _report_root(slug: str) -> str:
+    """Racine des livrables listés par /api/reports et lus par /api/report.
+
+    Avec un stack : tout le dossier du stack (dossier/, research/, output/,
+    swarm/…), jamais le clone `repo/`. Sans stack : la racine `stacks/`, ce qui
+    rend les chemins relatifs identiques côté liste et côté lecteur.
+    """
+    if slug:
+        return os.path.join(stacks_dir(), safe_slug(slug))
+    return stacks_dir()
+
+
+_REPORT_SKIP_DIRS = {"repo", "logs", "data", "__pycache__", ".git", "node_modules"}
+
+
+def _report_rows(slug: str) -> list[dict]:
+    root = _report_root(slug)
+    reports: list[dict] = []
+    if not os.path.isdir(root):
+        return reports
+    for rdir, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in _REPORT_SKIP_DIRS]
+        for fn in files:
+            if not fn.endswith((".md", ".csv")):
+                continue
+            fp = os.path.join(rdir, fn)
+            rel_path = os.path.relpath(fp, root).replace(os.sep, "/")
+            reports.append({
+                "path": rel_path,
+                "stack": slug or rel_path.split("/", 1)[0],
+                "name": fn,
+                "mtime": datetime.fromtimestamp(os.path.getmtime(fp), timezone.utc).isoformat(),
+                "size": os.path.getsize(fp),
+            })
+    reports.sort(key=lambda r: r["mtime"], reverse=True)
+    return reports[:200]
+
+
 def load_missions() -> None:
     path = missions_file()
     if os.path.exists(path):
@@ -374,22 +412,7 @@ class Handler(BaseHTTPRequestHandler):
                 slug = self._query_slug(qs)
                 if slug is None:
                     return
-                root = stack_output(slug) if slug else stacks_dir()
-                reports = []
-                if os.path.isdir(root):
-                    for rdir, _dirs, files in os.walk(root):
-                        if os.path.join("repo") + os.sep in rdir:
-                            continue
-                        for fn in files:
-                            if fn.endswith((".md", ".csv")) and "logs" not in rdir:
-                                fp = os.path.join(rdir, fn)
-                                reports.append({"path": os.path.relpath(fp, root if slug else QEYNOX_ROOT),
-                                                "stack": slug or os.path.relpath(rdir, QEYNOX_ROOT).split(os.sep)[1],
-                                                "name": fn,
-                                                "mtime": datetime.fromtimestamp(os.path.getmtime(fp), timezone.utc).isoformat(),
-                                                "size": os.path.getsize(fp)})
-                reports.sort(key=lambda r: r["mtime"], reverse=True)
-                return self._json({"rows": reports[:200]})
+                return self._json({"rows": _report_rows(slug)})
 
             m = re.match(r"^/api/report$", path)
             if m:
@@ -397,9 +420,8 @@ class Handler(BaseHTTPRequestHandler):
                 if slug is None:
                     return
                 rel = (qs.get("path") or [""])[0]
-                root = os.path.abspath(stack_output(slug) if slug else stacks_dir())
                 try:
-                    fp = safe_join(root, rel)
+                    fp = safe_join(_report_root(slug), rel)
                 except ValueError:
                     return self._json({"error": "introuvable"}, 404)
                 if not os.path.isfile(fp):
