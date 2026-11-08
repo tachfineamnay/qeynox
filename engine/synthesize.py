@@ -138,7 +138,9 @@ MODE = ["none"]
 
 
 def stage_synthese(stack: str, analysis: dict) -> dict:
-    mode = os.environ.get("QEYNOX_LLM", "auto").lower()
+    mode = (os.environ.get("QEYNOX_LLM") or "none").strip().lower()
+    if mode not in ("none", "auto", "ollama", "openai"):
+        mode = "none"
     out_dir = os.path.join(stacks_dir(), stack, "research")
     os.makedirs(out_dir, exist_ok=True)
 
