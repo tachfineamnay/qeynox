@@ -1,0 +1,1 @@
+{ "name": "@qeynox/roles", "version": "0.1.0", "type": "module", "exports": { ".": "./src/index.ts" }, "dependencies": { "@qeynox/domain": "workspace:*", "@qeynox/engine": "workspace:*", "@qeynox/persistence": "workspace:*", "drizzle-orm": "0.44.5" } }

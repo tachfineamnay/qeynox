@@ -1,0 +1,50 @@
+# Source-only Coolify foundation. External Hatchet and Hermes instances must be provided
+# with verified private URLs, images and environment. Never publish admin/data endpoints.
+services:
+  postgres:
+    image: postgres:16.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: qeynox
+      POSTGRES_USER: qeynox_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    volumes:
+      - qeynox_pg:/var/lib/postgresql/data
+    networks: [qeynox-private]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U qeynox_user -d qeynox"]
+      interval: 10s
+      retries: 5
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    restart: unless-stopped
+    environment:
+      PORT: "4000"
+      DATABASE_URL: ${DATABASE_URL:?required}
+      HATCHET_CLIENT_TOKEN: ${HATCHET_CLIENT_TOKEN:?required}
+      HERMES_API_BASE_URL: ${HERMES_API_BASE_URL:?required}
+      HERMES_API_KEY: ${HERMES_API_KEY:?required}
+      HERMES_NATIVE_TOOLS_ISOLATED: "false"
+    expose: ["4000"]
+    depends_on: [postgres]
+    networks: [qeynox-private]
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?required}
+      HATCHET_CLIENT_TOKEN: ${HATCHET_CLIENT_TOKEN:?required}
+      HERMES_API_BASE_URL: ${HERMES_API_BASE_URL:?required}
+      HERMES_API_KEY: ${HERMES_API_KEY:?required}
+      HERMES_NATIVE_TOOLS_ISOLATED: "false"
+    depends_on: [postgres]
+    networks: [qeynox-private]
+networks:
+  qeynox-private:
+    internal: true
+volumes:
+  qeynox_pg:

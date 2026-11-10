@@ -1,0 +1,35 @@
+-- QeyNox canonical schema. Separate PostgreSQL database and credentials from Hatchet.
+-- APPLY ONLY IN A LATER VERIFICATION PHASE. This file has not been executed.
+BEGIN;
+CREATE TABLE IF NOT EXISTS operations (id text PRIMARY KEY, workspace_id text NOT NULL, created_by text NOT NULL, goal_id text NOT NULL, status text NOT NULL, version integer NOT NULL, current_revision_id text, last_activity_at text NOT NULL, payload jsonb NOT NULL);
+CREATE INDEX IF NOT EXISTS operation_workspace_activity_idx ON operations(workspace_id,last_activity_at);
+CREATE TABLE IF NOT EXISTS goals (id text PRIMARY KEY, operation_id text NOT NULL, payload jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS operation_plans (id text PRIMARY KEY, operation_id text UNIQUE NOT NULL, payload jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS plan_revisions (id text PRIMARY KEY, operation_id text NOT NULL, plan_id text NOT NULL, revision integer NOT NULL, payload jsonb NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS revisions_plan_seq_unique ON plan_revisions(plan_id,revision);
+CREATE TABLE IF NOT EXISTS work_steps (id text PRIMARY KEY, operation_id text NOT NULL, revision_id text NOT NULL, payload jsonb NOT NULL);
+CREATE INDEX IF NOT EXISTS steps_revision_idx ON work_steps(revision_id);
+CREATE TABLE IF NOT EXISTS step_attempts (id text PRIMARY KEY, operation_id text NOT NULL, step_id text NOT NULL, revision_id text NOT NULL, sequence integer NOT NULL, state text NOT NULL, payload jsonb NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS attempt_step_seq_unique ON step_attempts(step_id,sequence);
+CREATE TABLE IF NOT EXISTS consents (id text PRIMARY KEY, workspace_id text NOT NULL, user_id text NOT NULL, payload jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS user_contexts (id text PRIMARY KEY, workspace_id text NOT NULL, owner_user_id text NOT NULL, payload jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS capabilities (id text PRIMARY KEY, slot integer NOT NULL, version integer NOT NULL, status text NOT NULL, payload jsonb NOT NULL, CONSTRAINT capability_slot_range CHECK (slot BETWEEN 1 AND 8));
+CREATE UNIQUE INDEX IF NOT EXISTS capability_slot_version_unique ON capabilities(slot,version);
+CREATE TABLE IF NOT EXISTS approval_requests (id text PRIMARY KEY, workspace_id text NOT NULL, operation_id text NOT NULL, status text NOT NULL, payload jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS execution_links (id text PRIMARY KEY, operation_id text NOT NULL, attempt_id text NOT NULL, provider text NOT NULL, workflow_run_id text, payload jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS operation_events (id text PRIMARY KEY, workspace_id text NOT NULL, operation_id text NOT NULL, kind text NOT NULL, occurred_at text NOT NULL, payload jsonb NOT NULL);
+CREATE INDEX IF NOT EXISTS events_operation_time_idx ON operation_events(operation_id, occurred_at);
+CREATE TABLE IF NOT EXISTS outbox (id text PRIMARY KEY, workspace_id text NOT NULL, operation_id text NOT NULL, idempotency_key text NOT NULL UNIQUE, topic text NOT NULL, payload jsonb NOT NULL, state text NOT NULL DEFAULT 'PENDING', attempts integer NOT NULL DEFAULT 0, next_attempt_at text NOT NULL, created_at text NOT NULL, sent_at text, last_error text);
+CREATE INDEX IF NOT EXISTS outbox_state_due_idx ON outbox(state,next_attempt_at);
+CREATE TABLE IF NOT EXISTS sources (id text PRIMARY KEY, workspace_id text NOT NULL, operation_id text NOT NULL, payload jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS evidence (id text PRIMARY KEY, operation_id text NOT NULL, attempt_id text NOT NULL, payload jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS artifacts (id text PRIMARY KEY, workspace_id text NOT NULL, operation_id text NOT NULL, payload jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS result_versions (id text PRIMARY KEY, workspace_id text NOT NULL, operation_id text NOT NULL, version integer NOT NULL, payload jsonb NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS result_operation_version_unique ON result_versions(operation_id,version);
+CREATE TABLE IF NOT EXISTS tool_invocation_intents (id text PRIMARY KEY, operation_id text NOT NULL, idempotency_key text NOT NULL UNIQUE, payload jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS tool_execution_ledger (id text PRIMARY KEY, workspace_id text NOT NULL, operation_id text NOT NULL, attempt_id text NOT NULL, intent_id text NOT NULL UNIQUE, connector text NOT NULL, outcome text NOT NULL, request_digest text NOT NULL, result jsonb, created_at text NOT NULL, updated_at text NOT NULL);
+CREATE TABLE IF NOT EXISTS agent_profiles (id text PRIMARY KEY, role_key text NOT NULL, version integer NOT NULL, active boolean NOT NULL DEFAULT false, payload jsonb NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS agent_profile_version_unique ON agent_profiles(role_key,version);
+CREATE TABLE IF NOT EXISTS command_idempotency (id text PRIMARY KEY, workspace_id text NOT NULL, operation_id text NOT NULL, command_key text NOT NULL, outcome jsonb NOT NULL, created_at text NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS command_key_workspace_unique ON command_idempotency(workspace_id,command_key);
+COMMIT;

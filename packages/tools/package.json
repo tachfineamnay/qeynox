@@ -1,0 +1,1 @@
+{ "name": "@qeynox/tools", "version": "0.1.0", "type": "module", "exports": { ".": "./src/index.ts" }, "dependencies": { "@qeynox/domain": "workspace:*", "@qeynox/persistence": "workspace:*", "zod": "4.1.11" } }
