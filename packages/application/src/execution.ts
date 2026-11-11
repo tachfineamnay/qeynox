@@ -3,6 +3,7 @@ import { DomainError,newId,type ID,type Principal,type StepAttempt,type Operatio
 import { QeyNoxStore,attempts,outbox,events,operations,commandIds,planSeals } from '@qeynox/persistence';
 import { PlanSealer } from './plan-seal';
 import { CommerceService } from './commerce';
+import { BudgetService } from './budgets';
 export class OperationExecutionService {
  private readonly sealer:PlanSealer;
  private readonly commerce:CommerceService;
@@ -14,6 +15,7 @@ export class OperationExecutionService {
   if(op.version!==expectedVersion)throw new DomainError('CONFLICT','Operation version mismatch');
   if(!op.currentRevisionId||!['READY','INTERRUPTED','FAILED'].includes(op.status))throw new DomainError('INVALID_STATE','Plan not ready');
   await this.commerce.assertExecutionAllowed(actor,operationId,op.currentRevisionId);
+  await new BudgetService(this.store).requirePolicy(actor,operationId);
   const planSeal=await this.sealer.prepare(operationId,op.currentRevisionId);
   const planSteps=await this.store.getSteps(op.currentRevisionId);
   const first=planSteps.filter(s=>s.dependsOn.length===0).sort((a,b)=>a.ordinal-b.ordinal)[0];

@@ -1,6 +1,6 @@
 # QeyNox source-only progress
-10 auth CODED; 11 multi-step CODED; 12 brokered proposals CODED; 13 connector manifests CODED; 14 claim/evidence CODED; 15 structured result + S3 export CODED.
-16 RaaS offers, quote acceptance, free-vs-paid order authorization and disabled PaymentPort CODED. No tariffs or payment gateway configured.
-17–20 PENDING.
-NEXT SESSION HANDOFF: Task 17. Enforce bounded agent/tool budgets and rate reservations BEFORE actions. Differentiate reported usage from estimated and unknown. Pricing remains OPEN.
+10 auth CODED; 11 Hatchet progression CODED; 12 brokered tools CODED; 13 provider manifests CODED; 14 claims CODED; 15 documents + S3 CODED; 16 offers + commerce CODED.
+17 budget policies, atomic reservations/usage ledger and loop detection CODED. Provider-specific rates not configured.
+18–20 PENDING.
+NEXT SESSION HANDOFF: Task 18. Add read models and stable operation timeline/query API; preserve tenant scoping. Task 20 must integrate budget reservations into start, agent calls and broker tools, and assess any insufficient linkage.
 GLOBAL: UNTESTED / NOT BUILT / NOT DEPLOYED.

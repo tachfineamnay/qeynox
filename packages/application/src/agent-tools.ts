@@ -4,6 +4,7 @@ import { DomainError,newId,type ID,type Principal,type Evidence,type Source } fr
 import { QeyNoxStore,approvals,identityMemberships } from '@qeynox/persistence';
 import type { EnginePort,AgentProfile,EngineOutcome,EngineRequest } from '@qeynox/engine';
 import { ToolBroker,ToolRegistry,PgToolLedger,type ConnectorCall,type PermissionContext } from '@qeynox/tools';
+import { BudgetService } from './budgets';
 import type { CapabilityDefinition } from '@qeynox/domain';
 
 export class BrokeredAgentExecutor {
@@ -41,13 +42,22 @@ export class BrokeredAgentExecutor {
        const serialized=JSON.stringify({proposal,attemptId:attempt.id,iteration:i,position:j});
        const hash=createHash('sha256').update(serialized).digest('hex');
        const call:ConnectorCall={operationId:request.operationId,planRevisionId:attempt.planRevisionId,stepAttemptId:attempt.id,capabilityId:capability.id,connectorId:proposal.connectorId,toolName:proposal.toolName,version:proposal.version,input:proposal.input,intentId:newId(),idempotencyKey:hash};
-       const result=await this.broker.invoke(call,permission);
+       const budget=new BudgetService(this.store);
+       const reserved=await budget.reserve(principal,request.operationId,attempt.id,'TOOL',call.connectorId+':'+call.toolName+'@'+call.version,call.idempotencyKey);
+       let result;
+       try { result=await this.broker.invoke(call,permission);
+         await budget.settle(principal,reserved.reservationId as ID,{origin:'ESTIMATED',costMinor:reserved.maximumCostMinor});
+       } catch (error) {
+         await budget.settle(principal,reserved.reservationId as ID,{origin:'UNKNOWN'});
+         throw error;
+       }
        const source:Source={id:newId(),workspaceId:principal.workspaceId,operationId:request.operationId,provider:result.provenance.provider,title:proposal.toolName,uri:result.provenance.sourceUri,retrievedAt:result.provenance.retrievedAt,sourcePublishedAt:result.provenance.publishedAt,fingerprint:result.provenance.responseDigest};
        await this.store.recordSource(source);
        const evidence:Evidence={id:newId(),operationId:request.operationId,stepAttemptId:attempt.id,sourceId:source.id,statement:'Provider observation from '+proposal.toolName,observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['Provider response has not been independently assessed']};
        await this.store.recordEvidence(evidence);
        observations.push({tool:proposal.toolName,sourceId:source.id,evidenceId:evidence.id,observation:sanitize(result.value),provenance:result.provenance});
      }
+     await new BudgetService(this.store).progress(principal,request.operationId,'agent:'+attempt.id,createHash('sha256').update(JSON.stringify(observations)).digest('hex'));
      history.push({role:'assistant',content:answer.content.slice(0,3000)},{role:'user',content:JSON.stringify({kind:'brokered_tool_observations',observations})});
    }
    return {status:'INCOMPLETE',engine:'hermes',content:'Bounded execution reached maximum iterations',proposedTools:[],reason:'ITERATION_LIMIT',receivedAt:new Date().toISOString()};
