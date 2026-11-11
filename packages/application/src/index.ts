@@ -18,3 +18,4 @@ export * from './commerce';
 export * from './payments';
 export * from './budgets';
 export * from './read-models';
+export * from './recovery';

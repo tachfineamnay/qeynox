@@ -6,5 +6,6 @@ import { ClaimsModule } from './claims/claims.module';
 import { ResultsModule } from './results/results.module';
 import { CommerceModule } from './commerce/commerce.module';
 import { ActivityModule } from './activity/activity.module';
-@Module({imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule]})
+import { OperatorModule } from './operator/operator.module';
+@Module({imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule,OperatorModule]})
 export class AppModule {}

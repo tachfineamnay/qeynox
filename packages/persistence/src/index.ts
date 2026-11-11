@@ -7,3 +7,4 @@ export * from './result-schema';
 export * from './commerce-schema';
 export * from './budget-schema';
 export * from './views-schema';
+export * from './recovery-schema';
