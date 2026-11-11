@@ -1,14 +1,12 @@
-# QeyNox 2027 — Source-only progress
-Baseline: 964697624fa9168ca188a53e74418569f23113f3
-Branch: feat/qeynox-2027-foundations. One commit per numbered task; no tests, builds or deployment.
+# QeyNox source-only execution progress
+Branch feat/qeynox-2027-foundations; baseline 9646976; one commit per prompt.
 
-| Lot | Source status |
+| Lot | State |
 |---|---|
-| 00–09 | Foundation coded; integration partial |
-| 10 | Identity: bearer session, workspace membership, guards + migration 0002 — CODED |
-| 11 | Plan seal/hash, multi-step sequential Hatchet dispatch, persistent handoffs + migration 0003 — CODED |
-| 12–20 | PENDING |
+| 10 | Native session auth, guards, tenant membership CODED |
+| 11 | Plan seal, step dependency progression, handoffs CODED |
+| 12 | Hermes tool-proposal handling → QeyNox ToolBroker with source ledger CODED; real Hermes containment BLOCKED |
+| 13–20 | NOT STARTED |
 
-NEXT SESSION HANDOFF — task 12: implement Hermes proposals -> guarded ToolBroker. Worker currently rejects tool proposals with NOT_CONFIGURED; Hermes must never invoke native unmediated tools. Review ToolBroker ledger and session-scoped permissions. Fix capability-scoped context handoff before tenant execution.
-
-Global: UNTESTED / NOT BUILT / NOT DEPLOYED.
+NEXT SESSION HANDOFF: Prompt 13. Implement approved connector manifests, provider adapters, and network SSRF defenses. All QeyNox connectors must remain unconfigured until operator setup. Hermes-native tool isolation cannot be established via prompt; retain fail-closed behavior.
+GLOBAL: UNTESTED / NOT BUILT / NOT DEPLOYED.
