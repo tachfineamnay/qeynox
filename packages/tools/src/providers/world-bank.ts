@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { DomainError,type ID } from '@qeynox/domain';
 import type { ToolConnector,ToolDefinition,ToolContext } from '../types';
 import type { ConnectorManifest } from '../manifest';
+import type { EgressPolicy } from '../egress';
 
 const request=z.object({
  country:z.string().regex(/^[A-Za-z]{2,3}$/).transform(x=>x.toUpperCase()),
@@ -20,16 +21,16 @@ const payload=z.array(z.unknown()).length(2);
 const output=z.object({provider:z.literal('world-bank'),country:z.string(),indicator:z.string(),observations:z.array(row),sourceUri:z.url(),retrievedAt:z.string()});
 export class WorldBankConnector implements ToolConnector {
  readonly id='world-bank';readonly version='1';
- constructor(private readonly capabilities:readonly ID[],private readonly outboundPolicyConfigured:boolean){}
+ constructor(private readonly capabilities:readonly ID[],private readonly egress:EgressPolicy){}
  definitions():readonly ToolDefinition[]{
   return [{name:'indicator',version:'1',mode:'READ',requiredScopes:[],allowedCapabilities:this.capabilities,input:request,output,timeoutMs:10000,maxCostUnits:0}];
  }
  async invoke(name:string,version:string,input:unknown,context:ToolContext){
   if(name!=='indicator'||version!==this.version)throw new DomainError('UNSUPPORTED','Unknown World Bank tool');
-  if(!this.outboundPolicyConfigured)throw new DomainError('NOT_CONFIGURED','Allowlisted outbound network policy is required');
   const values=request.parse(input);
   const url=new URL('https://api.worldbank.org/v2/country/'+encodeURIComponent(values.country)+'/indicator/'+encodeURIComponent(values.indicator));
   url.searchParams.set('format','json');url.searchParams.set('mrnev',String(values.mostRecent));url.searchParams.set('per_page','5');
+  this.egress.assertAllowed(url);
   const response=await fetch(url,{method:'GET',signal:context.signal,redirect:'error',headers:{accept:'application/json'}});
   if(!response.ok)throw new DomainError('INVALID_STATE','World Bank responded HTTP '+response.status);
   const text=await response.text();
@@ -47,3 +48,4 @@ export const worldBankManifest:ConnectorManifest={
  freshness:{ttlSeconds:86400,publishedAtSource:'UNKNOWN'},
  rateLimit:{maxPerMinute:30},mode:'READ_ONLY',tools:[{name:'indicator',version:'1'}],
 };
+

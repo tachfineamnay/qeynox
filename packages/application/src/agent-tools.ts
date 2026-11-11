@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { and,eq } from 'drizzle-orm';
 import { DomainError,newId,type ID,type Principal,type Evidence,type Source } from '@qeynox/domain';
-import { QeyNoxStore,approvals,identityMemberships } from '@qeynox/persistence';
+import { QeyNoxStore,approvals,identityMemberships,sourceSnapshots } from '@qeynox/persistence';
 import type { EnginePort,AgentProfile,EngineOutcome,EngineRequest } from '@qeynox/engine';
 import { ToolBroker,ToolRegistry,PgToolLedger,type ConnectorCall,type PermissionContext } from '@qeynox/tools';
 import { BudgetService } from './budgets';
@@ -65,6 +65,7 @@ export class BrokeredAgentExecutor {
        callsUsed++;
        const source:Source={id:newId(),workspaceId:principal.workspaceId,operationId:request.operationId,provider:result.provenance.provider,title:proposal.toolName,uri:result.provenance.sourceUri,retrievedAt:result.provenance.retrievedAt,sourcePublishedAt:result.provenance.publishedAt,fingerprint:result.provenance.responseDigest};
        await this.store.recordSource(source);
+       await this.store.db.insert(sourceSnapshots).values({id:newId(),workspaceId:principal.workspaceId,operationId:request.operationId,sourceId:source.id,provider:result.provenance.provider,retrievedAt:result.provenance.retrievedAt,publishedAt:result.provenance.publishedAt,sha256:result.provenance.responseDigest,citationUri:result.provenance.sourceUri,createdAt:new Date().toISOString()});
        const evidence:Evidence={id:newId(),operationId:request.operationId,stepAttemptId:attempt.id,sourceId:source.id,statement:'Provider observation from '+proposal.toolName,observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['Provider response has not been independently assessed']};
        await this.store.recordEvidence(evidence);
        observations.push({tool:proposal.toolName,sourceId:source.id,evidenceId:evidence.id,observation:sanitize(result.value),provenance:result.provenance});
@@ -82,3 +83,4 @@ function sanitize(value:unknown,depth=0):unknown{
  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).filter(([key])=>!/password|secret|token|authorization|privateKey/i.test(key)).slice(0,30).map(([key,v])=>[key,sanitize(v,depth+1)]));
  return value;
 }
+

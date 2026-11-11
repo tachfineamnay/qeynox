@@ -1,6 +1,6 @@
 # QeyNox 2027 â€” source implementation map
 
-Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10â€“20 each add a separate implementation lot. TASK 02 added the migration runner, operator configuration services and disposable-QA verification. TASK 01 certified dependency installation/lockfile, TypeScript, production builds, NestJS DI/HTTP wiring, Drizzle contracts and the pinned Hatchet SDK surface against an isolated QA database. TASK 03 verified the installed Hatchet SDK contract, implemented run-ID/cancellation/run-observation adapters, hardened Hermes fail-closed isolation and native-tool rejection, and ran a controlled multi-step worker workflow plus Soul/Pilot API wiring against local QA fixtures. **Nothing is deployed and no production migration, customer data, external provider, Hatchet server or Hermes model call has occurred.**
+Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10â€“20 each add a separate implementation lot. TASK 02 added the migration runner, operator configuration services and disposable-QA verification. TASK 01 certified dependency installation/lockfile, TypeScript, production builds, NestJS DI/HTTP wiring, Drizzle contracts and the pinned Hatchet SDK surface against an isolated QA database. TASK 03 verified the installed Hatchet SDK contract, implemented run-ID/cancellation/run-observation adapters, hardened Hermes fail-closed isolation and native-tool rejection, and ran a controlled multi-step worker workflow plus Soul/Pilot API wiring against local QA fixtures. TASK 04 added configured-provider ToolRegistry activation, egress/SSRF policy, provider rate limiting, source snapshots and MCP/HTTP boundaries, and exercised the World Bank adapter with a real read-only HTTPS call in isolated QA. **Nothing is deployed and no production migration, customer data or unmediated provider call has occurred.**
 
 | Responsibility | Code area | Status |
 | --- | --- | --- |
@@ -12,8 +12,9 @@ Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10â€
 | Hatchet step worker and durable dispatch | orchestration/hatchet/outbox, apps/worker | CODED; installed-SDK dispatch/run-ID/cancellation/observation adapters QA-CONTRACT-VERIFIED; live server dispatch NOT VERIFIED |
 | Hermes model/agent runtime | engine/hermes | CODED; fail-closed isolation+egress attestation, native-tool-call rejection; real network isolation NOT VERIFIED |
 | Agent runtime execution (worker steps, progression, outbox dispatch, Soul/Pilot, versioned profiles) | orchestration, apps/worker, apps/api soul+pilot+agent-runtime | QA-VERIFIED in disposable DB with local deterministic fixtures; external Hatchet/Hermes runtimes NOT VERIFIED |
-| ToolBroker and source registration | tools, application/agent-tools | SOURCE CODED; no production connectors enabled |
-| World Bank read-only indicator adapter | tools/providers/world-bank | CODED, unconfigured; requires egress policy |
+| ToolBroker and source registration | tools, application/agent-tools | CODED; configured-provider registry, permissions/consent/budget/rate-limit/egress gates and source snapshots QA-VERIFIED |
+| World Bank read-only indicator adapter | tools/providers/world-bank | CODED; ACTIVATED IN ISOLATED QA WITH A REAL READ-ONLY HTTPS CALL; requires configuration + egress attestation |
+| External connector framework (provider loader, egress/SSRF policy, rate limiting, MCP boundary) | tools/egress, tools/providers/configured, tools/rate-limit, tools/mcp | QA-VERIFIED; only the reviewed World Bank provider; no second provider added because none is documented/licensed/configured |
 | Claim verification and provenance | application/claims, persistence/claims-schema | CODED, no verified live source |
 | RaaS result versions, private S3 exports | application/result-document, artifacts, s3 | CODED; storage not configured |
 | Offer/quote/acceptance and payment port | application/commerce/payments | CODED; paid execution BLOCKED |
@@ -30,7 +31,7 @@ Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10â€
 2. Installed Hatchet SDK contracts for run-ID mapping, cancellation and run detail are implemented and contract-verified, but no Hatchet server/token was available: live dispatch, cancellation and observation are NOT VERIFIED; do not enable production operation dispatch.
 3. Hermes requires real native-tool and egress containment. The adapter fails closed without both operator attestations and rejects native tool-call responses, but flags are not proof: deployment isolation remains BLOCKED and NOT VERIFIED.
 4. No identity emails, rate limits at gateway, MFA, session storage in client or account recovery mechanisms for public launch.
-5. No external source providers configured, provider licensing verified or citation freshness SLA.
+5. The documented World Bank adapter was activated against its live public API in isolated QA; provider licensing/attribution review and a citation-freshness SLA remain operator responsibilities. No second research provider was added: no documented, licensed and provisioned endpoint was available, and inventing one is prohibited.
 6. No configured eight business skills/profiles; names not invented.
 7. Pricing, tax and payment service provider not decided; any paid operation remains PAYMENT_REQUIRED.
 8. Budget policy configuration exists, but no production client policy is configured; execution still fails closed rather than running unbounded.

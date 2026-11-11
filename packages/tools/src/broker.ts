@@ -2,10 +2,11 @@ import { createHash } from 'node:crypto';
 import { DomainError,type ToolInvocationIntent } from '@qeynox/domain';
 import type { ConnectorCall,PermissionContext,ToolLedgerPort,ToolResult } from './types';
 import { ToolRegistry } from './registry';
+import { ProviderRateLimiter } from './rate-limit';
 const digest=(v:unknown)=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
 const keyOf=(c:ConnectorCall)=>c.connectorId+':'+c.toolName+'@'+c.version;
 export class ToolBroker {
- constructor(private readonly registry:ToolRegistry,private readonly ledger:ToolLedgerPort){}
+ constructor(private readonly registry:ToolRegistry,private readonly ledger:ToolLedgerPort,private readonly limiter:ProviderRateLimiter=new ProviderRateLimiter()){}
  async invoke(call:ConnectorCall,permission:PermissionContext):Promise<ToolResult>{
    if(!permission.principal.userId||!permission.principal.workspaceId)throw new DomainError('DENIED','Authenticated workspace required');
    if(permission.operationId!==call.operationId||permission.stepAttemptId!==call.stepAttemptId||permission.planRevisionId!==call.planRevisionId||permission.capabilityId!==call.capabilityId)throw new DomainError('DENIED','Tool execution identity mismatch');
@@ -20,6 +21,8 @@ export class ToolBroker {
      const approval=permission.approvedRequests.find(a=>a.id===call.approvalId&&a.intentId===call.intentId&&a.operationId===call.operationId&&a.planRevisionId===call.planRevisionId&&a.stepAttemptId===call.stepAttemptId&&a.workspaceId===permission.principal.workspaceId&&a.status==='APPROVED'&&a.expiresAt>new Date().toISOString());
      if(!approval)throw new DomainError('DENIED','Specific write intent not approved');
    }
+   const manifest=this.registry.manifest(call.connectorId);
+   this.limiter.check(call.connectorId,manifest.rateLimit.maxPerMinute);
    const intent:ToolInvocationIntent={id:call.intentId,operationId:call.operationId,planRevisionId:call.planRevisionId,stepAttemptId:call.stepAttemptId,capabilityId:call.capabilityId,toolName:keyOf(call),toolVersion:call.version,payload:input,idempotencyKey:call.idempotencyKey,mode:definition.mode,approvalId:call.approvalId,requestedBy:permission.principal.userId,createdAt:new Date().toISOString()};
    const existing=await this.ledger.reserve({intent,workspaceId:permission.principal.workspaceId,connectorId:call.connectorId,requestDigest:hash,status:'STARTED',provider:connector.id,capturedAt:new Date().toISOString()});
    if(existing!=='RESERVED')throw new DomainError('CONFLICT','Existing invocation requires reconciliation');
@@ -37,3 +40,4 @@ export class ToolBroker {
    }finally{clearTimeout(timer);}
  }
 }
+

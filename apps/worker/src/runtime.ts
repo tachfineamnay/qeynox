@@ -4,14 +4,14 @@ import { connectDatabase,QeyNoxStore,attempts,operations } from '@qeynox/persist
 import { HermesAdapter,hermesCapabilities } from '@qeynox/engine';
 import { AgentProfileStore,CapabilityRegistry } from '@qeynox/roles';
 import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection } from '@qeynox/application';
-import { ToolRegistry } from '@qeynox/tools';
+import { createConfiguredToolRegistry } from '@qeynox/tools';
 import { PgOutboxDispatcher,type ExecutionRequest,type OrchestratorPort } from '@qeynox/orchestration';
 
 export async function createWorkerDependencies(){
  const conn=connectDatabase(process.env.DATABASE_URL),store=new QeyNoxStore(conn.db);
  const profiles=new AgentProfileStore(conn.db),progression=new StepProgression(store);
  const engine=new HermesAdapter({baseUrl:process.env.HERMES_API_BASE_URL,apiKey:process.env.HERMES_API_KEY,model:process.env.HERMES_MODEL??'hermes-agent',timeoutMs:Number(process.env.HERMES_REQUEST_TIMEOUT_MS??60000),nativeToolsIsolated:process.env.HERMES_NATIVE_TOOLS_ISOLATED==='true',egressAttested:process.env.QEYNOX_NETWORK_POLICY_ATTESTED==='true'});
- const tools=new ToolRegistry(); // No provider is enabled by default.
+ const tools=await createConfiguredToolRegistry(conn.db); // No provider is registered unless operator-configured.
  const executor=new BrokeredAgentExecutor(store,engine,tools);
  const registry=new EngineRegistry();
  registry.register({id:'hermes',version:'hermes-api-unverified',runtime:engine,capabilities:hermesCapabilities});
@@ -60,5 +60,7 @@ export async function createWorkerDependencies(){
     await deliver();setInterval(()=>{void deliver();},5000);
   },
   close:async()=>{await conn.close();},
+  toolRegistry:tools,
  };
 }
+
