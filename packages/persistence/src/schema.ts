@@ -2,6 +2,7 @@ import { pgTable,text,integer,jsonb,boolean,index,uniqueIndex } from 'drizzle-or
 import type { Operation,Goal,Consent,UserContext,CapabilityDefinition,OperationPlan,PlanRevision,WorkStep,StepAttempt,ApprovalRequest,ExecutionLink,EventRecord,Source,Evidence,Artifact,ResultVersion,ToolInvocationIntent } from '@qeynox/domain';
 export * from './identity-schema';
 export * from './workflow-schema';
+export * from './claims-schema';
 export const operations=pgTable('operations',{id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),createdBy:text('created_by').notNull(),goalId:text('goal_id').notNull(),status:text('status').notNull(),version:integer('version').notNull(),currentRevisionId:text('current_revision_id'),lastActivityAt:text('last_activity_at').notNull(),payload:jsonb('payload').$type<Operation>().notNull()},t=>[index('operation_workspace_activity_idx').on(t.workspaceId,t.lastActivityAt)]);
 export const goals=pgTable('goals',{id:text('id').primaryKey(),operationId:text('operation_id').notNull(),payload:jsonb('payload').$type<Goal>().notNull()});
 export const plans=pgTable('operation_plans',{id:text('id').primaryKey(),operationId:text('operation_id').notNull().unique(),payload:jsonb('payload').$type<OperationPlan>().notNull()});
