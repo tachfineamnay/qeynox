@@ -1,4 +1,7 @@
 export * from './database';
 export * from './schema';
 export * from './store';
+export * from './workflow-schema';
+export * from './claims-schema';
 export * from './result-schema';
+export * from './commerce-schema';

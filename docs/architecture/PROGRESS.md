@@ -1,6 +1,6 @@
 # QeyNox source-only progress
-10 Identity CODED; 11 Hatchet plan sequence CODED; 12 brokered Hermes proposal flow CODED; 13 connectors + World Bank CODED (disabled); 14 claims/policies/assessment CODED.
-15 ResultDocument versions, JSON/escaped HTML export, private S3 artifact adapter and scoped API CODED; no verified delivery produced.
-16–20 PENDING.
-NEXT SESSION HANDOFF: Task 16. Add versioned RaaS offers, quote/acceptance and payment boundary. Prices unknown; paid actions must be blocked by default, no provider selection or real charges.
+10 auth CODED; 11 multi-step CODED; 12 brokered proposals CODED; 13 connector manifests CODED; 14 claim/evidence CODED; 15 structured result + S3 export CODED.
+16 RaaS offers, quote acceptance, free-vs-paid order authorization and disabled PaymentPort CODED. No tariffs or payment gateway configured.
+17–20 PENDING.
+NEXT SESSION HANDOFF: Task 17. Enforce bounded agent/tool budgets and rate reservations BEFORE actions. Differentiate reported usage from estimated and unknown. Pricing remains OPEN.
 GLOBAL: UNTESTED / NOT BUILT / NOT DEPLOYED.

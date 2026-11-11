@@ -1,0 +1,7 @@
+BEGIN;
+CREATE TABLE raas_offers(id text NOT NULL,version integer NOT NULL,status text NOT NULL,currency text NOT NULL,amount_minor integer NOT NULL,configuration jsonb NOT NULL,PRIMARY KEY(id,version));
+CREATE TABLE raas_quotes(id text PRIMARY KEY,workspace_id text NOT NULL,operation_id text NOT NULL,revision_id text NOT NULL,offer_id text NOT NULL,offer_version integer NOT NULL,amount_minor integer NOT NULL,currency text NOT NULL,scope_hash text NOT NULL,expires_at text NOT NULL,created_at text NOT NULL,terms_version text NOT NULL,payload jsonb NOT NULL);
+CREATE TABLE raas_acceptances(id text PRIMARY KEY,quote_id text UNIQUE NOT NULL,workspace_id text NOT NULL,operation_id text NOT NULL,revision_id text NOT NULL,actor_id text NOT NULL,scope_hash text NOT NULL,accepted_at text NOT NULL,terms_version text NOT NULL,idempotency_key text UNIQUE NOT NULL);
+CREATE TABLE raas_orders(id text PRIMARY KEY,workspace_id text NOT NULL,operation_id text NOT NULL,revision_id text NOT NULL,quote_id text NOT NULL UNIQUE,state text NOT NULL,amount_minor integer NOT NULL,currency text NOT NULL,updated_at text NOT NULL,created_at text NOT NULL,CONSTRAINT order_operation_revision_unique UNIQUE(operation_id,revision_id));
+CREATE TABLE raas_payment_events(id text PRIMARY KEY,order_id text NOT NULL,provider_event_id text UNIQUE,kind text NOT NULL,received_at text NOT NULL,redacted_payload jsonb NOT NULL);
+COMMIT;

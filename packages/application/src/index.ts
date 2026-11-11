@@ -14,3 +14,5 @@ export * from './claims';
 export * from './result-document';
 export * from './artifacts';
 export * from './s3';
+export * from './commerce';
+export * from './payments';
