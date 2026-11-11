@@ -11,12 +11,15 @@ BOUNDARIES:
 - Users retain control of privacy context, operation history and revisions.
 - MyDash/Quiet Authority interface is a later wave, not coded here.
 
-IMPLEMENTATION 10–20:
-- Work on feat/qeynox-2027-foundations; protect main.
-- Each numbered task has exactly one commit.
-- Source-only stage: no test, compilation, typecheck, lint, build, runtime, external provider calls, migrations, deployment, CI or production data.
+IMPLEMENTATION AND CERTIFICATION:
+- Work on feat/qeynox-2027-foundations; protect main. Historical source waves 10–20 and the QA/certification commits live on that branch.
+- One deliberate commit per completed, verified task.
+- No push, merge, deployment, history rewrite or destructive Git action without an explicit operator instruction.
+- Verification runs against a disposable PostgreSQL database (`QEYNOX_QA_DATABASE_URL`); never production. Required checks: `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm build`, `pnpm qa:task02`, `pnpm qa:backend`, `pnpm qa:agent-runtime`, `pnpm qa:connectors`, `pnpm qa:raas`, where prerequisites exist.
 - Each module must fail closed when permissions, pricing, credentials, evidence, isolation or SDK support are absent.
-- No hardcoded credentials, dummy providers, invented contacts, citations, prices or false success statuses.
-- Never claim code is proven functional based on source review alone.
+- No hardcoded credentials, dummy providers, invented contacts, citations, prices or false success statuses. Deterministic QA fixtures are test infrastructure, never product fallbacks.
+- Do not weaken validations or tests to obtain a passing result; fix reproducible source defects instead.
+- Never claim code is proven functional based on source review alone. Verified status and remaining blockers are recorded in docs/architecture/PROGRESS.md and docs/architecture/IMPLEMENTATION_MAP.md.
+- External Hatchet/Hermes runtimes, production object storage, provider licensing/freshness review and public identity hardening remain unverified deployment gates.
 
 SOURCE TRUTH: Latest product decisions and ADRs supersede historical custom runner suggestions. docs/architecture/IMPLEMENTATION_MAP.md lists exact blockers. Production readiness requires a separate independent certification phase.

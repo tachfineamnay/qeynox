@@ -2,13 +2,11 @@ export interface Clock {now():Date}
 export const systemClock:Clock={now:()=>new Date()};
 export * from './operations';
 export * from './controls';
-export * from './reconciliation';
 export * from './planning';
 export * from './revisions';
 export * from './execution';
 export * from './plan-seal';
 export * from './progression';
-export * from './results';
 export * from './agent-tools';
 export * from './claims';
 export * from './result-document';
@@ -23,3 +21,4 @@ export * from './engine-selection';
 export * from './context-policy';
 export * from './delivery';
 export * from './configuration';
+

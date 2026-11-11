@@ -1,4 +1,4 @@
-# QeyNox 2027 — Source architecture (NOT VERIFIED)
+# QeyNox 2027 — Source architecture (ISOLATED-QA VERIFIED, NOT DEPLOYED)
 
 Business user -> future MyDash/Soul -> NestJS API (workspace-scoped opaque sessions) -> application/domain -> PostgreSQL (plans, offers, consent, evidence, claims, results) -> transactional outbox -> Hatchet task worker -> EnginePort/Hermes -> authorized ToolBroker/provider registry -> captured sources -> evidence assessment -> ResultDocument -> private S3 export -> operation activity/read model.
 
@@ -12,4 +12,5 @@ Source-limited connectors: only the documented World Bank Indicators V2 adapter 
 
 Deployment target VPS/Coolify. Infra templates are not a verified Hatchet/Hermes deployment. No user interface has been built as part of this source wave. The complete blockers and mapping are in IMPLEMENTATION_MAP.md.
 
-**All code UNTESTED / NOT BUILT / NOT DEPLOYED.**
+Frozen-install, typecheck, production builds and five isolated-QA suites (database/configuration, backend HTTP/DI, agent runtime with local fixtures, connectors with real read-only World Bank calls, and an evidence-backed RaaS deliverable) have passed only against disposable QA resources. External Hatchet/Hermes runtimes, production object storage and deployment are **NOT VERIFIED / NOT DEPLOYED / NOT PRODUCTION-READY**; exact blockers are in IMPLEMENTATION_MAP.md.
+

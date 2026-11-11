@@ -1,15 +1,13 @@
 import { QeyNoxStore } from '@qeynox/persistence';
-import { OperationService,OperationExecutionService,PlanningService,ResultService,OperationControlService,PlanRevisionService } from '@qeynox/application';
+import { OperationService,OperationExecutionService,PlanningService,OperationControlService,PlanRevisionService } from '@qeynox/application';
 import { QEYNOX_STORE } from '../database/database.module';
 export const OPERATIONS_SERVICE=Symbol('OPERATIONS_SERVICE');
 export const EXECUTION_SERVICE=Symbol('EXECUTION_SERVICE');
 export const PLANNING_SERVICE=Symbol('PLANNING_SERVICE');
-export const RESULTS_SERVICE=Symbol('RESULTS_SERVICE');
 export const CONTROLS_SERVICE=Symbol('CONTROLS_SERVICE');
 export const REVISIONS_SERVICE=Symbol('REVISIONS_SERVICE');
 export const provideOperations={provide:OPERATIONS_SERVICE,useFactory:(s:QeyNoxStore)=>new OperationService(s),inject:[QEYNOX_STORE]};
 export const provideExecution={provide:EXECUTION_SERVICE,useFactory:(s:QeyNoxStore)=>new OperationExecutionService(s),inject:[QEYNOX_STORE]};
 export const providePlanning={provide:PLANNING_SERVICE,useFactory:(s:QeyNoxStore)=>new PlanningService(s),inject:[QEYNOX_STORE]};
-export const provideResults={provide:RESULTS_SERVICE,useFactory:(s:QeyNoxStore)=>new ResultService(s),inject:[QEYNOX_STORE]};
 export const provideControls={provide:CONTROLS_SERVICE,useFactory:(s:QeyNoxStore)=>new OperationControlService(s),inject:[QEYNOX_STORE]};
 export const provideRevisions={provide:REVISIONS_SERVICE,useFactory:(s:QeyNoxStore)=>new PlanRevisionService(s),inject:[QEYNOX_STORE]};
