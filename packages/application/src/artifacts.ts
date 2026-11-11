@@ -23,9 +23,9 @@ export class ArtifactDelivery {
   await this.store.db.update(artifactObjects).set({state:'AVAILABLE',versionId:receipt.versionId}).where(and(eq(artifactObjects.id,id),eq(artifactObjects.workspaceId,actor.workspaceId)));
   return {artifactId:id,sha256};
  }
- async readGrant(actor:Principal,operationId:ID,artifactId:ID):Promise<string>{
+ async readGrant(actor:Principal,operationId:ID,documentId:ID,artifactId:ID):Promise<string>{
   await this.store.getOperation(actor,operationId);
-  const [row]=await this.store.db.select().from(artifactObjects).where(and(eq(artifactObjects.id,artifactId),eq(artifactObjects.workspaceId,actor.workspaceId),eq(artifactObjects.operationId,operationId),eq(artifactObjects.state,'AVAILABLE'))).limit(1);
+  const [row]=await this.store.db.select().from(artifactObjects).where(and(eq(artifactObjects.id,artifactId),eq(artifactObjects.documentId,documentId),eq(artifactObjects.workspaceId,actor.workspaceId),eq(artifactObjects.operationId,operationId),eq(artifactObjects.state,'AVAILABLE'))).limit(1);
   if(!row)throw new DomainError('NOT_FOUND','Artifact unavailable');
   return this.objects.signedRead(row.key,180);
  }

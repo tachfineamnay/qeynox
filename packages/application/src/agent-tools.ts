@@ -28,22 +28,33 @@ export class BrokeredAgentExecutor {
    const consentScopes=consent.filter(c=>!c.revokedAt&&(!c.expiresAt||c.expiresAt>new Date().toISOString())).flatMap(c=>c.scopes);
    const allowed=capability.allowedTools.filter(t=>request.profile.allowedTools.includes(t));
    const history: Array<{role:'user'|'assistant';content:string}>=[...(request.priorMessages??[])];
+   let callsUsed=0;
    const remainingCalls=capability.maximumToolCalls;
    for(let i=0;i<Math.max(1,Math.min(request.profile.maxIterations,capability.maximumSteps));i++){
-     const answer=await this.engine.invoke({...request,priorMessages:history});
+     const budget=new BudgetService(this.store);
+     const engineReservation=await budget.reserve(principal,request.operationId,attempt.id,'ENGINE','hermes',request.correlationId+':turn:'+i);
+     let answer:EngineOutcome;
+     try {
+       answer=await this.engine.invoke({...request,priorMessages:history});
+       await budget.settle(principal,engineReservation.reservationId as ID,{origin:'ESTIMATED',costMinor:engineReservation.maximumCostMinor,tokensIn:answer.usage?.inputTokens,tokensOut:answer.usage?.outputTokens});
+     } catch(error:unknown) {
+       await budget.settle(principal,engineReservation.reservationId as ID,{origin:'UNKNOWN'});
+       throw error;
+     }
      if(answer.status!=='COMPLETED')return answer;
      if(!answer.proposedTools.length)return answer;
-     if(answer.proposedTools.length>remainingCalls)throw new DomainError('DENIED','Agent requested more tools than its budget');
+     if(answer.proposedTools.length>remainingCalls-callsUsed)throw new DomainError('DENIED','Agent requested more tools than its budget');
      const observations:unknown[]=[];
      for(let j=0;j<answer.proposedTools.length;j++){
        const proposal=answer.proposedTools[j]!;
-       const permission:PermissionContext={principal,operationId:request.operationId,planRevisionId:attempt.planRevisionId,stepAttemptId:attempt.id,capabilityId:capability.id,profileId:request.profile.id,profileVersion:request.profile.version,allowedConnectorTools:allowed,consentScopes,approvedRequests:approved,remainingCostUnits:0,remainingToolCalls:remainingCalls-j};
+       const permission:PermissionContext={principal,operationId:request.operationId,planRevisionId:attempt.planRevisionId,stepAttemptId:attempt.id,capabilityId:capability.id,profileId:request.profile.id,profileVersion:request.profile.version,allowedConnectorTools:allowed,consentScopes,approvedRequests:approved,remainingCostUnits:0,remainingToolCalls:remainingCalls-callsUsed};
        // Tool actions are proposals, never authority. WRITE requires a pre-approved intentId tied to the exact payload; no auto-approved writes.
        const serialized=JSON.stringify({proposal,attemptId:attempt.id,iteration:i,position:j});
        const hash=createHash('sha256').update(serialized).digest('hex');
        const call:ConnectorCall={operationId:request.operationId,planRevisionId:attempt.planRevisionId,stepAttemptId:attempt.id,capabilityId:capability.id,connectorId:proposal.connectorId,toolName:proposal.toolName,version:proposal.version,input:proposal.input,intentId:newId(),idempotencyKey:hash};
        const budget=new BudgetService(this.store);
        const reserved=await budget.reserve(principal,request.operationId,attempt.id,'TOOL',call.connectorId+':'+call.toolName+'@'+call.version,call.idempotencyKey);
+       permission.remainingCostUnits=reserved.maximumCostMinor;
        let result;
        try { result=await this.broker.invoke(call,permission);
          await budget.settle(principal,reserved.reservationId as ID,{origin:'ESTIMATED',costMinor:reserved.maximumCostMinor});
@@ -51,6 +62,7 @@ export class BrokeredAgentExecutor {
          await budget.settle(principal,reserved.reservationId as ID,{origin:'UNKNOWN'});
          throw error;
        }
+       callsUsed++;
        const source:Source={id:newId(),workspaceId:principal.workspaceId,operationId:request.operationId,provider:result.provenance.provider,title:proposal.toolName,uri:result.provenance.sourceUri,retrievedAt:result.provenance.retrievedAt,sourcePublishedAt:result.provenance.publishedAt,fingerprint:result.provenance.responseDigest};
        await this.store.recordSource(source);
        const evidence:Evidence={id:newId(),operationId:request.operationId,stepAttemptId:attempt.id,sourceId:source.id,statement:'Provider observation from '+proposal.toolName,observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['Provider response has not been independently assessed']};

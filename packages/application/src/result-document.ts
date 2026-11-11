@@ -1,6 +1,6 @@
 import { DomainError,newId,type ID,type Principal } from '@qeynox/domain';
 import { and,eq,desc } from 'drizzle-orm';
-import { QeyNoxStore,resultDocuments,claims,claimEvidenceLinks,artifactObjects,type DocumentState } from '@qeynox/persistence';
+import { QeyNoxStore,resultDocuments,claims,claimEvidenceLinks,artifactObjects,attempts,type DocumentState } from '@qeynox/persistence';
 export interface ResultFinding {
  claimId:ID;statement:string;status:string;sourceIds:readonly string[];attemptId:ID;limitations:readonly string[];
 }
@@ -15,7 +15,9 @@ export class ResultAssembler {
  async assemble(actor:Principal,operationId:ID,revisionId:ID,title:string,scope:readonly string[],nextActions:readonly string[]){
   const op=await this.store.getOperation(actor,operationId);
   if(op.currentRevisionId!==revisionId)throw new DomainError('CONFLICT','Cannot publish an older plan revision');
-  const rows=await this.store.db.select().from(claims).where(and(eq(claims.workspaceId,actor.workspaceId),eq(claims.operationId,operationId)));
+  const rowsAll=await this.store.db.select().from(claims).where(and(eq(claims.workspaceId,actor.workspaceId),eq(claims.operationId,operationId)));
+  const attemptIds=new Set((await this.store.db.select().from(attempts).where(eq(attempts.revisionId,revisionId))).map(a=>a.id));
+  const rows=rowsAll.filter(row=>attemptIds.has(row.attemptId));
   const findings:ResultFinding[]=[];
   for(const row of rows){
     const links=await this.store.db.select().from(claimEvidenceLinks).where(eq(claimEvidenceLinks.claimId,row.id));

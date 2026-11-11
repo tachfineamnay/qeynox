@@ -44,8 +44,9 @@ export class OperationControlService {
     });
   }
 
-  async decideApproval(actor:Principal,approvalId:ID,decision:'APPROVED'|'REJECTED'){
+  async decideApproval(actor:Principal,approvalId:ID,decision:'APPROVED'|'REJECTED',operationId?:ID){
     const approval=await this.store.getApproval(actor,approvalId),op=await this.store.getOperation(actor,approval.operationId);
+    if(operationId&&approval.operationId!==operationId)throw new DomainError('DENIED','Approval does not belong to requested operation');
     if(op.currentRevisionId!==approval.planRevisionId||op.status!=='WAITING_APPROVAL')throw new DomainError('INVALID_STATE','Approval is stale or operation is not waiting');
     return this.store.decideApproval(actor,approvalId,decision);
   }

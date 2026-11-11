@@ -1,30 +1,15 @@
-# QeyNox 2027 — Foundation architecture
+# QeyNox 2027 — Source architecture (NOT VERIFIED)
 
-Future MyDash -> NestJS API (fail-closed until trusted workspace identity) -> application services -> Drizzle/PostgreSQL canonical business state -> transactional outbox -> Hatchet worker -> Hermes EnginePort -> governed ToolBroker/connectors -> Source/Evidence/ResultVersion.
+Business user -> future MyDash/Soul -> NestJS API (workspace-scoped opaque sessions) -> application/domain -> PostgreSQL (plans, offers, consent, evidence, claims, results) -> transactional outbox -> Hatchet task worker -> EnginePort/Hermes -> authorized ToolBroker/provider registry -> captured sources -> evidence assessment -> ResultDocument -> private S3 export -> operation activity/read model.
 
-## Ownership
-- QeyNox Core: users, consent, goals, plan revisions, attempts, policy decisions, evidence, results, audit.
-- Hatchet: task dispatch, durable execution and retry primitives, not the user-facing operation truth.
-- Hermes: initial configurable agent intelligence runtime, not the workflow engine or business ledger.
-- Soul: consent-aware context and conversational intake.
-- Pilot: next action, business routing and approvals.
-- Eight versioned configurable business capabilities: no fictitious agents enabled.
-- ToolBroker: sole QeyNox-governed connector invocation gateway. No native Hermes tool bypass.
+Hatchet alone owns durable orchestration; QeyNox owns business plan identity, revisions, attempts and legal/business state. Hermes is the first agent runtime, registered via EngineRegistry with immutable attempt/profile selection; changing its model is not changing the agent runtime. ToolBroker controls external tools; unmanaged Hermes native tools remain a hard blocker until real isolation exists.
 
-## Source-code inventory
-- apps/api: NestJS controllers, application composition; all business requests require authenticated Principal. Identity is intentionally NOT CONFIGURED until the next phase.
-- apps/worker: Hatchet task, PostgreSQL/outbox delivery and guarded Hermes text work.
-- packages/domain/contracts/application/persistence: model, validation, plans, revisions, attempts, results, storage.
-- packages/tools/engine/orchestration/roles: adapters, policies, agent profiles, Soul and Pilot.
-- infra: Dockerfiles and application/DB Compose template; not a fully deployable Hatchet/Hermes installation.
+Runtime capabilities indicate SOURCE CODED, REQUIRES_CONFIG, UNSUPPORTED or NOT_VERIFIED. Do not infer actual compatibility from interfaces alone.
 
-## Remaining critical integration work
-- Verified Hatchet run-reference mapping, cancellation status, stale/unknown run reconciliation.
-- Hermes native tool and outbound egress isolation; only then enable real customer execution.
-- Controlled Hermes tool proposals -> Broker -> approved connector -> provenance -> step continuation.
-- Real evidence validation, staged artifacts and successful multi-step result assembly.
-- Authentication and tenant isolation; external actions, commercial policy, costs and result delivery.
-- Current verified supplier/registry/search providers, no fabricated data.
-- Confirmed self-host Hatchet and Hermes infrastructure; secret management and backups.
+RaaS commercial fulfillment requires an immutable scope acceptance and an authorized order. Paid execution is blocked because payment provider is not configured; explicitly free offers alone may become authorized. Worker-level costs require configured budget policies. Final delivery requires real supported claims, human RESULT_REVIEW and a matching authorized order; partially evidenced findings remain drafts.
 
-**This tree is code only. UNTESTED / NOT BUILT / NOT DEPLOYED.**
+Source-limited connectors: only the documented World Bank Indicators V2 adapter is implemented; not enabled without network policy. Generic HTTP is disabled pending safe egress transport. No unrestricted MCP or browsing tools.
+
+Deployment target VPS/Coolify. Infra templates are not a verified Hatchet/Hermes deployment. No user interface has been built as part of this source wave. The complete blockers and mapping are in IMPLEMENTATION_MAP.md.
+
+**All code UNTESTED / NOT BUILT / NOT DEPLOYED.**

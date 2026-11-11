@@ -1,10 +1,10 @@
-import { pgTable,text,integer,jsonb,uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable,text,integer,jsonb,uniqueIndex,primaryKey } from 'drizzle-orm/pg-core';
 export type CommercialState='AWAITING_ACCEPTANCE'|'PAYMENT_REQUIRED'|'AUTHORIZED'|'FULFILLING'|'DELIVERED'|'DISPUTED'|'CANCELLED';
 export const offers=pgTable('raas_offers',{
- id:text('id').primaryKey(),version:integer('version').notNull(),status:text('status').notNull(),
+ id:text('id').notNull(),version:integer('version').notNull(),status:text('status').notNull(),
  currency:text('currency').notNull(),amountMinor:integer('amount_minor').notNull(),
  configuration:jsonb('configuration').$type<Record<string,unknown>>().notNull(),
-},t=>[uniqueIndex('offer_version_unique').on(t.id,t.version)]);
+},t=>[primaryKey({columns:[t.id,t.version]})]);
 export const quotes=pgTable('raas_quotes',{
  id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),operationId:text('operation_id').notNull(),
  revisionId:text('revision_id').notNull(),offerId:text('offer_id').notNull(),offerVersion:integer('offer_version').notNull(),
