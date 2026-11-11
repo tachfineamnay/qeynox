@@ -11,3 +11,6 @@ export * from './progression';
 export * from './results';
 export * from './agent-tools';
 export * from './claims';
+export * from './result-document';
+export * from './artifacts';
+export * from './s3';
