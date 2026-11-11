@@ -3,18 +3,19 @@ import type { EnginePort, EngineRequest, EngineOutcome, ProposedToolAction } fro
 
 export interface HermesConfig {
   baseUrl: string | undefined; apiKey: string | undefined; model: string;
-  timeoutMs: number; nativeToolsIsolated: boolean;
+  timeoutMs: number; nativeToolsIsolated: boolean; egressAttested: boolean;
 }
 interface CompletionResponse {
-  id?: string; choices?: Array<{message?:{content?:string|null};finish_reason?:string|null}>;
+  id?: string; choices?: Array<{message?:{content?:string|null;tool_calls?:unknown[];function_call?:unknown};finish_reason?:string|null}>;
   usage?: {prompt_tokens?:number;completion_tokens?:number;total_tokens?:number};
 }
 export class HermesAdapter implements EnginePort {
   constructor(private readonly config:HermesConfig) {}
   async invoke(request:EngineRequest, options?:{signal?:AbortSignal}):Promise<EngineOutcome> {
     // The Hermes API server normally has its own tools. No request-time system prompt
-    // can enforce ToolBroker. Deployment MUST disable/contain unmanaged tools and egress.
-    if (!this.config.nativeToolsIsolated) throw new DomainError('NOT_CONFIGURED','Hermes unmanaged native tools must be isolated before tenant execution');
+    // can enforce ToolBroker; deployment isolation is the only real control. Fail closed
+    // unless the operator attests both native-tool isolation and egress containment.
+    if (!this.config.nativeToolsIsolated || !this.config.egressAttested) throw new DomainError('NOT_CONFIGURED','Hermes native-tool isolation and egress attestation are required before tenant execution');
     if (!this.config.baseUrl || !this.config.apiKey) throw new DomainError('NOT_CONFIGURED','Hermes endpoint and API key are required');
     const base = new URL(this.config.baseUrl);
     if (base.username || base.password || base.search || base.hash || !(['http:','https:'].includes(base.protocol))) throw new DomainError('INVALID_INPUT','Invalid Hermes base URL');
@@ -47,7 +48,12 @@ export class HermesAdapter implements EnginePort {
       if (!response.ok) throw new DomainError('INVALID_STATE','Hermes endpoint returned HTTP '+response.status);
       const wire=await response.json() as CompletionResponse;
       const choice=wire.choices?.[0];
-      if (!choice || typeof choice.message?.content!=='string') throw new DomainError('INVALID_STATE','Hermes returned no text content');
+      if (!choice) throw new DomainError('INVALID_STATE','Hermes returned no choice');
+      // A native tool call cannot be mediated by ToolBroker; never treat it as agent output.
+      if (choice.message?.tool_calls?.length || choice.message?.function_call || choice.finish_reason==='tool_calls' || choice.finish_reason==='function_call') {
+        throw new DomainError('DENIED','Hermes returned a native tool call; QeyNox requires ToolBroker mediation');
+      }
+      if (typeof choice.message?.content!=='string') throw new DomainError('INVALID_STATE','Hermes returned no text content');
       const {content,proposedTools}=parseProposals(choice.message.content);
       const reason=choice.finish_reason??undefined;
       return {
@@ -79,3 +85,4 @@ function parseProposals(body:string):{content:string;proposedTools:ProposedToolA
     return {content:typeof json.summary==='string'?json.summary:'Tool proposals awaiting QeyNox authorization',proposedTools:proposals};
   } catch {return {content:body,proposedTools:[]};}
 }
+

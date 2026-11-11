@@ -105,6 +105,13 @@ importers:
       drizzle-orm:
         specifier: 0.44.5
         version: 0.44.5(@types/pg@8.15.5)(pg@8.16.3)
+      pg:
+        specifier: 8.16.3
+        version: 8.16.3
+    devDependencies:
+      '@types/pg':
+        specifier: 8.15.5
+        version: 8.15.5
 
   packages/application:
     dependencies:

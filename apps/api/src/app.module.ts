@@ -8,5 +8,8 @@ import { CommerceModule } from './commerce/commerce.module';
 import { ActivityModule } from './activity/activity.module';
 import { OperatorModule } from './operator/operator.module';
 import { ConfigurationModule } from './configuration/configuration.module';
-@Module({imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule,OperatorModule,ConfigurationModule]})
+import { SoulModule } from './soul/soul.module';
+import { PilotModule } from './pilot/pilot.module';
+@Module({imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule,OperatorModule,ConfigurationModule,SoulModule,PilotModule]})
 export class AppModule {}
+
