@@ -1,4 +1,5 @@
-import { pgTable,text,integer,jsonb,boolean,index,uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { pgTable,text,integer,jsonb,boolean,index,uniqueIndex,check } from 'drizzle-orm/pg-core';
 import type { Operation,Goal,Consent,UserContext,CapabilityDefinition,OperationPlan,PlanRevision,WorkStep,StepAttempt,ApprovalRequest,ExecutionLink,EventRecord,Source,Evidence,Artifact,ResultVersion,ToolInvocationIntent } from '@qeynox/domain';
 export * from './identity-schema';
 export * from './workflow-schema';
@@ -9,6 +10,7 @@ export * from './budget-schema';
 export * from './views-schema';
 export * from './recovery-schema';
 export * from './runtime-schema';
+export * from './config-schema';
 export const operations=pgTable('operations',{id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),createdBy:text('created_by').notNull(),goalId:text('goal_id').notNull(),status:text('status').notNull(),version:integer('version').notNull(),currentRevisionId:text('current_revision_id'),lastActivityAt:text('last_activity_at').notNull(),payload:jsonb('payload').$type<Operation>().notNull()},t=>[index('operation_workspace_activity_idx').on(t.workspaceId,t.lastActivityAt)]);
 export const goals=pgTable('goals',{id:text('id').primaryKey(),operationId:text('operation_id').notNull(),payload:jsonb('payload').$type<Goal>().notNull()});
 export const plans=pgTable('operation_plans',{id:text('id').primaryKey(),operationId:text('operation_id').notNull().unique(),payload:jsonb('payload').$type<OperationPlan>().notNull()});
@@ -17,7 +19,7 @@ export const steps=pgTable('work_steps',{id:text('id').primaryKey(),operationId:
 export const attempts=pgTable('step_attempts',{id:text('id').primaryKey(),operationId:text('operation_id').notNull(),stepId:text('step_id').notNull(),revisionId:text('revision_id').notNull(),sequence:integer('sequence').notNull(),state:text('state').notNull(),payload:jsonb('payload').$type<StepAttempt>().notNull()},t=>[uniqueIndex('attempt_step_seq_unique').on(t.stepId,t.sequence)]);
 export const consents=pgTable('consents',{id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),userId:text('user_id').notNull(),payload:jsonb('payload').$type<Consent>().notNull()});
 export const contexts=pgTable('user_contexts',{id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),ownerUserId:text('owner_user_id').notNull(),payload:jsonb('payload').$type<UserContext>().notNull()});
-export const capabilities=pgTable('capabilities',{id:text('id').primaryKey(),slot:integer('slot').notNull(),version:integer('version').notNull(),status:text('status').notNull(),payload:jsonb('payload').$type<CapabilityDefinition>().notNull()},t=>[uniqueIndex('capability_slot_version_unique').on(t.slot,t.version)]);
+export const capabilities=pgTable('capabilities',{id:text('id').primaryKey(),slot:integer('slot').notNull(),version:integer('version').notNull(),status:text('status').notNull(),payload:jsonb('payload').$type<CapabilityDefinition>().notNull()},t=>[uniqueIndex('capability_slot_version_unique').on(t.slot,t.version),check('capability_slot_range',sql`${t.slot} BETWEEN 1 AND 8`)]);
 export const approvals=pgTable('approval_requests',{id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),operationId:text('operation_id').notNull(),status:text('status').notNull(),payload:jsonb('payload').$type<ApprovalRequest>().notNull()});
 export const executions=pgTable('execution_links',{id:text('id').primaryKey(),operationId:text('operation_id').notNull(),attemptId:text('attempt_id').notNull(),provider:text('provider').notNull(),workflowRunId:text('workflow_run_id'),payload:jsonb('payload').$type<ExecutionLink>().notNull()});
 export const events=pgTable('operation_events',{id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),operationId:text('operation_id').notNull(),kind:text('kind').notNull(),occurredAt:text('occurred_at').notNull(),payload:jsonb('payload').$type<EventRecord>().notNull()},t=>[index('events_operation_time_idx').on(t.operationId,t.occurredAt)]);

@@ -40,16 +40,16 @@ export class StepProgression {
         const upcoming:StepAttempt={id:newId(),operationId:original.operationId,planRevisionId:original.planRevisionId,workStepId:next.id,sequence:latest+1,state:'PENDING',createdAt:now,version:1};
         await tx.insert(attempts).values({id:upcoming.id,operationId:original.operationId,revisionId:original.planRevisionId,stepId:next.id,sequence:upcoming.sequence,state:'PENDING',payload:upcoming});
         const key='step:'+upcoming.id;
-        await tx.insert(outbox).values({id:newId(),workspaceId:opRow.workspaceId,operationId:original.operationId,idempotencyKey:key,topic:'EXECUTE_STEP',payload:{operationId:original.operationId,planRevisionId:original.planRevisionId,stepAttemptId:upcoming.id,idempotencyKey:key},createdAt:now,nextAttemptAt:now});
+        await tx.insert(outbox).values({id:newId(),workspaceId:opRow.workspaceId as ID,operationId:original.operationId,idempotencyKey:key,topic:'EXECUTE_STEP',payload:{operationId:original.operationId,planRevisionId:original.planRevisionId,stepAttemptId:upcoming.id,idempotencyKey:key},createdAt:now,nextAttemptAt:now});
       } else if(done.size>=allSteps.length){
-        const approval:ApprovalRequest={id:newId(),workspaceId:opRow.workspaceId,operationId:original.operationId,planRevisionId:original.planRevisionId,stepAttemptId:original.id,purpose:'RESULT_REVIEW',status:'PENDING',requestedAt:now,expiresAt:new Date(Date.now()+30*86400000).toISOString()};
+        const approval:ApprovalRequest={id:newId(),workspaceId:opRow.workspaceId as ID,operationId:original.operationId,planRevisionId:original.planRevisionId,stepAttemptId:original.id,purpose:'RESULT_REVIEW',status:'PENDING',requestedAt:now,expiresAt:new Date(Date.now()+30*86400000).toISOString()};
         await tx.insert(approvals).values({id:approval.id,workspaceId:approval.workspaceId,operationId:approval.operationId,status:approval.status,payload:approval});
         const updated:Operation={...opRow.payload,status:'WAITING_APPROVAL',version:opRow.version+1,updatedAt:now,lastActivityAt:now};
         await tx.update(operations).set({status:updated.status,version:updated.version,payload:updated,lastActivityAt:now}).where(eq(operations.id,original.operationId));
       } else {
         throw new DomainError('INVALID_STATE','No eligible next step; dependency or state conflict');
       }
-      const ev={id:newId(),workspaceId:opRow.workspaceId,operationId:original.operationId,kind:next?'STEP_COMPLETED_NEXT_QUEUED':'STEPS_COMPLETED_REVIEW_REQUIRED',data:{completedAttempt:original.id,nextStepId:next?.id,quality},occurredAt:now,eventVersion:1};
+      const ev={id:newId(),workspaceId:opRow.workspaceId as ID,operationId:original.operationId,kind:next?'STEP_COMPLETED_NEXT_QUEUED':'STEPS_COMPLETED_REVIEW_REQUIRED',data:{completedAttempt:original.id,nextStepId:next?.id,quality},occurredAt:now,eventVersion:1};
       await tx.insert(events).values({id:ev.id,workspaceId:ev.workspaceId,operationId:ev.operationId,kind:ev.kind,occurredAt:now,payload:ev});
       return next?'NEXT_QUEUED':'AWAITING_REVIEW';
     });

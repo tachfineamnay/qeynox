@@ -15,7 +15,8 @@ One commit per prompt was requested and created on feat/qeynox-2027-foundations.
 | 18 | Business read models and authenticated polling API | UNTESTED |
 | 19 | Incident records, operator actions, approval expiration | RUN OBSERVATION UNSUPPORTED |
 | 20 | Source-level integration and immutable runtime selection | UNTESTED |
+| TASK 02 | Migration runner, schema parity fixes, operator configuration services, isolated-QA verification | QA-VERIFIED IN DISPOSABLE DB |
 
-NEXT SESSION HANDOFF: Do NOT add more product features before the requested separate verification phase. Install dependencies, compile, review auth/service wiring, run migrations in a disposable DB, certify Hatchet/Hermes tool isolation, then execute real sourced end-to-end RaaS work. No customer data or production activity until these gates are passed.
+NEXT SESSION HANDOFF: Do NOT add more product features before the requested separate verification phase. Dependencies are installed and typecheck passes; migrations and the operator configuration lifecycle were verified only in a disposable QA database. Still required: review auth/service wiring, apply migrations to a controlled pre-production database, certify Hatchet/Hermes tool isolation, then execute real sourced end-to-end RaaS work. No customer data or production activity until these gates are passed.
 
-GLOBAL: UNTESTED / NOT BUILT / NOT DEPLOYED / NOT PRODUCTION-READY.
+GLOBAL: ISOLATED QA VERIFIED (MIGRATIONS + CONFIGURATION LIFECYCLE) / RUNTIME UNTESTED / NOT DEPLOYED / NOT PRODUCTION-READY.

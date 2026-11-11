@@ -16,6 +16,7 @@ export const verificationPolicies=pgTable('verification_policies',{
  minimumSources:integer('minimum_sources').notNull(),maxAgeDays:integer('max_age_days').notNull(),
  approvedProviders:jsonb('approved_providers').$type<string[]>().notNull(),
  humanReviewRequired:text('human_review_required').notNull(),validFrom:text('valid_from').notNull(),
+ status:text('status').$type<'ACTIVE'|'DISABLED'>().notNull().default('ACTIVE'),
 },t=>[uniqueIndex('verification_policy_version_unique').on(t.capabilityId,t.version)]);
 export const claimAssessments=pgTable('claim_assessments',{
  id:text('id').primaryKey(),claimId:text('claim_id').notNull().references(()=>claims.id),

@@ -15,7 +15,7 @@ export class OperationExecutionService {
   if(op.version!==expectedVersion)throw new DomainError('CONFLICT','Operation version mismatch');
   if(!op.currentRevisionId||!['READY','INTERRUPTED','FAILED'].includes(op.status))throw new DomainError('INVALID_STATE','Plan not ready');
   await this.commerce.assertExecutionAllowed(actor,operationId,op.currentRevisionId);
-  await new BudgetService(this.store).requirePolicy(actor,operationId);
+  await new BudgetService(this.store).ensureBudget(actor,operationId);
   const planSeal=await this.sealer.prepare(operationId,op.currentRevisionId);
   const planSteps=await this.store.getSteps(op.currentRevisionId);
   const first=planSteps.filter(s=>s.dependsOn.length===0).sort((a,b)=>a.ordinal-b.ordinal)[0];

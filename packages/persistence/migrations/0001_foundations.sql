@@ -1,6 +1,6 @@
 -- QeyNox canonical schema. Separate PostgreSQL database and credentials from Hatchet.
--- APPLY ONLY IN A LATER VERIFICATION PHASE. This file has not been executed.
-BEGIN;
+-- APPLIED ONLY through @qeynox/persistence runMigrations (one transaction per file).
+-- Never paste this file into a production shell; use the migration runner.
 CREATE TABLE IF NOT EXISTS operations (id text PRIMARY KEY, workspace_id text NOT NULL, created_by text NOT NULL, goal_id text NOT NULL, status text NOT NULL, version integer NOT NULL, current_revision_id text, last_activity_at text NOT NULL, payload jsonb NOT NULL);
 CREATE INDEX IF NOT EXISTS operation_workspace_activity_idx ON operations(workspace_id,last_activity_at);
 CREATE TABLE IF NOT EXISTS goals (id text PRIMARY KEY, operation_id text NOT NULL, payload jsonb NOT NULL);
@@ -32,4 +32,3 @@ CREATE TABLE IF NOT EXISTS agent_profiles (id text PRIMARY KEY, role_key text NO
 CREATE UNIQUE INDEX IF NOT EXISTS agent_profile_version_unique ON agent_profiles(role_key,version);
 CREATE TABLE IF NOT EXISTS command_idempotency (id text PRIMARY KEY, workspace_id text NOT NULL, operation_id text NOT NULL, command_key text NOT NULL, outcome jsonb NOT NULL, created_at text NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS command_key_workspace_unique ON command_idempotency(workspace_id,command_key);
-COMMIT;

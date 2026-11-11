@@ -3,12 +3,15 @@
   "private": true,
   "version": "0.1.0",
   "packageManager": "pnpm@9.15.9",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev:api": "pnpm --filter @qeynox/api dev",
     "dev:worker": "pnpm --filter @qeynox/worker dev",
     "build": "turbo run build",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "qa:task02": "pnpm --filter @qeynox/api qa:task02"
   },
   "devDependencies": {
     "typescript": "5.9.3",

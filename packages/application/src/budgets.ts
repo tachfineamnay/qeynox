@@ -1,6 +1,6 @@
-import { and,eq,sql } from 'drizzle-orm';
+import { and,desc,eq,sql } from 'drizzle-orm';
 import { DomainError,newId,type ID,type Principal } from '@qeynox/domain';
-import { QeyNoxStore,operationBudgets,usageReservations,usageLedger,loopFingerprints } from '@qeynox/persistence';
+import { QeyNoxStore,operationBudgets,budgetPolicies,usageReservations,usageLedger,loopFingerprints } from '@qeynox/persistence';
 export interface BudgetPolicy {
  version:number;currency:string;maxMoneyMinor:number;maxAgentCalls:number;maxToolCalls:number;
  maxDurationSeconds:number;maxConcurrent:number;unitMaxMinor:Record<string,number>;
@@ -8,13 +8,36 @@ export interface BudgetPolicy {
 export type ActivityKind='ENGINE'|'TOOL';
 export class BudgetService {
  constructor(private readonly store:QeyNoxStore){}
+ private policyFrom(payload:unknown,expectedVersion:number):BudgetPolicy{
+  const policy=payload as BudgetPolicy;
+  if(!policy||typeof policy!=='object'||policy.version!==expectedVersion)throw new DomainError('INVALID_STATE','Budget policy version is inconsistent');
+  const integers=[policy.maxMoneyMinor,policy.maxAgentCalls,policy.maxToolCalls,policy.maxDurationSeconds,policy.maxConcurrent,...Object.values(policy.unitMaxMinor??{})];
+  if(!integers.every(value=>Number.isSafeInteger(value)&&value>=0))throw new DomainError('INVALID_STATE','Budget policy limits are invalid');
+  if(!Number.isSafeInteger(policy.maxMoneyMinor)||policy.maxMoneyMinor<0||!policy.currency||!/^[A-Z]{3}$/.test(policy.currency))throw new DomainError('INVALID_STATE','Budget policy currency and ceiling are required');
+  if(!policy.unitMaxMinor||!Object.keys(policy.unitMaxMinor).length)throw new DomainError('NOT_CONFIGURED','Configured per-provider cost ceilings are required');
+  return policy;
+ }
+ /** Materializes the workspace's active budget policy onto an operation exactly once. */
+ async ensureBudget(actor:Principal,operationId:ID):Promise<BudgetPolicy>{
+  await this.store.getOperation(actor,operationId);
+  const [current]=await this.store.db.select().from(operationBudgets).where(and(eq(operationBudgets.workspaceId,actor.workspaceId),eq(operationBudgets.operationId,operationId))).limit(1);
+  if(current)return this.policyFrom(current.policy,current.version);
+  const [configured]=await this.store.db.select().from(budgetPolicies).where(and(eq(budgetPolicies.workspaceId,actor.workspaceId),eq(budgetPolicies.status,'ACTIVE'))).orderBy(desc(budgetPolicies.version)).limit(1);
+  if(!configured)throw new DomainError('NOT_CONFIGURED','No active workspace budget policy is configured');
+  const policy=this.policyFrom(configured.payload,configured.version);
+  const now=new Date().toISOString();
+  return this.store.db.transaction(async tx=>{
+   const [existing]=await tx.select().from(operationBudgets).where(and(eq(operationBudgets.workspaceId,actor.workspaceId),eq(operationBudgets.operationId,operationId))).for('update').limit(1);
+   if(existing)return this.policyFrom(existing.policy,existing.version);
+   await tx.insert(operationBudgets).values({id:newId(),workspaceId:actor.workspaceId,operationId,version:policy.version,currency:policy.currency,maxMoneyMinor:policy.maxMoneyMinor,reservedMinor:0,spentMinor:0,maxAgentCalls:policy.maxAgentCalls,maxToolCalls:policy.maxToolCalls,usedAgentCalls:0,usedToolCalls:0,maxDurationSeconds:policy.maxDurationSeconds,maxConcurrent:policy.maxConcurrent,startedAt:now,policy:policy as unknown as Record<string,unknown>});
+   return policy;
+  });
+ }
  async requirePolicy(actor:Principal,operationId:ID):Promise<BudgetPolicy>{
   await this.store.getOperation(actor,operationId);
   const [row]=await this.store.db.select().from(operationBudgets).where(and(eq(operationBudgets.workspaceId,actor.workspaceId),eq(operationBudgets.operationId,operationId))).limit(1);
   if(!row)throw new DomainError('NOT_CONFIGURED','Operation execution budget not configured');
-  const policy=row.policy as unknown as BudgetPolicy;
-  if(!policy||policy.version!==row.version||!Number.isSafeInteger(row.maxMoneyMinor)||row.maxMoneyMinor<0)throw new DomainError('INVALID_STATE','Budget policy invalid');
-  return policy;
+  return this.policyFrom(row.policy,row.version);
  }
  async reserve(actor:Principal,operationId:ID,attemptId:ID,kind:ActivityKind,providerKey:string,key:string):Promise<{reservationId:string;maximumCostMinor:number}>{
   await this.store.getOperation(actor,operationId);

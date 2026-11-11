@@ -33,8 +33,8 @@ export class ClaimsService {
  }
  async assess(actor:Principal,input:ClaimAssessmentInput){
   const claim=await this.get(actor,input.claimId);
-  const [policy]=await this.store.db.select().from(verificationPolicies).where(and(eq(verificationPolicies.capabilityId,input.capabilityId),eq(verificationPolicies.version,input.policyVersion))).limit(1);
-  if(!policy)throw new DomainError('NOT_CONFIGURED','Capability verification policy unavailable');
+  const [policy]=await this.store.db.select().from(verificationPolicies).where(and(eq(verificationPolicies.capabilityId,input.capabilityId),eq(verificationPolicies.version,input.policyVersion),eq(verificationPolicies.status,'ACTIVE'))).limit(1);
+  if(!policy)throw new DomainError('NOT_CONFIGURED','Active capability verification policy unavailable');
   const links=await this.store.db.select().from(claimEvidenceLinks).where(eq(claimEvidenceLinks.claimId,claim.id));
   const related=links.length?await this.store.db.select().from(sources).where(and(eq(sources.workspaceId,actor.workspaceId),eq(sources.operationId,claim.operationId),inArray(sources.id,links.map(l=>l.sourceId)))):[];
   const now=Date.now();

@@ -22,3 +22,4 @@ export * from './recovery';
 export * from './engine-selection';
 export * from './context-policy';
 export * from './delivery';
+export * from './configuration';

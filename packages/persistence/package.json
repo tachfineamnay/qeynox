@@ -1,1 +1,19 @@
-{ "name": "@qeynox/persistence", "version": "0.1.0", "type": "module", "exports": { ".": "./src/index.ts" }, "dependencies": { "@qeynox/domain": "workspace:*", "drizzle-orm": "0.44.5", "pg": "8.16.3" }, "devDependencies": { "@types/pg": "8.15.5" } }
+{
+  "name": "@qeynox/persistence",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@qeynox/domain": "workspace:*",
+    "drizzle-orm": "0.44.5",
+    "pg": "8.16.3"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.5"
+  },
+  "scripts": {
+    "migrate": "tsx scripts/migrate.ts"
+  }
+}
