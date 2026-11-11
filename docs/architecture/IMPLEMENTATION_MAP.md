@@ -1,6 +1,6 @@
 # QeyNox 2027 — source implementation map
 
-Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10–20 each add a separate implementation lot. TASK 02 added the migration runner, operator configuration services and disposable-QA verification. TASK 01 certified dependency installation/lockfile, TypeScript, production builds, NestJS DI/HTTP wiring, Drizzle contracts and the pinned Hatchet SDK surface against an isolated QA database. TASK 03 verified the installed Hatchet SDK contract, implemented run-ID/cancellation/run-observation adapters, hardened Hermes fail-closed isolation and native-tool rejection, and ran a controlled multi-step worker workflow plus Soul/Pilot API wiring against local QA fixtures. TASK 04 added configured-provider ToolRegistry activation, egress/SSRF policy, provider rate limiting, source snapshots and MCP/HTTP boundaries, and exercised the World Bank adapter with a real read-only HTTPS call in isolated QA. **Nothing is deployed and no production migration, customer data or unmediated provider call has occurred.**
+Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10–20 each add a separate implementation lot. TASK 02 added the migration runner, operator configuration services and disposable-QA verification. TASK 01 certified dependency installation/lockfile, TypeScript, production builds, NestJS DI/HTTP wiring, Drizzle contracts and the pinned Hatchet SDK surface against an isolated QA database. TASK 03 verified the installed Hatchet SDK contract, implemented run-ID/cancellation/run-observation adapters, hardened Hermes fail-closed isolation and native-tool rejection, and ran a controlled multi-step worker workflow plus Soul/Pilot API wiring against local QA fixtures. TASK 04 added configured-provider ToolRegistry activation, egress/SSRF policy, provider rate limiting, source snapshots and MCP/HTTP boundaries, and exercised the World Bank adapter with a real read-only HTTPS call in isolated QA. TASK 05 completed evidence-backed claim verification, cited result assembly, human review/delivery and JSON/HTML exports, producing one traceable deliverable from a real World Bank read in isolated QA. **Nothing is deployed and no production migration, customer data or unmediated provider call has occurred.**
 
 | Responsibility | Code area | Status |
 | --- | --- | --- |
@@ -15,8 +15,9 @@ Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10�
 | ToolBroker and source registration | tools, application/agent-tools | CODED; configured-provider registry, permissions/consent/budget/rate-limit/egress gates and source snapshots QA-VERIFIED |
 | World Bank read-only indicator adapter | tools/providers/world-bank | CODED; ACTIVATED IN ISOLATED QA WITH A REAL READ-ONLY HTTPS CALL; requires configuration + egress attestation |
 | External connector framework (provider loader, egress/SSRF policy, rate limiting, MCP boundary) | tools/egress, tools/providers/configured, tools/rate-limit, tools/mcp | QA-VERIFIED; only the reviewed World Bank provider; no second provider added because none is documented/licensed/configured |
-| Claim verification and provenance | application/claims, persistence/claims-schema | CODED, no verified live source |
-| RaaS result versions, private S3 exports | application/result-document, artifacts, s3 | CODED; storage not configured |
+| Claim verification and provenance | application/claims, persistence/claims-schema | CODED; evidence-digest linkage, freshness/contradiction policy and capability binding QA-VERIFIED with a live World Bank source |
+| RaaS result versions, private S3 exports | application/result-document, artifacts, s3 | CODED; cited assembly/review/delivery/JSON+HTML exports QA-VERIFIED; production object storage NOT configured |
+| End-to-end RaaS deliverable (objective → research → evidence → verification → reviewed result → export) | claims, result-document, delivery, artifacts, worker QA pipeline | QA-VERIFIED: real World Bank read, human review, DELIVERABLE version with citations; no fictitious data or success states |
 | Offer/quote/acceptance and payment port | application/commerce/payments | CODED; paid execution BLOCKED |
 | Agent cost ceilings and usage | application/budgets | CODED; pricing/rate cards unconfigured |
 | Operation and activity feeds | application/read-models, API activity | CODED, polling only, no SSE |
@@ -35,7 +36,7 @@ Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10�
 6. No configured eight business skills/profiles; names not invented.
 7. Pricing, tax and payment service provider not decided; any paid operation remains PAYMENT_REQUIRED.
 8. Budget policy configuration exists, but no production client policy is configured; execution still fails closed rather than running unbounded.
-9. No artifact bucket configured, no commercial delivery, no PDF/audio exports, no real SaaS user interface yet.
+9. No production artifact bucket configured: exports and reviewed delivery were exercised in isolated QA against the storage contract (plus the fail-closed unconfigured path). No PDF/audio exports, no paid commercial delivery and no real SaaS user interface yet.
 10. No backups, production migration, provider/tool test calls or Coolify deployment performed; migration verification was limited to a disposable QA database.
 
 This tree is intended as a *source-code foundation* for a dedicated certification and integration phase. It is not a finished or certified product.
