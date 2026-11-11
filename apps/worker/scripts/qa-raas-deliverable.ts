@@ -50,6 +50,11 @@ class QaMemoryArtifactStore implements ArtifactStorePort {
     this.objects.set(key, { content, contentType });
     return { key, sha256: createHash('sha256').update(content).digest('hex'), size: content.byteLength };
   }
+  async head(key: string): Promise<{ sha256?: string; size?: number } | undefined> {
+    const object = this.objects.get(key);
+    if (!object) return undefined;
+    return { sha256: createHash('sha256').update(object.content).digest('hex'), size: object.content.byteLength };
+  }
   async signedRead(key: string): Promise<string> {
     if (!this.objects.has(key)) throw new Error('QA artifact object missing');
     return 'qa-memory://' + encodeURIComponent(key);
@@ -58,6 +63,7 @@ class QaMemoryArtifactStore implements ArtifactStorePort {
 }
 class UnconfiguredArtifactStore implements ArtifactStorePort {
   async put(): Promise<never> { throw new DomainError('NOT_CONFIGURED', 'Artifact store not configured'); }
+  async head(): Promise<never> { throw new DomainError('NOT_CONFIGURED', 'Artifact store not configured'); }
   async signedRead(): Promise<never> { throw new DomainError('NOT_CONFIGURED', 'Artifact store not configured'); }
 }
 
@@ -320,6 +326,7 @@ main().catch((error: unknown) => {
   console.error('RAAS deliverable QA FAILED:', error instanceof Error ? error.stack ?? error.message : error);
   process.exitCode = 1;
 });
+
 
 
 

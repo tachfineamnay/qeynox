@@ -25,7 +25,7 @@ Source: docs/architecture/ and the QeyNox product requirements. The historical i
 
 ## Verification (isolated QA only)
 
-Requires Node.js ≥22, pnpm 9.15.9 and a local disposable PostgreSQL server exposed via `QEYNOX_QA_DATABASE_URL` (the scripts create and drop their own QA database; never point this at production):
+Requires Node.js ≥22, pnpm 9.15.9 and a local disposable PostgreSQL server exposed via `QEYNOX_QA_DATABASE_URL` (the scripts create and drop their own QA database; never point this at production). `qa:storage` additionally needs an isolated S3-compatible MinIO service via `QEYNOX_QA_S3_ENDPOINT`, `QEYNOX_QA_S3_ACCESS_KEY` and `QEYNOX_QA_S3_SECRET_KEY`; when absent it reports BLOCKED instead of faking a result.
 
 ```bash
 pnpm install --frozen-lockfile
@@ -36,10 +36,14 @@ pnpm qa:backend       # NestJS DI, auth/session, HTTP contracts, tenant isolatio
 pnpm qa:agent-runtime # Hatchet SDK contracts, worker progression, Soul/Pilot wiring (local fixtures)
 pnpm qa:connectors    # connector activation, egress/auth/rate-limit gates, real World Bank read
 pnpm qa:raas          # real sourced claim → human verification → cited DELIVERABLE + exports
+pnpm qa:egress        # private/reserved DNS rejection, connection pinning, redirect refusal, live pinned World Bank call
+pnpm qa:storage       # real MinIO uploads, SHA-256 integrity, private/signed/expiry, tenant isolation, PENDING_UPLOAD recovery
 ```
 
-Last consolidated baseline: `b51608b` (plus the local cleanup commit). The five isolated-QA suites total 3059 assertions and passed from a frozen lockfile, typecheck and production builds. `qa:connectors` and `qa:raas` make real read-only calls to the documented World Bank Indicators API; the Hermes model endpoint is a local deterministic QA fixture and no live model was called. Full evidence and blockers: `docs/architecture/PROGRESS.md` and `docs/architecture/IMPLEMENTATION_MAP.md`.
+A disposable MinIO can be started locally with generated credentials (never reuse production secrets), then pass the same values as `QEYNOX_QA_S3_*` for `qa:storage`.
+
+Last consolidated baseline: `b51608b` plus the cleanup/08A commits. The five core isolated-QA suites total 3059 assertions; the focused storage (26 assertions) and egress (46 assertions) integration suites exercised a real isolated MinIO bucket and a real pinned read-only World Bank request. `qa:connectors` and `qa:raas` also make real read-only calls to the documented World Bank Indicators API; the Hermes model endpoint is a local deterministic QA fixture and no live model was called. Full evidence and blockers: `docs/architecture/PROGRESS.md` and `docs/architecture/IMPLEMENTATION_MAP.md`.
 
 ## Status
 
-Source foundation with isolated-QA verification only. **NOT DEPLOYED / NOT PRODUCTION-READY.** External Hatchet dispatch/run observation, Hermes network/tool isolation, production object storage, provider licensing/freshness review and public identity hardening remain unverified deployment gates. No production data or external runtime credentials are configured in this repository.
+Source foundation with isolated-QA verification only. **NOT DEPLOYED / NOT PRODUCTION-READY.** Isolated MinIO storage (private uploads, signed expiry, tenant isolation, reconciliation) is verified, but no production object-storage bucket is configured or certified. External Hatchet dispatch/run observation, Hermes network/tool isolation, deployment egress firewall, provider licensing/freshness review and public identity hardening remain unverified deployment gates. No production data or external runtime credentials are configured in this repository.

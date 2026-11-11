@@ -15,7 +15,9 @@
     "qa:backend": "pnpm --filter @qeynox/api qa:backend",
     "qa:agent-runtime": "pnpm --filter @qeynox/worker qa:agent-runtime",
     "qa:connectors": "pnpm --filter @qeynox/worker qa:connectors",
-    "qa:raas": "pnpm --filter @qeynox/worker qa:raas-deliverable"
+    "qa:raas": "pnpm --filter @qeynox/worker qa:raas-deliverable",
+    "qa:storage": "pnpm --filter @qeynox/worker qa:storage",
+    "qa:egress": "pnpm --filter @qeynox/worker qa:egress"
   },
   "devDependencies": {
     "typescript": "5.9.3",

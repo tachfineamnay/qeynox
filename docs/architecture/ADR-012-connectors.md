@@ -17,3 +17,4 @@ PROVENANCE: every broker call records a durable intent and ledger outcome, and m
 MCP: no MCP gateway, server or transport is configured by QeyNox. The MCP boundary contract exists only to state that MCP tools must be registered as reviewed connectors and routed through ToolBroker; unconfigured MCP calls fail closed with UNSUPPORTED.
 
 Generic JSON HTTP remains disabled until a pinned-network transport safely protects against SSRF, DNS rebinding, metadata endpoints and redirects; checking a URL string is insufficient. No unrestricted browsing or MCP tools are available.
+

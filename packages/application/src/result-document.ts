@@ -67,7 +67,16 @@ export class ResultAssembler {
   return row.document as unknown as ResultDocument;
  }
 }
-export const exportJson=(doc:ResultDocument):Uint8Array=>Buffer.from(JSON.stringify(doc,null,2),'utf8');
+function canonicalJson(value:unknown):unknown{
+ if(Array.isArray(value))return value.map(canonicalJson);
+ if(value&&typeof value==='object'){
+  const record=value as Record<string,unknown>;
+  return Object.fromEntries(Object.keys(record).sort().map(key=>[key,canonicalJson(record[key])]));
+ }
+ return value;
+}
+/** Canonical key ordering makes JSON exports byte-stable across storage round-trips and reconciliation. */
+export const exportJson=(doc:ResultDocument):Uint8Array=>Buffer.from(JSON.stringify(canonicalJson(doc),null,2),'utf8');
 const escapeHtml=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 function citationHtml(citations:readonly ResultCitation[]):string{
  return citations.map(citation=>{
@@ -85,4 +94,5 @@ export function exportHtml(doc:ResultDocument):Uint8Array {
  const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>'+escapeHtml(doc.title)+'</title></head><body><main><h1>'+escapeHtml(doc.title)+'</h1><p>'+escapeHtml(doc.objective)+'</p><p>Document status: '+escapeHtml(doc.status)+'</p><ul>'+find+'</ul><h2>Citations</h2><ul>'+citationHtml(doc.citations)+'</ul><h2>Limits</h2><p>'+escapeHtml(doc.limitations.join('; '))+'</p></main></body></html>';
  return Buffer.from(html,'utf8');
 }
+
 

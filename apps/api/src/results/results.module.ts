@@ -12,8 +12,13 @@ import { ARTIFACT_DELIVERY, RESULT_ASSEMBLER, RESULT_DELIVERY } from './results.
  {provide:RESULT_DELIVERY,useFactory:(s:QeyNoxStore)=>new ResultDeliveryService(s),inject:[QEYNOX_STORE]},
  {provide:ARTIFACT_DELIVERY,useFactory:(s:QeyNoxStore)=>{
   const accessKeyId=process.env.QEYNOX_ARTIFACT_ACCESS_KEY,secretAccessKey=process.env.QEYNOX_ARTIFACT_SECRET_KEY,bucket=process.env.QEYNOX_ARTIFACT_BUCKET;
-  const missing:ArtifactStorePort={put:async()=>{throw new DomainError('NOT_CONFIGURED','Artifact store not configured');},signedRead:async()=>{throw new DomainError('NOT_CONFIGURED','Artifact store not configured');}};
-  const store=accessKeyId&&secretAccessKey&&bucket?new S3ArtifactStore(bucket,{accessKeyId,secretAccessKey,region:process.env.QEYNOX_ARTIFACT_REGION??'us-east-1',endpoint:process.env.QEYNOX_ARTIFACT_ENDPOINT}):missing;
+  const missing:ArtifactStorePort={
+   put:async()=>{throw new DomainError('NOT_CONFIGURED','Artifact store not configured');},
+   head:async()=>{throw new DomainError('NOT_CONFIGURED','Artifact store not configured');},
+   signedRead:async()=>{throw new DomainError('NOT_CONFIGURED','Artifact store not configured');},
+  };
+  const serverSideEncryption: 'AES256'|false = process.env.QEYNOX_ARTIFACT_SERVER_SIDE_ENCRYPTION==='false'?false:'AES256';
+  const store=accessKeyId&&secretAccessKey&&bucket?new S3ArtifactStore(bucket,{accessKeyId,secretAccessKey,region:process.env.QEYNOX_ARTIFACT_REGION??'us-east-1',endpoint:process.env.QEYNOX_ARTIFACT_ENDPOINT,serverSideEncryption}):missing;
   return new ArtifactDelivery(s,store);
  },inject:[QEYNOX_STORE]},
  ],

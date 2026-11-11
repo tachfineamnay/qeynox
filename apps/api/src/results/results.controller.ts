@@ -16,6 +16,11 @@ export class ResultsController {
   if(!req.principal)throw new DomainError('DENIED','Workspace required');
   return this.docs.get(req.principal,requireId(operationId),requireId(documentId));
  }
+ @Post('reconcile')
+ reconcilePending(@Req()req:Request,@Param('operationId')operationId:string){
+  if(!req.principal)throw new DomainError('DENIED','Workspace required');
+  return this.artifacts.reconcilePending(req.principal,requireId(operationId));
+ }
  @Get(':documentId/artifacts/:artifactId')
  async grant(@Req()req:Request,@Param('operationId')operationId:string,@Param('documentId')documentId:string,@Param('artifactId')artifactId:string){
   if(!req.principal)throw new DomainError('DENIED','Workspace required');

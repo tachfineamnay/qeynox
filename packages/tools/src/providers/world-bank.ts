@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { DomainError,type ID } from '@qeynox/domain';
 import type { ToolConnector,ToolDefinition,ToolContext } from '../types';
 import type { ConnectorManifest } from '../manifest';
-import type { EgressPolicy } from '../egress';
+import { secureProviderRequest,type EgressPolicy } from '../egress';
 
 const request=z.object({
  country:z.string().regex(/^[A-Za-z]{2,3}$/).transform(x=>x.toUpperCase()),
@@ -31,10 +31,9 @@ export class WorldBankConnector implements ToolConnector {
   const url=new URL('https://api.worldbank.org/v2/country/'+encodeURIComponent(values.country)+'/indicator/'+encodeURIComponent(values.indicator));
   url.searchParams.set('format','json');url.searchParams.set('mrnev',String(values.mostRecent));url.searchParams.set('per_page','5');
   this.egress.assertAllowed(url);
-  const response=await fetch(url,{method:'GET',signal:context.signal,redirect:'error',headers:{accept:'application/json'}});
-  if(!response.ok)throw new DomainError('INVALID_STATE','World Bank responded HTTP '+response.status);
-  const text=await response.text();
-  if(text.length>500000)throw new DomainError('INVALID_STATE','Provider payload too large');
+  const response=await secureProviderRequest(url,this.egress,{signal:context.signal,headers:{accept:'application/json'},maxBytes:500000,timeoutMs:10000});
+  if(response.status<200||response.status>=300)throw new DomainError('INVALID_STATE','World Bank responded HTTP '+response.status);
+  const text=response.body;
   const body=payload.parse(JSON.parse(text)), observations=z.array(row).parse(body[1]);
   const result={provider:'world-bank' as const,country:values.country,indicator:values.indicator,observations,sourceUri:url.toString(),retrievedAt:new Date().toISOString()};
   return {value:output.parse(result),sourceUri:url.toString()};
@@ -48,4 +47,5 @@ export const worldBankManifest:ConnectorManifest={
  freshness:{ttlSeconds:86400,publishedAtSource:'UNKNOWN'},
  rateLimit:{maxPerMinute:30},mode:'READ_ONLY',tools:[{name:'indicator',version:'1'}],
 };
+
 
