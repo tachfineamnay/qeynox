@@ -11,7 +11,8 @@
     "dev:worker": "pnpm --filter @qeynox/worker dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
-    "qa:task02": "pnpm --filter @qeynox/api qa:task02"
+    "qa:task02": "pnpm --filter @qeynox/api qa:task02",
+    "qa:backend": "pnpm --filter @qeynox/api qa:backend"
   },
   "devDependencies": {
     "typescript": "5.9.3",

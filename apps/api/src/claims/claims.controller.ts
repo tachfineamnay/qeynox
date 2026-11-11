@@ -1,7 +1,7 @@
 import { Controller,Get,Param,Req,Inject } from '@nestjs/common';
 import { ClaimsService } from '@qeynox/application';
 import { DomainError,requireId,type Principal } from '@qeynox/domain';
-import { CLAIMS_SERVICE } from './claims.module';
+import { CLAIMS_SERVICE } from './claims.tokens';
 interface Authed {principal?:Principal}
 @Controller('v1/operations/:operationId/claims')
 export class ClaimsController {
@@ -12,3 +12,5 @@ export class ClaimsController {
   return this.claims.list(req.principal,requireId(operationId));
  }
 }
+
+

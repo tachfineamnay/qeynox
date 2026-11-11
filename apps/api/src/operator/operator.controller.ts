@@ -2,7 +2,7 @@ import { Body,Controller,Get,Inject,Param,Post,Req } from '@nestjs/common';
 import { z } from 'zod';
 import { DomainError,requireId,type Principal } from '@qeynox/domain';
 import { RecoveryService } from '@qeynox/application';
-import { RECOVERY_SERVICE } from './operator.module';
+import { RECOVERY_SERVICE } from './operator.tokens';
 interface Request {principal?:Principal}
 const actionSchema=z.object({action:z.enum(['ESCALATE','ABANDON','RETRY_SAFE_READ']),reason:z.string().min(5).max(1000),commandKey:z.string().optional()});
 @Controller('v1/operator')
@@ -30,3 +30,5 @@ export class OperatorController{
   return this.recovery.action(req.principal,requireId(id),input.action,input.reason,input.commandKey);
  }
 }
+
+

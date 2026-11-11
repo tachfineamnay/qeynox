@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { DomainError, type Principal } from '@qeynox/domain';
 import { AuthService } from './auth.service';
@@ -6,7 +6,7 @@ import { PUBLIC_ROUTE_KEY } from './public-route';
 interface AuthedRequest { headers: Record<string,string|string[]|undefined>; principal?:Principal }
 @Injectable()
 export class AuthenticationGuard implements CanActivate {
-  constructor(private readonly auth:AuthService,private readonly reflector:Reflector){}
+  constructor(@Inject(AuthService) private readonly auth:AuthService,@Inject(Reflector) private readonly reflector:Reflector){}
   async canActivate(context:ExecutionContext):Promise<boolean>{
     if(this.reflector.getAllAndOverride<boolean>(PUBLIC_ROUTE_KEY,[context.getHandler(),context.getClass()]))return true;
     const req=context.switchToHttp().getRequest<AuthedRequest>();

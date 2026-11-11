@@ -1,6 +1,6 @@
 # QeyNox 2027 — source implementation map
 
-Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10–20 each add a separate implementation lot. TASK 02 added the migration runner, operator configuration services and disposable-QA verification. Typechecking and isolated-database QA have run; **nothing is deployed and no production migration, customer data or external provider call has occurred.**
+Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10–20 each add a separate implementation lot. TASK 02 added the migration runner, operator configuration services and disposable-QA verification. TASK 01 certified dependency installation/lockfile, TypeScript, production builds, NestJS DI/HTTP wiring, Drizzle contracts and the pinned Hatchet SDK surface against an isolated QA database. **Nothing is deployed and no production migration, customer data or external provider call has occurred.**
 
 | Responsibility | Code area | Status |
 | --- | --- | --- |
@@ -21,6 +21,7 @@ Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10�
 | Recovery and operator actions | application/recovery, API operator | CODED; runtime run observation unsupported |
 | Runtime replacement contracts | engine runtime-manifest, application/engine-selection | CODED; future engines not implemented |
 | Consent and local deletion request | roles/soul, application/context-policy | CODED; third-party deletion NOT CONFIRMED |
+| Backend certification (install/lockfile, typecheck, production build, NestJS DI, HTTP auth/validation, Drizzle contracts, pinned Hatchet SDK surface) | apps/api, apps/worker, packages/*, apps/api/scripts | VERIFIED IN ISOLATED QA; Hatchet/Hermes runtime integration still NOT VERIFIED |
 
 ## Open decisions and real operational blockers
 

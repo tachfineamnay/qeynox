@@ -2,7 +2,7 @@ import { Body, Controller, Get, Inject, Post, Req } from '@nestjs/common';
 import { applyConfigurationSchema } from '@qeynox/contracts';
 import { ConfigurationService } from '@qeynox/application';
 import { DomainError, type Principal } from '@qeynox/domain';
-import { CONFIGURATION_SERVICE } from './configuration.module';
+import { CONFIGURATION_SERVICE } from './configuration.tokens';
 interface Request { principal?: Principal }
 /**
  * Global product configuration is restricted to an explicitly allowlisted deployment operator
@@ -23,3 +23,5 @@ export class ConfigurationController {
     return this.configuration.apply(request.principal, applyConfigurationSchema.parse(body));
   }
 }
+
+

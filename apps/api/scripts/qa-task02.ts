@@ -21,11 +21,9 @@ import * as persistence from '@qeynox/persistence';
 import type { ApplyConfigurationInput, ConfigurationEntry } from '@qeynox/contracts';
 import { BudgetService, CommerceService, ConfigurationService, OperationExecutionService, PlanningService } from '@qeynox/application';
 import { DomainError, newId, type ID, type Principal } from '@qeynox/domain';
+import { createIsolatedQaDatabase } from './qa-isolated-database';
 
-const localHosts = new Set(['localhost', '127.0.0.1', '::1']);
-const qaDatabasePattern = /^qeynox_qa_[a-z0-9_]{6,40}$/;
 let assertions = 0;
-let databaseName: string | undefined;
 
 function assert(condition: unknown, message: string): asserts condition {
   assertions++;
@@ -190,21 +188,12 @@ async function verifyMigrationImmutability(targetUrl: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const adminUrlValue = process.env.QEYNOX_QA_DATABASE_URL;
-  if (!adminUrlValue) throw new DomainError('NOT_CONFIGURED', 'QEYNOX_QA_DATABASE_URL is required for the isolated QA run');
-  const adminUrl = new URL(adminUrlValue);
-  if (!localHosts.has(adminUrl.hostname)) throw new DomainError('DENIED', 'QA verification refuses non-local database hosts: ' + adminUrl.hostname);
-  databaseName = 'qeynox_qa_' + randomUUID().replace(/-/g, '').slice(0, 16);
-  assert(qaDatabasePattern.test(databaseName), 'generated QA database name is isolated and safe');
-  const admin = new Pool({ connectionString: adminUrlValue, max: 1 });
-  const targetUrl = new URL(adminUrlValue);
-  targetUrl.pathname = '/' + databaseName;
-  const targetConnectionString = targetUrl.toString();
+  const qa = await createIsolatedQaDatabase();
+  const targetConnectionString = qa.url;
   let connection: Awaited<ReturnType<typeof connectDatabase>> | undefined;
   let pool: Pool | undefined;
   try {
-    await admin.query('CREATE DATABASE "' + databaseName + '"');
-    console.log('QA database created:', databaseName);
+    console.log('QA database created:', qa.name);
 
     const migrations = await loadMigrations();
     const firstRun = await runMigrations(targetConnectionString);
@@ -362,13 +351,8 @@ async function main(): Promise<void> {
   } finally {
     await connection?.close().catch(() => undefined);
     await pool?.end().catch(() => undefined);
-    try {
-      await admin.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()', [databaseName]);
-      await admin.query('DROP DATABASE IF EXISTS "' + databaseName + '"');
-      console.log('QA database dropped:', databaseName);
-    } finally {
-      await admin.end().catch(() => undefined);
-    }
+    await qa.drop();
+    console.log('QA database dropped:', qa.name);
   }
 }
 
@@ -376,3 +360,6 @@ main().catch((error: unknown) => {
   console.error('QA verification FAILED:', error instanceof Error ? error.stack ?? error.message : error);
   process.exitCode = 1;
 });
+
+
+

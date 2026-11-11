@@ -1,7 +1,7 @@
 import { Body,Controller,Get,Inject,Param,Post,Req } from '@nestjs/common';
 import { DomainError,requireId,type Principal } from '@qeynox/domain';
 import { ResultAssembler,ArtifactDelivery,ResultDeliveryService,exportHtml,exportJson } from '@qeynox/application';
-import { RESULT_ASSEMBLER,ARTIFACT_DELIVERY,RESULT_DELIVERY } from './results.module';
+import { RESULT_ASSEMBLER,ARTIFACT_DELIVERY,RESULT_DELIVERY } from './results.tokens';
 interface Request {principal?:Principal}
 @Controller('v1/operations/:operationId/documents')
 export class ResultsController {
@@ -37,3 +37,5 @@ export class ResultsController {
   return this.delivery.deliver(req.principal,requireId(operationId),requireId(documentId),requireId(approvalId));
  }
 }
+
+

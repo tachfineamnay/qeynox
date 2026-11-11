@@ -4,9 +4,7 @@ import { ArtifactDelivery,ResultAssembler,S3ArtifactStore,ResultDeliveryService,
 import { DomainError } from '@qeynox/domain';
 import { QEYNOX_STORE } from '../database/database.module';
 import { ResultsController } from './results.controller';
-export const RESULT_ASSEMBLER=Symbol('RESULT_ASSEMBLER');
-export const ARTIFACT_DELIVERY=Symbol('ARTIFACT_DELIVERY');
-export const RESULT_DELIVERY=Symbol('RESULT_DELIVERY');
+import { ARTIFACT_DELIVERY, RESULT_ASSEMBLER, RESULT_DELIVERY } from './results.tokens';
 @Module({
  controllers:[ResultsController],
  providers:[

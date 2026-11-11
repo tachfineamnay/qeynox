@@ -2,7 +2,7 @@ import { Body,Controller,Get,Inject,Param,Post,Req } from '@nestjs/common';
 import { z } from 'zod';
 import { DomainError,requireId,type Principal } from '@qeynox/domain';
 import { CommerceService } from '@qeynox/application';
-import { COMMERCE_SERVICE } from './commerce.module';
+import { COMMERCE_SERVICE } from './commerce.tokens';
 interface Authed {principal?:Principal}
 const makeQuote=z.object({offerId:z.string().min(1),revisionId:z.string().min(4)});
 const accept=z.object({idempotencyKey:z.string().min(8).max(200)});
@@ -20,3 +20,5 @@ export class CommerceController{
   return this.commerce.accept(req.principal,requireId(quoteId),accept.parse(body).idempotencyKey);
  }
 }
+
+

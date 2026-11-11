@@ -8,7 +8,8 @@
     "start": "tsx src/main.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "qa:task02": "tsx scripts/qa-task02.ts"
+    "qa:task02": "tsx scripts/qa-task02.ts",
+    "qa:backend": "tsx scripts/qa-backend-certification.ts"
   },
   "dependencies": {
     "@qeynox/application": "workspace:*",

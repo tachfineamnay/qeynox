@@ -1,11 +1,11 @@
-import { Body, Controller, Headers, Post, Req } from '@nestjs/common';
+import { Body, Controller, Headers, Inject, Post, Req } from '@nestjs/common';
 import { DomainError, type Principal } from '@qeynox/domain';
 import { AuthService } from './auth.service';
 import { PublicRoute } from './public-route';
 interface ReqType { principal?:Principal }
 @Controller('v1/auth')
 export class AuthController {
-  constructor(private readonly auth:AuthService){}
+  constructor(@Inject(AuthService) private readonly auth:AuthService){}
   @PublicRoute() @Post('register')
   register(@Body()body:unknown){return this.auth.register(body);}
   @PublicRoute() @Post('login')

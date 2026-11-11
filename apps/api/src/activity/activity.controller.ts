@@ -1,7 +1,7 @@
 import { Controller,Get,Inject,Param,Query,Req } from '@nestjs/common';
 import { DomainError,requireId,type Principal } from '@qeynox/domain';
 import { OperationReadModels } from '@qeynox/application';
-import { OPERATION_READMODELS } from './activity.module';
+import { OPERATION_READMODELS } from './activity.tokens';
 interface Request {principal?:Principal}
 @Controller('v1/mydash')
 export class ActivityController {
@@ -22,3 +22,5 @@ export class ActivityController {
   return this.view.activity(req.principal,requireId(id),after?Number(after):0,limit?Number(limit):50);
  }
 }
+
+
