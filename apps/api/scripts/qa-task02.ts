@@ -119,18 +119,19 @@ function applyInput(idempotencyKey: string, entries: ConfigurationEntry[], dryRu
   return { idempotencyKey, entries, dryRun } as ApplyConfigurationInput;
 }
 
-interface SchemaColumn { type: string; nullable: boolean }
+interface SchemaColumn { type: string; nullable: boolean; hasDefault: boolean }
 const drizzleTypeMap: Readonly<Record<string, string>> = { string: 'text', number: 'integer', boolean: 'boolean', json: 'jsonb', date: 'timestamp with time zone' };
 
 async function verifySchemaParity(pool: Pool): Promise<void> {
-  const { rows } = await pool.query<{ table_name: string; column_name: string; data_type: string; is_nullable: string }>(
-    "SELECT table_name, column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name, column_name",
+  const { rows } = await pool.query<{ table_name: string; column_name: string; data_type: string; is_nullable: string; column_default: string | null }>(
+    "SELECT table_name, column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name, column_name",
   );
   const actual = new Map<string, Map<string, SchemaColumn>>();
   for (const row of rows) {
     if (!actual.has(row.table_name)) actual.set(row.table_name, new Map());
-    actual.get(row.table_name)!.set(row.column_name, { type: row.data_type, nullable: row.is_nullable === 'YES' });
+    actual.get(row.table_name)!.set(row.column_name, { type: row.data_type, nullable: row.is_nullable === 'YES', hasDefault: row.column_default !== null });
   }
+  const drizzleTables = new Map<string, PgTable>();
   const expected = new Map<string, Map<string, SchemaColumn>>();
   for (const value of Object.values(persistence)) {
     if (!isTable(value)) continue;
@@ -140,9 +141,10 @@ async function verifySchemaParity(pool: Pool): Promise<void> {
     for (const column of Object.values(getTableColumns(table))) {
       const mapped = drizzleTypeMap[column.dataType];
       assert(mapped !== undefined, 'drizzle type mapping missing for ' + config.name + '.' + column.name + ' (' + column.dataType + ')');
-      columns.set(column.name, { type: mapped, nullable: !column.notNull });
+      columns.set(column.name, { type: mapped, nullable: !column.notNull, hasDefault: column.hasDefault });
     }
     expected.set(config.name, columns);
+    drizzleTables.set(config.name, table);
   }
   assert(expected.size > 50, 'drizzle schema exposes the full table inventory');
   for (const [table, columns] of expected) {
@@ -153,6 +155,7 @@ async function verifySchemaParity(pool: Pool): Promise<void> {
       assert(found !== undefined, 'migration created column ' + table + '.' + column);
       assert(found.type === expectation.type, 'type parity ' + table + '.' + column + ': db=' + found.type + ' drizzle=' + expectation.type);
       assert(found.nullable === expectation.nullable, 'nullability parity ' + table + '.' + column);
+      assert(found.hasDefault === expectation.hasDefault, 'default parity ' + table + '.' + column);
     }
     for (const column of database.keys()) assert(columns.has(column), 'no undeclared extra column ' + table + '.' + column);
   }
@@ -160,13 +163,102 @@ async function verifySchemaParity(pool: Pool): Promise<void> {
     if (table === 'schema_migrations') continue;
     assert(expected.has(table), 'no undeclared extra table ' + table);
   }
-  const indexes = await pool.query<{ indexname: string }>("SELECT indexname FROM pg_indexes WHERE schemaname='public'");
-  const indexNames = new Set(indexes.rows.map(row => row.indexname));
+
+  // Indexes declared in Drizzle must exist with the same uniqueness; no migration index may be undeclared.
+  const indexRows = await pool.query<{ indexname: string; indexdef: string }>("SELECT indexname, indexdef FROM pg_indexes WHERE schemaname='public'");
+  const databaseIndexes = new Map(indexRows.rows.map(row => [row.indexname, row.indexdef]));
+  const declaredIndexes = new Set<string>();
+  for (const table of drizzleTables.values()) {
+    for (const index of getTableConfig(table).indexes) {
+      const indexName = index.config.name;
+      assert(indexName !== undefined, 'drizzle declared index has a name');
+      declaredIndexes.add(indexName);
+      const definition = databaseIndexes.get(indexName);
+      assert(definition !== undefined, 'migration created declared index ' + indexName);
+      assert(definition.startsWith('CREATE UNIQUE INDEX') === index.config.unique, 'index uniqueness parity ' + indexName);
+    }
+  }
+  for (const name of databaseIndexes.keys()) {
+    if (declaredIndexes.has(name) || name.endsWith('_pkey') || name.endsWith('_key')) continue;
+    throw new Error('ASSERTION FAILED: migration index is not declared in Drizzle: ' + name);
+  }
   for (const name of [
     'capability_active_slot_unique', 'agent_profile_active_role_unique', 'verification_policy_active_capability_unique',
     'raas_offer_active_id_unique', 'tool_configuration_connector_version_unique', 'tool_configuration_active_connector_unique',
     'budget_policy_workspace_key_version_unique', 'budget_policy_active_workspace_unique', 'configuration_record_workspace_key_unique',
-  ]) assert(indexNames.has(name), 'integrity index exists: ' + name);
+  ]) assert(databaseIndexes.has(name), 'integrity index exists: ' + name);
+
+  // CHECK constraints declared in Drizzle must exist; no migration CHECK may be undeclared.
+  const checkRows = await pool.query<{ conname: string }>("SELECT conname FROM pg_constraint WHERE contype='c' AND connamespace='public'::regnamespace");
+  const databaseChecks = new Set(checkRows.rows.map(row => row.conname));
+  const declaredChecks = new Set<string>();
+  for (const table of drizzleTables.values()) {
+    for (const constraint of getTableConfig(table).checks) {
+      declaredChecks.add(constraint.name);
+      assert(databaseChecks.has(constraint.name), 'check constraint exists: ' + constraint.name);
+    }
+  }
+  for (const name of databaseChecks) assert(declaredChecks.has(name), 'migration check is declared in Drizzle: ' + name);
+
+  // Foreign keys must match structurally in both directions (auto-generated names are ignored).
+  const foreignKeys = await pool.query<{ table_name: string; column_name: string; foreign_table: string; foreign_column: string }>(
+    `SELECT tc.table_name, kcu.column_name, ccu.table_name AS foreign_table, ccu.column_name AS foreign_column
+     FROM information_schema.table_constraints tc
+     JOIN information_schema.key_column_usage kcu ON tc.constraint_name=kcu.constraint_name AND tc.table_schema=kcu.table_schema
+     JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name=ccu.constraint_name AND tc.table_schema=ccu.table_schema
+     WHERE tc.constraint_type='FOREIGN KEY' AND tc.table_schema='public'`,
+  );
+  const databaseForeignKeys = new Set(foreignKeys.rows.map(row => [row.table_name, row.column_name, row.foreign_table, row.foreign_column].join('|')));
+  const declaredForeignKeys = new Set<string>();
+  for (const [tableName, table] of drizzleTables) {
+    for (const foreignKey of getTableConfig(table).foreignKeys) {
+      const reference = foreignKey.reference();
+      const foreignTable = (reference.foreignTable as unknown as Record<symbol, string>)[Symbol.for('drizzle:Name')];
+      reference.columns.forEach((column, position) => {
+        const foreignColumn = reference.foreignColumns[position];
+        assert(foreignColumn !== undefined, 'drizzle foreign key column mapping: ' + tableName);
+        declaredForeignKeys.add([tableName, column.name, foreignTable, foreignColumn.name].join('|'));
+      });
+    }
+  }
+  for (const key of declaredForeignKeys) assert(databaseForeignKeys.has(key), 'migration created declared foreign key: ' + key);
+  for (const key of databaseForeignKeys) assert(declaredForeignKeys.has(key), 'migration foreign key is declared in Drizzle: ' + key);
+
+  // Primary keys must match Drizzle metadata.
+  const primaryRows = await pool.query<{ table_name: string; column_name: string }>(
+    `SELECT tc.table_name, kcu.column_name FROM information_schema.table_constraints tc
+     JOIN information_schema.key_column_usage kcu ON tc.constraint_name=kcu.constraint_name AND tc.table_schema=kcu.table_schema
+     WHERE tc.constraint_type='PRIMARY KEY' AND tc.table_schema='public' ORDER BY tc.table_name, kcu.ordinal_position`,
+  );
+  const databasePrimaryKeys = new Map<string, string[]>();
+  for (const row of primaryRows.rows) {
+    const columns = databasePrimaryKeys.get(row.table_name) ?? [];
+    columns.push(row.column_name);
+    databasePrimaryKeys.set(row.table_name, columns);
+  }
+  for (const [tableName, table] of drizzleTables) {
+    const config = getTableConfig(table);
+    const inline = Object.values(config.columns).filter(column => column.primary).map(column => column.name);
+    const declared = inline.length ? inline : config.primaryKeys.flatMap(key => key.columns.map(column => column.name));
+    assert([...declared].sort().join(',') === [...(databasePrimaryKeys.get(tableName) ?? [])].sort().join(','), 'primary key parity: ' + tableName);
+  }
+
+  // Single-column unique declarations must be enforced exactly once in the database.
+  const uniqueRows = await pool.query<{ table_name: string; column_name: string }>(
+    `SELECT t.relname AS table_name, a.attname AS column_name FROM pg_index i
+     JOIN pg_class t ON i.indrelid=t.oid JOIN pg_attribute a ON a.attrelid=t.oid AND a.attnum=i.indkey[0]
+     WHERE i.indisunique AND NOT i.indisprimary AND i.indnkeyatts=1 AND i.indpred IS NULL AND i.indexprs IS NULL
+       AND t.relnamespace='public'::regnamespace`,
+  );
+  const databaseUniqueColumns = new Set(uniqueRows.rows.map(row => row.table_name + '.' + row.column_name));
+  const declaredUniqueColumns = new Set<string>();
+  for (const [tableName, table] of drizzleTables) {
+    for (const column of Object.values(getTableConfig(table).columns)) {
+      if (column.isUnique) declaredUniqueColumns.add(tableName + '.' + column.name);
+    }
+  }
+  for (const key of declaredUniqueColumns) assert(databaseUniqueColumns.has(key), 'unique column enforced in database: ' + key);
+  for (const key of databaseUniqueColumns) assert(declaredUniqueColumns.has(key), 'database unique column declared in Drizzle: ' + key);
 }
 
 async function verifyMigrationImmutability(targetUrl: string): Promise<void> {
@@ -204,6 +296,7 @@ async function main(): Promise<void> {
     assert(secondRun.skipped.length === migrations.length, 'migration rerun records every migration as already applied');
 
     pool = new Pool({ connectionString: targetConnectionString, max: 4 });
+    pool.on('error', error => console.error('QA parity pool error:', error.message));
     await verifySchemaParity(pool);
     await verifyMigrationImmutability(targetConnectionString);
 
@@ -360,6 +453,8 @@ main().catch((error: unknown) => {
   console.error('QA verification FAILED:', error instanceof Error ? error.stack ?? error.message : error);
   process.exitCode = 1;
 });
+
+
 
 
 

@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { pgTable,text,integer,jsonb,index,uniqueIndex } from 'drizzle-orm/pg-core';
 export type ClaimStatus='UNVERIFIED'|'SUPPORTED'|'CONFLICTING'|'STALE'|'DISPROVEN'|'NEEDS_HUMAN_REVIEW';
 export const claims=pgTable('claims',{
@@ -17,7 +18,7 @@ export const verificationPolicies=pgTable('verification_policies',{
  approvedProviders:jsonb('approved_providers').$type<string[]>().notNull(),
  humanReviewRequired:text('human_review_required').notNull(),validFrom:text('valid_from').notNull(),
  status:text('status').$type<'ACTIVE'|'DISABLED'>().notNull().default('ACTIVE'),
-},t=>[uniqueIndex('verification_policy_version_unique').on(t.capabilityId,t.version)]);
+},t=>[uniqueIndex('verification_policy_version_unique').on(t.capabilityId,t.version),uniqueIndex('verification_policy_active_capability_unique').on(t.capabilityId).where(sql`${t.status} = 'ACTIVE'`)]);
 export const claimAssessments=pgTable('claim_assessments',{
  id:text('id').primaryKey(),claimId:text('claim_id').notNull().references(()=>claims.id),
  policyId:text('policy_id').notNull().references(()=>verificationPolicies.id),

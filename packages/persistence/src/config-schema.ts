@@ -1,8 +1,7 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, integer, jsonb, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, jsonb, timestamp, uniqueIndex, check } from 'drizzle-orm/pg-core';
 import { identityWorkspaces } from './identity-schema';
 export type ConfigurationStatus = 'ACTIVE' | 'DISABLED';
-const active = sql`status = 'ACTIVE'`;
 export const toolConfigurations = pgTable('tool_configurations', {
   id: text('id').primaryKey(),
   connectorId: text('connector_id').notNull(),
@@ -16,10 +15,11 @@ export const toolConfigurations = pgTable('tool_configurations', {
 }, t => [
   uniqueIndex('tool_configuration_connector_version_unique').on(t.connectorId, t.connectorVersion),
   uniqueIndex('tool_configuration_active_connector_unique').on(t.connectorId).where(sql`${t.status} = 'ACTIVE'`),
+  check('tool_configuration_status_range', sql`${t.status} IN ('ACTIVE', 'DISABLED')`),
 ]);
 export const budgetPolicies = pgTable('budget_policies', {
   id: text('id').primaryKey(),
-  workspaceId: text('workspace_id').notNull(),
+  workspaceId: text('workspace_id').notNull().references(() => identityWorkspaces.id),
   version: integer('version').notNull(),
   status: text('status').$type<ConfigurationStatus>().notNull(),
   payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
@@ -30,6 +30,7 @@ export const budgetPolicies = pgTable('budget_policies', {
 }, t => [
   uniqueIndex('budget_policy_workspace_key_version_unique').on(t.workspaceId, t.id, t.version),
   uniqueIndex('budget_policy_active_workspace_unique').on(t.workspaceId).where(sql`${t.status} = 'ACTIVE'`),
+  check('budget_policy_status_range', sql`${t.status} IN ('ACTIVE', 'DISABLED')`),
 ]);
 export const configurationRecords = pgTable('configuration_records', {
   id: text('id').primaryKey(),
