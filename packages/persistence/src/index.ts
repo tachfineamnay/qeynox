@@ -6,3 +6,4 @@ export * from './claims-schema';
 export * from './result-schema';
 export * from './commerce-schema';
 export * from './budget-schema';
+export * from './views-schema';
