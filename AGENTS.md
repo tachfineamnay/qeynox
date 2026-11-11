@@ -9,10 +9,10 @@ BOUNDARIES:
 - Soul manages consented context; Pilot supports business decisions, plans and approvals without becoming a scheduler.
 - Eight configurable business capability slots; unconfigured skills remain inactive.
 - Users retain control of privacy context, operation history and revisions.
-- MyDash/Quiet Authority interface is a later wave, not coded here.
+- The approved frontend visual direction is Professional Blue (docs/design/DESIGN_SYSTEM.md); customer UI remains a separate implementation wave.
 
 IMPLEMENTATION AND CERTIFICATION:
-- Work on feat/qeynox-2027-foundations; protect main. Historical source waves 10–20 and the QA/certification commits live on that branch.
+- main is the canonical verified baseline. Use scoped working branches when appropriate, and never push/merge/deploy without explicit operator instruction.
 - One deliberate commit per completed, verified task.
 - No push, merge, deployment, history rewrite or destructive Git action without an explicit operator instruction.
 - Verification runs against a disposable PostgreSQL database (`QEYNOX_QA_DATABASE_URL`); never production. Required checks: `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm build`, `pnpm qa:task02`, `pnpm qa:backend`, `pnpm qa:agent-runtime`, `pnpm qa:connectors`, `pnpm qa:raas`, where prerequisites exist.
@@ -23,3 +23,6 @@ IMPLEMENTATION AND CERTIFICATION:
 - External Hatchet/Hermes runtimes, production object storage, provider licensing/freshness review and public identity hardening remain unverified deployment gates.
 
 SOURCE TRUTH: Latest product decisions and ADRs supersede historical custom runner suggestions. docs/architecture/IMPLEMENTATION_MAP.md lists exact blockers. Production readiness requires a separate independent certification phase.
+
+## Approved UI design contract
+Before web, UX, marketing page or component work, read `docs/design/DESIGN_SYSTEM.md` and `docs/design/design-tokens.css`. QeyNox uses the approved **Professional Blue** concept: deep-navy sidebar, cobalt hero, light workspace surfaces, outcome-first mission cards and evidence-backed results. Follow semantic tokens, responsive rules, accessibility and Definition of Done. Never invent business proof or replace backend status with cosmetic success. Resolve API/security conflicts in favor of business truth. Do not introduce another visual language without explicit product approval. The original screenshot is referenced at `docs/design/reference/concept-02-professional-blue.png`; if not present in the checkout, screenshot comparison must be reported BLOCKED, not PASS.

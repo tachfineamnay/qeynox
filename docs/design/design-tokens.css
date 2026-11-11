@@ -1,0 +1,37 @@
+/* QeyNox Professional Blue v1.0 — source: docs/design/DESIGN_SYSTEM.md */
+:root {
+  --qx-navy-950: #051231;
+  --qx-navy-900: #071b43;
+  --qx-navy-800: #0b2866;
+  --qx-blue-800: #153b91;
+  --qx-blue-700: #0c43ba;
+  --qx-blue-600: #1054f6;
+  --qx-blue-500: #1873f8;
+  --qx-blue-400: #2491f4;
+  --qx-blue-100: #dfeafe;
+  --qx-blue-50: #eef5ff;
+  --qx-canvas: #f2f5fc;
+  --qx-surface: #ffffff;
+  --qx-surface-soft: #f9fafd;
+  --qx-ink: #080c1f;
+  --qx-text-secondary: #485673;
+  --qx-text-muted: #69758f;
+  --qx-border: #d8e3f5;
+  --qx-success: #087251;
+  --qx-success-bg: #ddf5e9;
+  --qx-warning: #986500;
+  --qx-warning-bg: #fff2cd;
+  --qx-danger: #b42332;
+  --qx-danger-bg: #fde8ea;
+  --qx-hero-gradient: linear-gradient(118deg, #071b43 0%, #0643b3 53%, #1873f8 100%);
+  --qx-nav-gradient: linear-gradient(180deg, #051231 0%, #071b43 100%);
+  --qx-radius-sm: 8px;
+  --qx-radius-md: 12px;
+  --qx-radius-lg: 16px;
+  --qx-radius-xl: 22px;
+  --qx-radius-pill: 999px;
+  --qx-shadow-card: 0 5px 18px rgba(16, 43, 96, .055);
+  --qx-shadow-float: 0 16px 40px rgba(5, 18, 49, .14);
+  --qx-focus: 0 0 0 3px rgba(16, 84, 246, .28);
+  --qx-ease: cubic-bezier(.2, .8, .2, 1);
+}
