@@ -13,3 +13,28 @@ Before use:
 - No public database, Hermes or Hatchet management endpoint by default.
 
 Official references: https://docs.hatchet.run/v1 and https://hermes-agent.nousresearch.com/docs/user-guide/features/api-server .
+
+## Runtime network correction
+
+The original Compose source had only an `internal: true` network. That isolates
+PostgreSQL as intended, but also blocks API/worker outbound connectivity to
+separately hosted Hatchet, Hermes and allowlisted public providers.
+
+The API and worker now join two networks: `qeynox-private` for PostgreSQL
+and `qeynox-outbound` for configured external runtimes/providers.
+PostgreSQL stays only on `qeynox-private` with no published port.
+
+**Security gate:** a Docker bridge is NOT an egress firewall or a pinned
+network policy. Do not set `QEYNOX_NETWORK_POLICY_ATTESTED=true` or
+`HERMES_NATIVE_TOOLS_ISOLATED=true` merely because a route exists.
+Apply an external firewall/allowlist and actual Hermes tool sandboxing, then
+verify both in a controlled environment. The fail-closed defaults stay in place.
+
+A root `.dockerignore` also prevents local `.env`, private keys, Git metadata,
+build artifacts and host `node_modules` from entering Docker build contexts.
+Do not bake credentials into images; provide them via runtime secret management.
+
+This is a **source-level repair, not a completed deployment, live-test pass or
+production security certification**. Check your local ahead-of-origin commits
+before bringing this branch into a working tree; do not overwrite 08A or other
+unpublished changes.
