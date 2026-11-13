@@ -89,7 +89,10 @@ try {
   const mission = await page('/en/missions/operation_qa', true);
   for (const text of ['QA mission workspace', '1 / 3', 'EXECUTION_REQUESTED', 'QA evidence document', 'QA preference', 'Pilot']) { assert.ok(mission.includes(text), text); assertions++; }
   const document = await page('/en/missions/operation_qa/results/document_qa', true);
-  for (const text of ['QA finding', 'UNVERIFIED', 'https://example.org/evidence', 'QA limitation', 'PARTIAL']) { assert.ok(document.includes(text), text); assertions++; }
+  for (const text of ['QA finding', 'Unverified', 'https://example.org/evidence', 'QA limitation', 'Partial']) { assert.ok(document.includes(text), text); assertions++; }
+  assert.ok(!document.includes('>UNVERIFIED<') && !document.includes('>PARTIAL<'), 'raw document/finding enums must be localized'); assertions++;
+  const frenchDocument = await page('/fr/missions/operation_qa/results/document_qa', true);
+  assert.ok(frenchDocument.includes('Non vérifié') && frenchDocument.includes('Partiel')); assertions++;
   mode = 'section-failure';
   const partial = await page('/fr/missions/operation_qa', true);
   assert.ok(partial.includes('NOT_CONFIGURED') && partial.includes('QA mission workspace')); assertions++;
