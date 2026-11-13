@@ -4,6 +4,7 @@ Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10â€
 
 | Responsibility | Code area | Status |
 | --- | --- | --- |
+| Professional Blue frontend foundation (EN/FR, outcome homepage, MyDash, session boundary, draft entry, recent missions and capability unavailability) | apps/web | FRONTEND TYPECHECK + PRODUCTION BUILD VERIFIED; 26 isolated HTTP assertions. No live backend mutation, browser accessibility or visual certification claimed. Customer capability catalogue, initial planning/cost readiness and full result discovery remain API gaps documented in docs/design/UX_IMPLEMENTATION_PLAN.md. |
 | Product and architectural decisions | AGENTS.md, docs/architecture | CODED |
 | Identity, workspace membership, bearer session | apps/api/src/auth, persistence/identity-schema | SOURCE CODED; integration NOT VERIFIED |
 | Business operations and versioned plans | packages/domain, application/planning/execution/revisions | SOURCE CODED |

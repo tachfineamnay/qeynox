@@ -27,4 +27,12 @@ NEXT SESSION HANDOFF: Do NOT add more product features before the requested sepa
 
 GLOBAL: ISOLATED QA VERIFIED (MIGRATIONS + CONFIGURATION + BACKEND HTTP/DI + AGENT-RUNTIME CONTRACTS + WORLD BANK CONNECTOR + EVIDENCE-BACKED DELIVERABLE + REAL MINIO STORAGE/RECONCILIATION + PINNED EGRESS; CONSOLIDATION AUDIT PASS) / EXTERNAL HATCHET + HERMES RUNTIMES AND PRODUCTION STORAGE NOT VERIFIED / NOT DEPLOYED / NOT PRODUCTION-READY.
 
+## Frontend foundation — 2026-11-13
+
+Reused the locally committed Graphify/UX mapping in `07236ac`; Graphify was not rerun. Confirmed no pre-existing `apps/web`, then added one Next.js 16.4.6 / React 19.3.1 / TypeScript application within the existing pnpm/Turbo workspace. Canonical Professional Blue tokens, responsive shell, EN/FR copy, outcome-first home, MyDash, recent missions, mission detail, session login/logout and contract-validated draft creation are implemented. Browser tokens are not exposed: the web server uses an HTTP-only SameSite cookie and the existing bearer/workspace API contract. No backend source changed.
+
+Verification: `pnpm install --frozen-lockfile`, `pnpm --filter @qeynox/web typecheck`, `pnpm --filter @qeynox/web build` and `pnpm --filter @qeynox/web test:smoke` PASS (26 HTTP assertions). The smoke suite exercises built EN/FR pages, anonymous/session boundaries, genuine empty/loaded/denied/malformed API responses and absence of bearer tokens in HTML, using an isolated test-only HTTP fixture. No unrelated backend QA suite, production database, external runtime, push or deployment was run.
+
+Limits: no browser/keyboard/contrast screenshot certification; approved-reference comparison BLOCKED because `docs/design/reference/concept-02-professional-blue.png` is absent. Login/logout/draft mutations against a real backend remain unverified. Capability catalogue availability is unknown, not assumed configured. Planning, quotes, execution, full Library discovery and artifact delivery UI remain outside this foundation; their API gaps remain in the UX plan. All existing runtime, public-identity and production certification gates remain unchanged.
+
 
