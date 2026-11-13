@@ -13,3 +13,11 @@ Before use:
 - No public database, Hermes or Hatchet management endpoint by default.
 
 Official references: https://docs.hatchet.run/v1 and https://hermes-agent.nousresearch.com/docs/user-guide/features/api-server .
+
+## Public domain and signed HTTPS exports (verified)
+
+- Web resource gu5pde4uim045cfyhbzvatyn: native Coolify domains=https://qeynox.io; existing letsencrypt resolver. Keep the upstream application port 3000 private.
+- API and worker: QEYNOX_ARTIFACT_ENDPOINT=https://qeynox.io (runtime only). Bucket qeynox-preproduction stays private, AES256 SSE-S3 enabled, app-scoped credentials only.
+- Apply infra/services/storage.yml to the existing storage resource, preserving its volumes/secrets. Its named Traefik bucket-only router preserves Host and complete path for SigV4; it does not route MinIO root/admin/console. Do not add StripPrefix or rewrite signed URLs after signing.
+- Existing root-domain HTTP→HTTPS redirection covers the export path. Export responses download as attachments under CSP sandbox with no-store/nosniff/no-referrer headers.
+- No additional S3 DNS record is required. Public validation and remaining gates: docs/architecture/PUBLIC_ACCESS_VERIFICATION.md.

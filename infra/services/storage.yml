@@ -14,6 +14,26 @@ services:
     networks:
       coolify:
         aliases: [qeynox-storage]
+    # Preserve Host and full bucket path: rewriting either invalidates SigV4.
+    # Only this bucket is routed; MinIO root/admin/console paths stay private.
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=coolify'
+      - 'traefik.http.routers.qeynox-exports-https.entrypoints=https'
+      - 'traefik.http.routers.qeynox-exports-https.rule=Host(`qeynox.io`) && (Path(`/qeynox-preproduction`) || PathPrefix(`/qeynox-preproduction/`))'
+      - 'traefik.http.routers.qeynox-exports-https.priority=200'
+      - 'traefik.http.routers.qeynox-exports-https.tls=true'
+      - 'traefik.http.routers.qeynox-exports-https.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.qeynox-exports-https.service=qeynox-exports-s3'
+      - 'traefik.http.routers.qeynox-exports-https.middlewares=qeynox-exports-download'
+      - 'traefik.http.services.qeynox-exports-s3.loadbalancer.server.port=9000'
+      - 'traefik.http.services.qeynox-exports-s3.loadbalancer.passhostheader=true'
+      # Exported HTML must download, never execute with the login origin's authority.
+      - 'traefik.http.middlewares.qeynox-exports-download.headers.customresponseheaders.Content-Disposition=attachment'
+      - "traefik.http.middlewares.qeynox-exports-download.headers.customresponseheaders.Content-Security-Policy=sandbox; default-src 'none'; style-src 'unsafe-inline'"
+      - 'traefik.http.middlewares.qeynox-exports-download.headers.customresponseheaders.X-Content-Type-Options=nosniff'
+      - 'traefik.http.middlewares.qeynox-exports-download.headers.customresponseheaders.Cache-Control=private, no-store'
+      - 'traefik.http.middlewares.qeynox-exports-download.headers.customresponseheaders.Referrer-Policy=no-referrer'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://127.0.0.1:9000/minio/health/live']
       interval: 30s

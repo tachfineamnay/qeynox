@@ -70,3 +70,5 @@ SSH measurements after deployment: **4 CPU**, **15992 MiB RAM**, **12977 MiB ava
 5. SaaS registry: infra/connectors.registry.json records inactive declarations for AnythingLLM, LinkedIn, Workspace, Search Console, GA4, Meta, WordPress/WooCommerce, Stripe, GitHub/GitLab and World Bank. GitHub source deployment and isolated World Bank read were exercised; other business adapters/OAuth/API authorizations are not available. No content was published externally.
 
 MCP access note: local Harness bundle already contained the Sociopulse URL and its instance-specific token-file reference. The session's preloaded `coolify` connector remained stale; all mutations used verified Streamable HTTP MCP calls to 31.97.158.141. No unrelated MCP entry was changed. A hot reload of that preloaded connector is not claimed.
+
+Public access update (2026-11-13): see PUBLIC_ACCESS_VERIFICATION.md for actual root-domain TLS/login and same-host signed export checks. These supersede the initial no-public-domain statement above. Public access is operational; production certification and Hermes/provider/confinement gates remain open.
