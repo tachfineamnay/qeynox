@@ -1,10 +1,31 @@
 import Link from 'next/link';
+import { z } from 'zod';
 import { idSchema } from '@qeynox/contracts';
 import { AppShell, Card, Feedback, StatusBadge } from '../../../../components/ui';
-import { api, operationSchema } from '../../../../lib/api';
+import { ChangeForm, RefreshMission } from '../../../../components/mission-controls';
 import { copy, locale } from '../../../../lib/copy';
-export default async function Page({ params }: { params: Promise<{ lang: string; id: string }> }) {
-  const p = await params; const lang = locale(p.lang); const t = copy[lang]; let operation;
-  try { const id = idSchema.parse(p.id); operation = operationSchema.parse(await api(`/v1/operations/${encodeURIComponent(id)}`)); } catch { /* No local substitute for canonical state. */ }
-  return <AppShell lang={lang} active="missions"><Link href={`/${lang}/mydash`}>← {t.back}</Link><header className="page-intro"><p className="eyebrow">{t.detail}</p><h1>{operation?.title ?? t.missing}</h1>{operation && <StatusBadge status={operation.status} lang={lang}/>}</header><Card><Feedback title={operation ? t.blocked : t.missing} error={!operation}>{t.blockedCopy}</Feedback></Card></AppShell>;
+import { missionCopy } from '../../../../lib/mission-copy';
+import { read, detailSchema, summarySchema, timelineSchema, activitySchema, documentSchema, guidanceSchema, contextSchema } from '../../../../lib/mission';
+export default async function Page({ params, searchParams }: { params: Promise<{ lang: string; id: string }>; searchParams: Promise<{ after?: string }> }) {
+ const p = await params; const lang = locale(p.lang); const t = copy[lang]; const m = missionCopy(lang);
+ const id = idSchema.safeParse(p.id);
+ if (!id.success) return <AppShell lang={lang} active="missions"><Feedback title={t.missing} error/></AppShell>;
+ const base = `/v1/operations/${id.data}`; const operation = await read(base, detailSchema);
+ if (!operation.data) return <AppShell lang={lang} active="missions"><Link href={`/${lang}/mydash`}>{t.back}</Link><Feedback title={`${t.missing} (${operation.code})`} error/></AppShell>;
+ const after = z.coerce.number().int().nonnegative().safeParse((await searchParams).after ?? 0); const cursor = after.success ? after.data : 0;
+ const [summary, timeline, activity, pilot, overview, documents, context] = await Promise.all([
+ read(`/v1/mydash/operations/${id.data}/summary`, summarySchema), read(`${base}/timeline`, timelineSchema), read(`/v1/mydash/operations/${id.data}/activity?after=${cursor}&limit=50`, activitySchema), read(`/v1/pilot/operations/${id.data}/next-action`, guidanceSchema), read('/v1/pilot/overview', z.array(detailSchema.omit({ version: true }))), read(`${base}/documents`, z.array(documentSchema)), read('/v1/soul/context', contextSchema)]);
+ const op = operation.data;
+ const stamp = (value: string) => { const date = new Date(value); return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(date) + ' UTC' : value; };
+ const unavailable = (code?: string) => <Feedback title={`${m.unavailable} (${code ?? 'INVALID_RESPONSE'})`} error/>;
+ return <AppShell lang={lang} active="missions">
+ <Link href={`/${lang}/mydash`}>← {t.back}</Link><header className="page-intro"><p className="eyebrow">{t.detail}</p><h1>{op.title}</h1><StatusBadge status={op.status} lang={lang}/><p className="muted">{t.updated}: {stamp(op.lastActivityAt)}</p><RefreshMission active={['RUNNING','WAITING_APPROVAL','INTERRUPT_REQUESTED'].includes(op.status)} lang={lang}/></header>
+ <Card><h2>{m.progress}</h2>{summary.data && summary.data.operationId === op.id ? <><p>{m.steps}: <strong>{`${summary.data.completedSteps} / ${summary.data.stepCount}`}</strong></p><p>{m.approvals}: {summary.data.pendingApprovals}</p><StatusBadge status={summary.data.status} lang={lang}/></> : unavailable(summary.code)}<p className="muted">{m.updated}: {stamp(new Date().toISOString())}</p>{['RUNNING','WAITING_APPROVAL'].includes(op.status) && <ChangeForm lang={lang} fields={{ kind: 'interrupt', id: op.id, version: String(op.version) }} label={m.interrupt}><p>{m.interruptNote}</p><label><input type="checkbox" name="confirm" required/> {m.confirm}</label></ChangeForm>}</Card>
+ <Card><h2>{m.pilot}</h2>{pilot.data && pilot.data.operationId === op.id ? <><p>{m.guidance[pilot.data.action as keyof typeof m.guidance] ?? pilot.data.action}</p><p className="muted">{pilot.data.reason}</p></> : unavailable(pilot.code)}<details><summary>{m.overview}</summary>{overview.data ? <ul>{overview.data.map(item => <li key={item.id}><Link href={`/${lang}/missions/${encodeURIComponent(item.id)}`}>{item.title}</Link> · <StatusBadge status={item.status} lang={lang}/></li>)}</ul> : unavailable(overview.code)}</details></Card>
+ <Card><h2>{m.activity}</h2>{activity.data ? <><ol className="event-list">{activity.data.events.map(event => <li key={event.sequence}><strong>{event.kind}</strong><time>{stamp(event.occurredAt)}</time></li>)}</ol>{activity.data.events.length === 0 && <p>{m.empty}</p>}{activity.data.nextCursor > cursor && <Link href={`/${lang}/missions/${op.id}?after=${activity.data.nextCursor}`}>{m.more} →</Link>}</> : unavailable(activity.code)}<details><summary>{m.timeline}</summary>{timeline.data ? <ol className="event-list">{timeline.data.map(event => <li key={event.id}><strong>{event.kind}</strong><time>{stamp(event.occurredAt)}</time></li>)}</ol> : unavailable(timeline.code)}</details></Card>
+ <Card><h2>{m.documents}</h2>{documents.data ? documents.data.length ? <ul className="document-list">{documents.data.filter(doc => doc.operationId === op.id).map(doc => <li key={doc.id}><Link href={`/${lang}/missions/${op.id}/results/${encodeURIComponent(doc.id)}`}>{doc.title}</Link> · {m.version} {doc.version} · <StatusBadge status={doc.status} lang={lang}/></li>)}</ul> : <p>{m.empty}</p> : unavailable(documents.code)}</Card>
+ <Card><h2>{m.context}</h2><p className="muted">{m.contextNote}</p>{context.data ? context.data.length ? context.data.map(fact => <details key={fact.id}><summary>{fact.key}</summary><p className="context-value">{typeof fact.value === 'string' ? fact.value : JSON.stringify(fact.value)}</p><p className="muted">{m.consent}: <code>{fact.consentId}</code></p>{(['delete','revoke'] as const).map(kind => <ChangeForm key={kind} lang={lang} fields={{ kind, id: kind === 'delete' ? fact.id : fact.consentId }} label={kind === 'delete' ? m.remove : m.revoke}><label><input name="confirm" type="checkbox" required/> {m.confirm}</label></ChangeForm>)}</details>) : <p>{m.empty}</p> : unavailable(context.code)}
+ <details><summary>{m.grant}</summary><ChangeForm lang={lang} fields={{ kind: 'grant' }} label={m.grant}><label>{m.purpose}<input name="purpose" minLength={3} maxLength={200} required/></label><label><input name="confirm" type="checkbox" required/> {m.optin}</label></ChangeForm></details>
+ <details><summary>{m.save}</summary><ChangeForm lang={lang} fields={{ kind: 'save' }} label={m.save}><label>{m.consent}<input name="consentId" required/></label><label>{m.key}<input name="key" maxLength={80} required/></label><label>{m.value}<textarea name="value" maxLength={5000} required/></label></ChangeForm></details></Card>
+ </AppShell>;
 }
