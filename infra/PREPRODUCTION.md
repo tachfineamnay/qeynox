@@ -64,3 +64,12 @@ Core's 11 unchanged migrations were applied atomically by SSH/psql on the verifi
 S3 bucket qeynox-preproduction is private, SSE-S3 AES256 enabled with a separately generated preproduction static KMS key. The API and worker have only bucket-scoped app credentials, not root. Static KMS key backup/production KMS and legacy-image security review remain gates. Signed URLs currently use internal DNS and are not publicly accessible.
 
 All three final Docker builds succeeded. Local API/Web returned HTTP 200; Web-to-API DNS fetch returned 200; API UID is 1000; pnpm 9.15.9 runs in the worker image with network disabled. API image restart succeeded. Public MyDash and real Hermes remain blocked pending domain/TLS and model+confinement. Application VPS deployment verification follows separately; no PASS is inferred from build success.
+
+## Deployment compatibility correction
+The first API deployment at code SHA 2782736 started NestJS but Coolify rejected its generated healthcheck because curl/wget was absent. Dockerfile.api and Dockerfile.web now install curl; platform health validation remains enabled. Unsupported --log-opt custom Docker arguments were removed through Coolify; applications use Coolify stdout/stderr capture, and bounded application log rotation is not claimed.
+
+Optional RAG is now prepared and stopped: qeynox-anythingllm / qzgtwub6hxm3lvqomwwttbey, official mintplexlabs/anythingllm:1.19.0 manifest verified. Dedicated volumes and secrets; no SYS_ADMIN, no model/embedding configuration and no connector activation. Its configured check is liveness only; full readiness is required before activation.
+
+Real Hatchet SDK verification on VPS succeeded: infrastructure-only task run 21744469-4441-45af-a9f7-13e37d6b0d87 registered, dispatched and returned its nonce through SDK 1.46.1, then the temporary probe worker stopped. No Hermes or business result was simulated. VPS ToolBroker→World Bank QA passed 48 assertions using dedicated non-superuser qeynox_qa_verifier and distinct qeynox_qa_control admin database; its random QA execution database was dropped by the isolated harness. Core connector activation remains off.
+
+Healthcheck fix verification: both API/Web curl-enabled images built successfully, including fresh typecheck/build inside Docker. curl runs without network and returned 200 from the actual local API/Web endpoints. Hatchet tenant inspection shows only the internal system tenant and qeynox-preproduction; only the specified operator email exists, no default admin user.

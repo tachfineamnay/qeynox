@@ -1,0 +1,40 @@
+# Optional RAG resource; no model/embedding provider configured; do not start yet.
+services:
+  qeynox-anythingllm:
+    image: mintplexlabs/anythingllm:1.19.0
+    restart: unless-stopped
+    mem_limit: 1536m
+    cpus: 0.5
+    expose: ['3001']
+    environment:
+      STORAGE_DIR: /app/server/storage
+      DISABLE_TELEMETRY: 'true'
+      SERVER_PORT: '3001'
+      VECTOR_DB: lancedb
+      AUTH_TOKEN: ${ANYTHINGLLM_AUTH_TOKEN:?required}
+      JWT_SECRET: ${ANYTHINGLLM_JWT_SECRET:?required}
+      SIG_KEY: ${ANYTHINGLLM_SIG_KEY:?required}
+      SIG_SALT: ${ANYTHINGLLM_SIG_SALT:?required}
+    volumes:
+      - rag-storage:/app/server/storage
+      - rag-hot:/app/collector/hotdir
+      - rag-outputs:/app/collector/outputs
+    networks:
+      coolify:
+        aliases: [qeynox-anythingllm]
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
+    healthcheck:
+      test: ['CMD-SHELL', 'kill -0 1']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    logging:
+      options: {max-size: '10m', max-file: '3'}
+volumes:
+  rag-storage:
+  rag-hot:
+  rag-outputs:
+networks:
+  coolify:
+    external: true
