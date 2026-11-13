@@ -10,7 +10,7 @@ import { PgOutboxDispatcher,type ExecutionRequest,type OrchestratorPort } from '
 export async function createWorkerDependencies(){
  const conn=connectDatabase(process.env.DATABASE_URL),store=new QeyNoxStore(conn.db);
  const profiles=new AgentProfileStore(conn.db),progression=new StepProgression(store);
- const engine=new HermesAdapter({baseUrl:process.env.HERMES_API_BASE_URL,apiKey:process.env.HERMES_API_KEY,model:process.env.HERMES_MODEL??'hermes-agent',timeoutMs:Number(process.env.HERMES_REQUEST_TIMEOUT_MS??60000),nativeToolsIsolated:process.env.HERMES_NATIVE_TOOLS_ISOLATED==='true',egressAttested:process.env.QEYNOX_NETWORK_POLICY_ATTESTED==='true'});
+ const engine=new HermesAdapter({baseUrl:process.env.HERMES_API_BASE_URL,privateOrigin:process.env.HERMES_PRIVATE_ORIGIN,apiKey:process.env.HERMES_API_KEY,model:process.env.HERMES_MODEL??'hermes-agent',timeoutMs:Number(process.env.HERMES_REQUEST_TIMEOUT_MS??60000),nativeToolsIsolated:process.env.HERMES_NATIVE_TOOLS_ISOLATED==='true',egressAttested:process.env.QEYNOX_NETWORK_POLICY_ATTESTED==='true'});
  const tools=await createConfiguredToolRegistry(conn.db); // No provider is registered unless operator-configured.
  const executor=new BrokeredAgentExecutor(store,engine,tools);
  const registry=new EngineRegistry();

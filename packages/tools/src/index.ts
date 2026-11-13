@@ -8,6 +8,7 @@ export * from './providers/world-bank';
 export * from './providers/configured';
 export * from './egress';
 export * from './rate-limit';
+export * from './redis-rate-limit';
 export * from './mcp';
 
 

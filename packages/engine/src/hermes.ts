@@ -1,9 +1,10 @@
 import { DomainError } from '@qeynox/domain';
+import { hermesEndpoint } from './hermes-origin';
 import type { EnginePort, EngineRequest, EngineOutcome, ProposedToolAction } from './types';
 
 export interface HermesConfig {
   baseUrl: string | undefined; apiKey: string | undefined; model: string;
-  timeoutMs: number; nativeToolsIsolated: boolean; egressAttested: boolean;
+  timeoutMs: number; nativeToolsIsolated: boolean; egressAttested: boolean; privateOrigin?: string;
 }
 interface CompletionResponse {
   id?: string; choices?: Array<{message?:{content?:string|null;tool_calls?:unknown[];function_call?:unknown};finish_reason?:string|null}>;
@@ -17,10 +18,9 @@ export class HermesAdapter implements EnginePort {
     // unless the operator attests both native-tool isolation and egress containment.
     if (!this.config.nativeToolsIsolated || !this.config.egressAttested) throw new DomainError('NOT_CONFIGURED','Hermes native-tool isolation and egress attestation are required before tenant execution');
     if (!this.config.baseUrl || !this.config.apiKey) throw new DomainError('NOT_CONFIGURED','Hermes endpoint and API key are required');
-    const base = new URL(this.config.baseUrl);
-    if (base.username || base.password || base.search || base.hash || !(['http:','https:'].includes(base.protocol))) throw new DomainError('INVALID_INPUT','Invalid Hermes base URL');
-    if (base.protocol === 'http:' && !['localhost','127.0.0.1','hermes','hermes-gateway'].includes(base.hostname)) throw new DomainError('DENIED','Plain HTTP is allowed only on an explicitly private runtime hostname');
-    const url = new URL('chat/completions',base.href.endsWith('/')?base.href:base.href+'/');
+    let url: string;
+    try { url = hermesEndpoint(this.config.baseUrl, this.config.privateOrigin); }
+    catch { throw new DomainError('DENIED','Hermes endpoint is not explicitly authorized'); }
     const ac=new AbortController();
     const onAbort=()=>ac.abort();
     options?.signal?.addEventListener('abort',onAbort,{once:true});

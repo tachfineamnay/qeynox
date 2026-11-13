@@ -8,7 +8,8 @@
   "dependencies": {
     "@qeynox/domain": "workspace:*",
     "@qeynox/persistence": "workspace:*",
-    "zod": "4.1.11",
-    "drizzle-orm": "0.44.5"
+    "drizzle-orm": "0.44.5",
+    "redis": "5.9.0",
+    "zod": "4.1.11"
   }
 }

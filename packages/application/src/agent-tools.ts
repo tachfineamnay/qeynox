@@ -3,14 +3,14 @@ import { and,eq } from 'drizzle-orm';
 import { DomainError,newId,type ID,type Principal,type Evidence,type Source } from '@qeynox/domain';
 import { QeyNoxStore,approvals,identityMemberships,sourceSnapshots } from '@qeynox/persistence';
 import type { EnginePort,AgentProfile,EngineOutcome,EngineRequest } from '@qeynox/engine';
-import { ToolBroker,ToolRegistry,PgToolLedger,type ConnectorCall,type PermissionContext } from '@qeynox/tools';
+import { ToolBroker,ToolRegistry,PgToolLedger,configuredProviderRateLimiter,type ConnectorCall,type PermissionContext } from '@qeynox/tools';
 import { BudgetService } from './budgets';
 import type { CapabilityDefinition } from '@qeynox/domain';
 
 export class BrokeredAgentExecutor {
  private readonly broker:ToolBroker;
  constructor(private readonly store:QeyNoxStore,private readonly engine:EnginePort,registry:ToolRegistry){
-   this.broker=new ToolBroker(registry,new PgToolLedger(store.db));
+   this.broker=new ToolBroker(registry,new PgToolLedger(store.db),configuredProviderRateLimiter());
  }
  async run(request:EngineRequest,capability:CapabilityDefinition):Promise<EngineOutcome>{
    const [operation,attempt]=await Promise.all([

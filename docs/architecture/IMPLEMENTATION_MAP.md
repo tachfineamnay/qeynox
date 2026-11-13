@@ -46,3 +46,9 @@ This tree is intended as a *source-code foundation* for a dedicated certificatio
 
 
 
+
+## Independent preproduction resources (2026-11-13)
+
+Nine resources now exist in Coolify project Qeynox, environment preproduction. See infra/PREPRODUCTION.md for UUIDs and actual runtime status. Production environment remains untouched. Three Dockerfiles, explicit private origins, shared Redis quota gate, empty-only migration CLI and inactive versioned connector declarations are source implemented; local verification is recorded in PROGRESS.md. Resource existence is not proof of DNS, connectivity or customer execution. Live Hatchet token/dispatch, Hermes model credentials/confinement, scoped S3 credentials/SSE, public TLS and identity hardening remain deployment gates.
+
+Live preproduction foundation update: operator-unlocked SSH enabled capacity, volume and DNS verification; 11 business migrations applied to the empty Core database; PostgreSQL/Redis/storage/Hatchet Lite running healthy. SSE-S3 and bucket-scoped app credentials configured. All three Docker images built and local startup checked. Full deployed application/runtime connectivity remains a separate verification step; Hermes remains inactive pending provider and confinement. Production remains untouched.

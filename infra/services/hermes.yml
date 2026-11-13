@@ -1,0 +1,37 @@
+# Docker isolation is not sufficient evidence of native-tool confinement.
+services:
+  qeynox-hermes:
+    image: nousresearch/hermes-agent:v2026.8.3
+    command: gateway run
+    restart: unless-stopped
+    mem_limit: 1536m
+    cpus: 1.0
+    expose: ['8642']
+    environment:
+      HERMES_HOME: /opt/data
+      API_SERVER_ENABLED: 'true'
+      API_SERVER_HOST: 0.0.0.0
+      API_SERVER_PORT: '8642'
+      API_SERVER_KEY: ${HERMES_API_KEY:?required}
+      HERMES_ENABLE_PROJECT_PLUGINS: 'false'
+      HERMES_DASHBOARD: '0'
+      HERMES_REDACT_SECRETS: 'true'
+    volumes: ['hermes-home:/opt/data']
+    networks:
+      coolify:
+        aliases: [qeynox-hermes]
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health',timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      options: {max-size: '10m', max-file: '3'}
+volumes:
+  hermes-home:
+networks:
+  coolify:
+    external: true

@@ -1,0 +1,41 @@
+# Official Hatchet Lite recipe; external DB; no host ports. Stopped until capacity/auth verified.
+services:
+  qeynox-hatchet:
+    image: ghcr.io/hatchet-dev/hatchet/hatchet-lite:v0.114.2
+    restart: unless-stopped
+    mem_limit: 1536m
+    cpus: 1.0
+    expose: ['8888', '7077']
+    environment:
+      DATABASE_URL: ${HATCHET_DATABASE_URL:?required}
+      ADMIN_EMAIL: ${HATCHET_ADMIN_EMAIL:?required}
+      ADMIN_PASSWORD: ${HATCHET_ADMIN_PASSWORD:?required}
+      DEFAULT_TENANT_NAME: QeyNox preproduction
+      DEFAULT_TENANT_SLUG: qeynox-preproduction
+      DEFAULT_TENANT_ID: ${HATCHET_TENANT_ID:?required}
+      SERVER_AUTH_COOKIE_DOMAIN: qeynox-hatchet
+      SERVER_AUTH_COOKIE_INSECURE: 't'
+      SERVER_GRPC_BIND_ADDRESS: 0.0.0.0
+      SERVER_GRPC_INSECURE: 't'
+      SERVER_GRPC_BROADCAST_ADDRESS: qeynox-hatchet:7077
+      SERVER_GRPC_PORT: '7077'
+      SERVER_URL: http://qeynox-hatchet:8888
+      SERVER_AUTH_SET_EMAIL_VERIFIED: 't'
+      SERVER_INTERNAL_CLIENT_INTERNAL_GRPC_BROADCAST_ADDRESS: localhost:7077
+    volumes: ['hatchet-config:/config']
+    networks:
+      coolify:
+        aliases: [qeynox-hatchet]
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://127.0.0.1:8888/']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    logging:
+      options: {max-size: '10m', max-file: '3'}
+volumes:
+  hatchet-config:
+networks:
+  coolify:
+    external: true

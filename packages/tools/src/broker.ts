@@ -22,7 +22,7 @@ export class ToolBroker {
      if(!approval)throw new DomainError('DENIED','Specific write intent not approved');
    }
    const manifest=this.registry.manifest(call.connectorId);
-   this.limiter.check(call.connectorId,manifest.rateLimit.maxPerMinute);
+   await this.limiter.check(call.connectorId,manifest.rateLimit.maxPerMinute);
    const intent:ToolInvocationIntent={id:call.intentId,operationId:call.operationId,planRevisionId:call.planRevisionId,stepAttemptId:call.stepAttemptId,capabilityId:call.capabilityId,toolName:keyOf(call),toolVersion:call.version,payload:input,idempotencyKey:call.idempotencyKey,mode:definition.mode,approvalId:call.approvalId,requestedBy:permission.principal.userId,createdAt:new Date().toISOString()};
    const existing=await this.ledger.reserve({intent,workspaceId:permission.principal.workspaceId,connectorId:call.connectorId,requestDigest:hash,status:'STARTED',provider:connector.id,capturedAt:new Date().toISOString()});
    if(existing!=='RESERVED')throw new DomainError('CONFLICT','Existing invocation requires reconciliation');

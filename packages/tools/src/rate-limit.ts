@@ -6,7 +6,7 @@ import { DomainError } from '@qeynox/domain';
 export class ProviderRateLimiter {
   private readonly calls = new Map<string, number[]>();
   private readonly windowMs = 60_000;
-  check(provider: string, maxPerMinute: number): void {
+  check(provider: string, maxPerMinute: number): void | Promise<void> {
     if (!Number.isInteger(maxPerMinute) || maxPerMinute < 1) throw new DomainError('NOT_CONFIGURED', 'Provider rate limit is not configured: ' + provider);
     const now = Date.now();
     const recent = (this.calls.get(provider) ?? []).filter(at => at > now - this.windowMs);

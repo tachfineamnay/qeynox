@@ -29,7 +29,8 @@ services:
       HERMES_NATIVE_TOOLS_ISOLATED: "false"
     expose: ["4000"]
     depends_on: [postgres]
-    networks: [qeynox-private]
+    # Private database traffic and explicit outbound service access. This is not an egress firewall.
+    networks: [qeynox-private, qeynox-outbound]
   worker:
     build:
       context: ..
@@ -42,9 +43,15 @@ services:
       HERMES_API_KEY: ${HERMES_API_KEY:?required}
       HERMES_NATIVE_TOOLS_ISOLATED: "false"
     depends_on: [postgres]
-    networks: [qeynox-private]
+    networks: [qeynox-private, qeynox-outbound]
 networks:
+  # Database stays isolated from external traffic.
   qeynox-private:
     internal: true
+  # API/worker require a route to configured Hatchet/Hermes and reviewed providers.
+  # Network reachability alone does NOT prove bounded egress. Configure host/firewall
+  # allowlists and certify actual isolation before setting any attestation flag.
+  qeynox-outbound:
+    driver: bridge
 volumes:
   qeynox_pg:

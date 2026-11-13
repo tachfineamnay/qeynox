@@ -1,0 +1,28 @@
+services:
+  qeynox-storage:
+    image: bitnamilegacy/minio@sha256:451fe6858cb770cc9d0e77ba811ce287420f781c7c1b806a386f6896471a349c
+    # Existing QA-verified legacy distribution; security review required before activation.
+    restart: unless-stopped
+    mem_limit: 768m
+    cpus: 0.5
+    expose: ['9000']
+    environment:
+      MINIO_ROOT_USER: ${S3_ROOT_USER:?required}
+      MINIO_ROOT_PASSWORD: ${S3_ROOT_PASSWORD:?required}
+      MINIO_KMS_SECRET_KEY: ${S3_KMS_SECRET_KEY:?required}
+    volumes: ['s3-data:/bitnami/minio/data']
+    networks:
+      coolify:
+        aliases: [qeynox-storage]
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://127.0.0.1:9000/minio/health/live']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    logging:
+      options: {max-size: '10m', max-file: '3'}
+volumes:
+  s3-data:
+networks:
+  coolify:
+    external: true

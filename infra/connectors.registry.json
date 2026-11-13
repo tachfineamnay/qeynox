@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "policy": "Declarations only; availability requires reviewed adapter, authorization, consent, pricing and egress. A declaration never activates a connector.",
+  "connectors": [
+    {"id":"anythingllm","version":"1","state":"BLOCKED","auth":"internal API key","purpose":"document RAG","blocker":"runtime, tenancy and reviewed adapter absent"},
+    {"id":"linkedin","version":"1","state":"BLOCKED","auth":"OAuth scopes + product approval","purpose":"authorized read and publication","blocker":"approval, tokens and adapter absent"},
+    {"id":"google-workspace","version":"1","state":"BLOCKED","auth":"OAuth per API and least privilege scopes","purpose":"consented documents and context","blocker":"OAuth verification, tokens and adapter absent"},
+    {"id":"search-console","version":"1","state":"BLOCKED","auth":"OAuth + property permission","purpose":"SEO reporting","blocker":"OAuth and adapter absent"},
+    {"id":"ga4","version":"1","state":"BLOCKED","auth":"OAuth or authorized service account","purpose":"analytics reporting","blocker":"property access and adapter absent"},
+    {"id":"meta","version":"1","state":"BLOCKED","auth":"OAuth + reviewed permissions","purpose":"ads reporting","blocker":"account authorization and adapter absent"},
+    {"id":"wordpress-woocommerce","version":"1","state":"BLOCKED","auth":"application password or scoped WooCommerce keys over TLS","purpose":"content and commerce","blocker":"site authorization and adapter absent"},
+    {"id":"stripe","version":"1","state":"BLOCKED","auth":"restricted API key + webhook signing secret","purpose":"billing and reconciliation","blocker":"account, pricing and adapter absent"},
+    {"id":"github","version":"1","state":"BLOCKED","auth":"repository scoped GitHub App","purpose":"source and delivery","blocker":"business connector adapter absent; Git access is separate"},
+    {"id":"gitlab","version":"1","state":"BLOCKED","auth":"OAuth or scoped project token","purpose":"source and delivery","blocker":"authorization and adapter absent"},
+    {"id":"world-bank","version":"1","state":"INACTIVE","auth":"public read API","purpose":"macroeconomic indicators","blocker":"operator configuration, egress attestation, capability/profile and licence review required"}
+  ]
+}
