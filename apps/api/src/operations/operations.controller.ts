@@ -1,9 +1,9 @@
 import { Body,Controller,Get,Inject,Param,Post,Query,Req } from '@nestjs/common';
 import { z } from 'zod';
-import { OperationService,OperationExecutionService,PlanningService,OperationControlService,PlanRevisionService } from '@qeynox/application';
+import { OperationService,OperationExecutionService,PlanningService,OperationControlService,PlanRevisionService,PlanReadService } from '@qeynox/application';
 import { DomainError,requireId,type Principal,type ID } from '@qeynox/domain';
 import { createOperationSchema,operationActionSchema,planCreateSchema,revisionRequestSchema } from '@qeynox/contracts';
-import { OPERATIONS_SERVICE,EXECUTION_SERVICE,PLANNING_SERVICE,CONTROLS_SERVICE,REVISIONS_SERVICE } from './operations.provider';
+import { OPERATIONS_SERVICE,EXECUTION_SERVICE,PLANNING_SERVICE,CONTROLS_SERVICE,REVISIONS_SERVICE,PLAN_READ_SERVICE } from './operations.provider';
 interface AuthedRequest {principal?:Principal}
 const decideSchema=z.object({decision:z.enum(['APPROVED','REJECTED'])});
 const reviseSchema=z.object({expectedVersion:z.number().int().positive(),reason:z.string().min(3),steps:planCreateSchema.shape.steps});
@@ -17,13 +17,20 @@ export class OperationsController {
  @Inject(EXECUTION_SERVICE)private readonly execution:OperationExecutionService,
  @Inject(PLANNING_SERVICE)private readonly planning:PlanningService,
  @Inject(CONTROLS_SERVICE)private readonly controls:OperationControlService,
- @Inject(REVISIONS_SERVICE)private readonly revisions:PlanRevisionService){}
+ @Inject(REVISIONS_SERVICE)private readonly revisions:PlanRevisionService,
+ @Inject(PLAN_READ_SERVICE)private readonly planRead:PlanReadService){}
  @Get()
  list(@Req()req:AuthedRequest,@Query('limit')limit?:string){return this.ops.list(principal(req),limit?Number(limit):30);}
  @Post()
  create(@Req()req:AuthedRequest,@Body()body:unknown){return this.ops.create(principal(req),createOperationSchema.parse(body));}
  @Get(':id')
  get(@Req()req:AuthedRequest,@Param('id')id:string){return this.ops.get(principal(req),requireId(id));}
+ /** Persisted plan, steps, attempts, approvals, goal and configured capabilities. Read-only. */
+ @Get(':id/plan')
+ plan(@Req()req:AuthedRequest,@Param('id')id:string){return this.planRead.read(principal(req),requireId(id));}
+ /** Mirrors the execution guard checks without materializing a budget or requesting work. */
+ @Get(':id/readiness')
+ readiness(@Req()req:AuthedRequest,@Param('id')id:string){return this.planRead.readiness(principal(req),requireId(id));}
  @Get(':id/timeline')
  timeline(@Req()req:AuthedRequest,@Param('id')id:string){return this.ops.timeline(principal(req),requireId(id));}
  @Get(':id/results')

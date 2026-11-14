@@ -1,0 +1,124 @@
+import 'server-only';
+import { z } from 'zod';
+
+/** Mirrors GET /v1/operations/:id/plan. Read-only projection of persisted state. */
+export const planCapabilitySchema = z.object({
+  id: z.string(),
+  slot: z.number().int(),
+  name: z.string(),
+  purpose: z.string(),
+  scope: z.array(z.string()),
+  maximumSteps: z.number().int(),
+  maximumToolCalls: z.number().int(),
+  externalActions: z.boolean(),
+});
+
+export const planStepSchema = z.object({
+  id: z.string(),
+  ordinal: z.number().int(),
+  title: z.string(),
+  description: z.string(),
+  capabilityId: z.string(),
+  dependsOn: z.array(z.string()),
+  state: z.string(),
+  intent: z.enum(['RESEARCH', 'ANALYZE', 'VERIFY', 'EXTERNAL_ACTION']),
+  version: z.number().int(),
+  capabilityActive: z.boolean(),
+});
+
+export const planAttemptSchema = z.object({
+  attemptId: z.string(),
+  stepId: z.string(),
+  sequence: z.number().int(),
+  state: z.string(),
+  createdAt: z.string(),
+  startedAt: z.string().nullable(),
+  finishedAt: z.string().nullable(),
+  errorCode: z.string().nullable(),
+});
+
+export const planApprovalSchema = z.object({
+  id: z.string(),
+  purpose: z.string(),
+  status: z.string(),
+  requestedAt: z.string(),
+  expiresAt: z.string(),
+  stepAttemptId: z.string(),
+  stale: z.boolean(),
+});
+
+export const planViewSchema = z.object({
+  operation: z.object({
+    id: z.string(),
+    title: z.string(),
+    status: z.string(),
+    version: z.number().int().positive(),
+    currentRevisionId: z.string().nullable(),
+    lastActivityAt: z.string(),
+    lastErrorCode: z.string().nullable(),
+  }),
+  goal: z.object({ statement: z.string(), constraints: z.array(z.string()) }).nullable(),
+  revision: z.object({
+    id: z.string(),
+    revision: z.number().int(),
+    status: z.string(),
+    reason: z.string(),
+    createdBy: z.string(),
+    createdAt: z.string(),
+  }).nullable(),
+  steps: z.array(planStepSchema),
+  attempts: z.array(planAttemptSchema),
+  approvals: z.array(planApprovalSchema),
+  capabilities: z.array(planCapabilitySchema),
+});
+
+/** Mirrors GET /v1/operations/:id/readiness. The UI never infers availability by itself. */
+export const readinessSchema = z.object({
+  operationId: z.string(),
+  version: z.number().int().positive(),
+  status: z.string(),
+  revisionId: z.string().nullable(),
+  canStart: z.boolean(),
+  blockers: z.array(z.object({ code: z.string(), detail: z.string() })),
+  plan: z.object({ present: z.boolean(), revision: z.number().int().nullable(), steps: z.number().int().nonnegative() }),
+  cost: z.object({
+    known: z.boolean(),
+    amountMinor: z.number().int().nullable(),
+    currency: z.string().nullable(),
+    orderState: z.string().nullable(),
+  }),
+  budget: z.object({
+    configured: z.boolean(),
+    currency: z.string().nullable(),
+    maxMoneyMinor: z.number().int().nullable(),
+    spentMinor: z.number().int().nullable(),
+    reservedMinor: z.number().int().nullable(),
+  }),
+  capabilities: z.object({ required: z.number().int(), active: z.number().int(), missing: z.array(z.string()) }),
+  approvals: z.object({ pending: z.number().int() }),
+});
+
+export type PlanView = z.infer<typeof planViewSchema>;
+export type Readiness = z.infer<typeof readinessSchema>;
+
+/** Payload exchanged between the browser editor and the plan server action. */
+export const editorStepSchema = z.object({
+  key: z.string().min(1).max(40),
+  title: z.string().trim().min(3).max(180),
+  description: z.string().trim().min(8).max(3000),
+  capabilityId: z.string().min(4).max(120).regex(/^[A-Za-z0-9_-]+$/),
+  intent: z.enum(['RESEARCH', 'ANALYZE', 'VERIFY', 'EXTERNAL_ACTION']),
+  dependsOn: z.array(z.string().min(1).max(40)).max(100),
+});
+
+export const planPayloadSchema = z.object({ steps: z.array(editorStepSchema).min(1).max(100) });
+export type EditorStep = z.infer<typeof editorStepSchema>;
+
+export function formatMoney(minor: number | null, currency: string | null, lang: 'en' | 'fr'): string {
+  if (minor === null || !currency) return '—';
+  try {
+    return new Intl.NumberFormat(lang, { style: 'currency', currency, maximumFractionDigits: 2 }).format(minor / 100);
+  } catch {
+    return minor / 100 + ' ' + currency;
+  }
+}

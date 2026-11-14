@@ -26,6 +26,11 @@ export async function change(previous: ChangeState, form: FormData): Promise<Cha
     } else if (kind === 'delete' || kind === 'revoke') {
       if (form.get('confirm') !== 'on') return { code: 'INVALID_INPUT' };
       await api(kind === 'delete' ? `/v1/soul/context/facts/${id()}` : `/v1/soul/consents/${id()}/revoke`, kind === 'delete' ? 'DELETE' : 'POST');
+    } else if (kind === 'redo') {
+      if (form.get('confirm') !== 'on') return { code: 'INVALID_INPUT' };
+      const expectedVersion = z.coerce.number().int().positive().parse(form.get('version'));
+      const idempotencyKey = z.string().min(8).max(200).parse(form.get('idempotencyKey'));
+      await api(`/v1/operations/${idSchema.parse(form.get('operationId'))}/attempts/${idSchema.parse(form.get('attemptId'))}/redo`, 'POST', { expectedVersion, idempotencyKey });
     } else if (kind === 'export' || kind === 'renew') {
       const operationId = idSchema.parse(form.get('operationId'));
       const documentId = idSchema.parse(form.get('documentId'));

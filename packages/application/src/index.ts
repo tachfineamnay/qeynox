@@ -16,6 +16,7 @@ export * from './commerce';
 export * from './payments';
 export * from './budgets';
 export * from './read-models';
+export * from './plan-read';
 export * from './recovery';
 export * from './engine-selection';
 export * from './context-policy';

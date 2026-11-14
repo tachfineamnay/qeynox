@@ -25,7 +25,11 @@ export async function createMission(previous: FormState, form: FormData): Promis
   let destination: string;
   try {
     const goal = String(form.get('goal') ?? '').trim();
-    const input = createOperationSchema.safeParse({ goal, title: goal.slice(0, 200), constraints: [] });
+    const constraints = String(form.get('constraints') ?? '')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+    const input = createOperationSchema.safeParse({ goal, title: goal.slice(0, 200), constraints });
     if (!input.success) return { code: 'INVALID_INPUT' };
     const operation = operationSchema.parse(await api('/v1/operations', 'POST', input.data));
     destination = `/${locale(String(form.get('locale')))}/missions/${encodeURIComponent(operation.id)}`;

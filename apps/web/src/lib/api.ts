@@ -24,4 +24,12 @@ export async function api(path: string, method = 'GET', body?: unknown, authenti
   } catch (error) { if (error instanceof ApiError) throw error; throw new ApiError(method === 'GET' ? 'UNAVAILABLE' : 'UNKNOWN_OUTCOME'); }
 }
 export const operationSchema = z.object({ id: z.string(), title: z.string(), status: z.string(), lastActivityAt: z.iso.datetime() });
-export const recentSchema = z.array(operationSchema.omit({ id: true }).extend({ operationId: z.string() }));
+export const recentSchema = z.array(operationSchema.omit({ id: true }).extend({
+  operationId: z.string(),
+  attention: z.string().default('NONE'),
+  stepCount: z.number().int().nonnegative().default(0),
+  completedSteps: z.number().int().nonnegative().default(0),
+  pendingApprovals: z.number().int().nonnegative().default(0),
+  resultCount: z.number().int().nonnegative().default(0),
+  evidenceCount: z.number().int().nonnegative().default(0),
+}));

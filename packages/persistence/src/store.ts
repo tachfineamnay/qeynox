@@ -33,6 +33,13 @@ export class QeyNoxStore {
     return row.payload;
   }
 
+  /** Goal statement and constraints belong to the operation; reading them is workspace-scoped. */
+  async getGoal(principal: Principal, operationId: ID): Promise<Goal | undefined> {
+    await this.getOperation(principal, operationId);
+    const [row] = await this.db.select().from(goals).where(eq(goals.operationId, operationId)).limit(1);
+    return row?.payload;
+  }
+
   async listOperations(principal: Principal, limit = 30): Promise<Operation[]> {
     if (!principal.workspaceId) throw new DomainError('DENIED','Workspace required');
     const rows = await this.db.select().from(operations).where(eq(operations.workspaceId, principal.workspaceId)).orderBy(desc(operations.lastActivityAt)).limit(Math.min(100, Math.max(1, limit)));
