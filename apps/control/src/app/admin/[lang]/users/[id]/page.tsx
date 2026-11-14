@@ -69,6 +69,26 @@ export default async function UserDetailPage({ params, searchParams }: { params:
                 </table></div>
               )}
             </Card>
+            <Card>
+              <h2>{t.onboardingTitle}</h2>
+              <p className="muted">{t.onboardingIntro}</p>
+              {(detailResult.value.onboarding ?? []).length === 0 ? <Empty>{t.onboardingNotStarted}</Empty> : (
+                <div className="table-wrap"><table>
+                  <thead><tr><th>{t.workspace}</th><th>{t.status}</th><th>{t.onboardingStep}</th><th>{t.onboardingStarted}</th><th>{t.onboardingCompleted}</th></tr></thead>
+                  <tbody>
+                    {(detailResult.value.onboarding ?? []).map(record => (
+                      <tr key={'onboarding-' + record.workspaceId}>
+                        <td>{record.workspaceId}</td>
+                        <td><Badge tone={record.status === 'COMPLETED' ? 'success' : record.status === 'NOT_STARTED' ? 'neutral' : 'warning'}>{record.status === 'NOT_STARTED' ? t.onboardingNotStarted : record.status}</Badge></td>
+                        <td>{record.step ?? '—'}</td>
+                        <td>{record.startedAt ? new Date(record.startedAt).toLocaleString(lang) : '—'}</td>
+                        <td>{record.completedAt ? new Date(record.completedAt).toLocaleString(lang) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table></div>
+              )}
+            </Card>
           </div>
           {sessionsResult && sessionsResult.ok ? (
             <Card>

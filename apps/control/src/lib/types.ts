@@ -28,6 +28,14 @@ export interface UserDetailView {
     platformSessions?: { total: number; active: number; lastUsedAt: string | null };
   };
   platformRoles?: string[];
+  onboarding?: {
+    workspaceId: string;
+    status: 'NOT_STARTED' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'DISMISSED';
+    step: string | null;
+    startedAt: string | null;
+    updatedAt: string | null;
+    completedAt: string | null;
+  }[];
 }
 
 export interface UserSessionView {

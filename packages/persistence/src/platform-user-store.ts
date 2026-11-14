@@ -9,6 +9,7 @@ import {
   identityWorkspaces,
 } from './identity-schema';
 import { platformAdminAssignments, platformAdminAudit, platformAdminSessions } from './platform-admin-schema';
+import { soulOnboarding } from './schema';
 import { platformAuditValues, type PlatformAuditRecord } from './platform-admin-store';
 
 export interface PlatformUserCursor { readonly at: Date; readonly id: string }
@@ -36,6 +37,16 @@ export interface PlatformIdentitySessionRow {
   readonly expiresAt: Date;
   readonly revokedAt: Date | null;
   readonly lastUsedAt: Date | null;
+}
+
+/** Onboarding progress only: answer content is never exposed to platform administration. */
+export interface PlatformUserOnboardingRow {
+  readonly workspaceId: string;
+  readonly status: 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'DISMISSED';
+  readonly step: string;
+  readonly startedAt: Date;
+  readonly updatedAt: Date;
+  readonly completedAt: Date | null;
 }
 
 export interface PlatformUserActivityRow {
@@ -176,6 +187,19 @@ export class PlatformUserStore {
       .where(eq(platformAdminSessions.userId, userId))
       .orderBy(desc(platformAdminSessions.createdAt), desc(platformAdminSessions.id))
       .limit(maximumSessionsListed);
+  }
+
+
+  async listOnboardingStatuses(userId: string): Promise<readonly PlatformUserOnboardingRow[]> {
+    const rows = await this.db.select({
+      workspaceId: soulOnboarding.workspaceId, status: soulOnboarding.status, step: soulOnboarding.step,
+      startedAt: soulOnboarding.startedAt, updatedAt: soulOnboarding.updatedAt, completedAt: soulOnboarding.completedAt,
+    }).from(soulOnboarding).where(eq(soulOnboarding.userId, userId)).orderBy(desc(soulOnboarding.updatedAt));
+    return rows.map(row => ({
+      workspaceId: row.workspaceId,
+      status: row.status as PlatformUserOnboardingRow['status'],
+      step: row.step, startedAt: row.startedAt, updatedAt: row.updatedAt, completedAt: row.completedAt,
+    }));
   }
 
   async sessionsSummary(userId: string, at: Date): Promise<{ readonly total: number; readonly active: number; readonly lastUsedAt: Date | null }> {

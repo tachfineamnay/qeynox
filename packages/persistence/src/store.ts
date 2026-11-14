@@ -1,7 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm';
-import { DomainError, newId, transitionOperation, type ID, type Operation, type OperationStatus, type Goal, type Principal, type EventRecord, type OperationPlan, type PlanRevision, type WorkStep, type StepAttempt, type ApprovalRequest, type Source, type Evidence, type Artifact, type ResultVersion, type Consent, type UserContext, type CapabilityDefinition, type ExecutionLink } from '@qeynox/domain';
+import { DomainError, newId, transitionOperation, type ID, type Operation, type OperationStatus, type Goal, type Principal, type EventRecord, type OperationPlan, type SoulOnboardingRecord, type SoulOnboardingStep, type SoulOnboardingStatus, type PlanRevision, type WorkStep, type StepAttempt, type ApprovalRequest, type Source, type Evidence, type Artifact, type ResultVersion, type Consent, type UserContext, type CapabilityDefinition, type ExecutionLink } from '@qeynox/domain';
 import type { QeyNoxDatabase } from './database';
-import { operations, goals, events, outbox, plans, planRevisions, steps, attempts, approvals, sources, evidences, artifacts, results, consents, contexts, capabilities, executions } from './schema';
+import { operations, goals, events, outbox, plans, planRevisions, steps, attempts, approvals, sources, evidences, artifacts, results, consents, contexts, capabilities, executions, soulOnboarding } from './schema';
 
 function authorize(principal: Principal, workspace: string) {
   if (!principal.workspaceId || principal.workspaceId !== workspace || !principal.userId) throw new DomainError('DENIED','Workspace mismatch');
@@ -125,6 +125,36 @@ export class QeyNoxStore {
   async getConsents(workspaceId: ID, userId: ID): Promise<Consent[]> { return (await this.db.select().from(consents).where(and(eq(consents.workspaceId,workspaceId),eq(consents.userId,userId)))).map(r=>r.payload); }
   async saveContext(value: UserContext): Promise<void> { await this.db.insert(contexts).values({id:value.id,workspaceId:value.workspaceId,ownerUserId:value.ownerUserId,payload:value}).onConflictDoUpdate({target:contexts.id,set:{payload:value}}); }
   async getContext(workspaceId: ID, userId: ID): Promise<UserContext[]> { return (await this.db.select().from(contexts).where(and(eq(contexts.workspaceId,workspaceId),eq(contexts.ownerUserId,userId)))).map(r=>r.payload); }
+
+  async getOnboarding(workspaceId: ID, userId: ID): Promise<SoulOnboardingRecord | undefined> {
+    const [row] = await this.db.select().from(soulOnboarding)
+      .where(and(eq(soulOnboarding.workspaceId, workspaceId), eq(soulOnboarding.userId, userId))).limit(1);
+    return row === undefined ? undefined : onboardingFromRow(row);
+  }
+
+  async putOnboarding(value: SoulOnboardingRecord): Promise<void> {
+    await this.db.insert(soulOnboarding).values({
+      id: value.id, userId: value.userId, workspaceId: value.workspaceId, status: value.status,
+      step: value.step, locale: value.locale, consentId: value.consentId ?? null,
+      skippedSteps: [...value.skippedSteps], startedAt: new Date(value.startedAt), updatedAt: new Date(value.updatedAt),
+      completedAt: value.completedAt === undefined ? null : new Date(value.completedAt),
+      dismissedAt: value.dismissedAt === undefined ? null : new Date(value.dismissedAt),
+    }).onConflictDoUpdate({
+      target: [soulOnboarding.userId, soulOnboarding.workspaceId],
+      set: {
+        status: value.status, step: value.step, locale: value.locale, consentId: value.consentId ?? null,
+        skippedSteps: [...value.skippedSteps], updatedAt: new Date(value.updatedAt),
+        completedAt: value.completedAt === undefined ? null : new Date(value.completedAt),
+        dismissedAt: value.dismissedAt === undefined ? null : new Date(value.dismissedAt),
+      },
+    });
+  }
+
+  async listOnboardingForUser(userId: ID): Promise<readonly SoulOnboardingRecord[]> {
+    const rows = await this.db.select().from(soulOnboarding).where(eq(soulOnboarding.userId, userId));
+    return rows.map(onboardingFromRow);
+  }
+
   async getCapabilities(): Promise<CapabilityDefinition[]> { return (await this.db.select().from(capabilities)).map(r=>r.payload); }
   async getCapability(id: ID): Promise<CapabilityDefinition | undefined> { return (await this.db.select().from(capabilities).where(eq(capabilities.id,id)).limit(1))[0]?.payload; }
   async recordExecution(value: ExecutionLink): Promise<void> { await this.db.insert(executions).values({id:value.id,operationId:value.operationId,attemptId:value.stepAttemptId,provider:value.provider,workflowRunId:value.workflowRunId,payload:value}); }
@@ -133,4 +163,16 @@ export class QeyNoxStore {
     const payload: EventRecord = {...event, id:newId(),eventVersion:1};
     return {id:payload.id,workspaceId:payload.workspaceId,operationId:payload.operationId,kind:payload.kind,occurredAt:payload.occurredAt,payload};
   }
+}
+
+function onboardingFromRow(row: typeof soulOnboarding.$inferSelect): SoulOnboardingRecord {
+  return {
+    id: row.id, userId: row.userId, workspaceId: row.workspaceId,
+    status: row.status as SoulOnboardingStatus, step: row.step as SoulOnboardingStep,
+    locale: row.locale === 'fr' ? 'fr' : 'en',
+    consentId: row.consentId ?? undefined,
+    skippedSteps: (row.skippedSteps ?? []) as SoulOnboardingStep[],
+    startedAt: row.startedAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
+    completedAt: row.completedAt?.toISOString(), dismissedAt: row.dismissedAt?.toISOString(),
+  };
 }

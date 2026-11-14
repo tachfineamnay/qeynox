@@ -105,6 +105,12 @@ const en = {
   resultError: "The action could not be completed",
   ownerLastHint: "The last enabled owner cannot be demoted or revoked.",
   mobileNote: "Desktop and mobile layouts share the same access rules.",
+  onboardingTitle: "Soul onboarding",
+  onboardingIntro: "Progress status only. Private onboarding answers and consented context are never exposed to platform administration.",
+  onboardingNotStarted: "Not started",
+  onboardingStep: "Step",
+  onboardingStarted: "Started",
+  onboardingCompleted: "Completed",
 } as const;
 
 const fr: typeof en = {
@@ -211,6 +217,12 @@ const fr: typeof en = {
   resultError: "L'action n'a pas pu être effectuée",
   ownerLastHint: "Le dernier propriétaire actif ne peut être ni rétrogradé ni révoqué.",
   mobileNote: "Les mises en page desktop et mobile partagent les mêmes règles d'accès.",
+  onboardingTitle: "Onboarding Soul",
+  onboardingIntro: "Statut de progression uniquement. Les réponses privées et le contexte consenti ne sont jamais exposés à l'administration plateforme.",
+  onboardingNotStarted: "Non commencé",
+  onboardingStep: "Étape",
+  onboardingStarted: "Débuté",
+  onboardingCompleted: "Terminé",
 };
 
 export const copy = { en, fr };

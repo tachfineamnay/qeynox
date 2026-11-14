@@ -15,6 +15,7 @@ import type {
   PlatformUserActivityRow,
   PlatformUserCursor,
   PlatformUserMembershipRow,
+  PlatformUserOnboardingRow,
   PlatformUserRow,
 } from '@qeynox/persistence';
 import { PlatformAdminService, type PlatformPermissionContext } from './platform-admin';
@@ -75,6 +76,7 @@ export interface PlatformUserRepository {
     readonly revokedPlatformSessions: number;
   }>;
   listActivity(userId: string, before: PlatformUserCursor | undefined, limit: number): Promise<readonly PlatformUserActivityRow[]>;
+  listOnboardingStatuses(userId: string): Promise<readonly PlatformUserOnboardingRow[]>;
 }
 
 const readPermissions: readonly PlatformPermission[] = ['ADMINISTRATION', 'SUPPORT'];
@@ -146,6 +148,17 @@ export interface PlatformUserDetail {
   };
   /** Internal QeyNox roles are only disclosed to ADMINISTRATION principals. */
   readonly platformRoles?: readonly PlatformRole[] | undefined;
+  /** Onboarding progress per workspace: status, step and dates only, never private answer content. */
+  readonly onboarding: readonly PlatformUserOnboardingStatusView[];
+}
+
+export interface PlatformUserOnboardingStatusView {
+  readonly workspaceId: string;
+  readonly status: 'NOT_STARTED' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'DISMISSED';
+  readonly step: string | null;
+  readonly startedAt: string | null;
+  readonly updatedAt: string | null;
+  readonly completedAt: string | null;
 }
 
 export interface PlatformUserSessionsView {
@@ -334,11 +347,12 @@ export class PlatformUsersService {
     }
     const at = this.now();
     const discloseRoles = hasPlatformPermission(principal, 'ADMINISTRATION');
-    const [memberships, summary, platformRoles, platformSummary] = await Promise.all([
+    const [memberships, summary, platformRoles, platformSummary, onboarding] = await Promise.all([
       this.repository.listMemberships(userId),
       this.repository.sessionsSummary(userId, at),
       discloseRoles ? this.repository.listPlatformRoles(userId) : Promise.resolve([] as readonly PlatformRole[]),
       discloseRoles ? this.repository.platformSessionsSummary(userId, at) : Promise.resolve(undefined),
+      this.repository.listOnboardingStatuses(userId),
     ]);
     await this.platform.recordAudit({
       actor: principal, targetType: 'IDENTITY_ACCOUNT', targetId: userId, action: 'READ_PLATFORM_USER',
@@ -358,6 +372,16 @@ export class PlatformUsersService {
         } : {}),
       },
       ...(discloseRoles ? { platformRoles } : {}),
+      onboarding: memberships.map(membership => {
+        const record = onboarding.find(item => item.workspaceId === membership.workspaceId);
+        return record === undefined
+          ? { workspaceId: membership.workspaceId, status: 'NOT_STARTED' as const, step: null, startedAt: null, updatedAt: null, completedAt: null }
+          : {
+              workspaceId: record.workspaceId, status: record.status, step: record.step,
+              startedAt: record.startedAt.toISOString(), updatedAt: record.updatedAt.toISOString(),
+              completedAt: record.completedAt === null ? null : record.completedAt.toISOString(),
+            };
+      }),
     };
     return detail;
   }

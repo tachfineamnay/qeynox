@@ -85,3 +85,26 @@ export type EventRecord = Readonly<{
   id: ID; workspaceId: ID; operationId: ID; kind: string; actorId?: ID;
   data: Readonly<Record<string, unknown>>; occurredAt: ISODate; eventVersion: number;
 }>;
+
+export const SOUL_ONBOARDING_STEPS = ['WELCOME', 'LANGUAGE', 'CONSENT', 'ACTIVITY', 'OBJECTIVES', 'NEEDS', 'PREFERENCES', 'FIRST_OBJECTIVE', 'DONE'] as const;
+export type SoulOnboardingStep = (typeof SOUL_ONBOARDING_STEPS)[number];
+export const SOUL_ONBOARDING_STATUSES = ['IN_PROGRESS', 'PAUSED', 'COMPLETED', 'DISMISSED'] as const;
+export type SoulOnboardingStatus = (typeof SOUL_ONBOARDING_STATUSES)[number];
+/** View-level status: no persisted row yet for this user/workspace. */
+export type SoulOnboardingDisplayStatus = SoulOnboardingStatus | 'NOT_STARTED';
+export const SOUL_ONBOARDING_CONTENT_STEPS = ['ACTIVITY', 'OBJECTIVES', 'NEEDS', 'PREFERENCES'] as const;
+export type SoulOnboardingContentStep = (typeof SOUL_ONBOARDING_CONTENT_STEPS)[number];
+export const SOUL_ONBOARDING_FACT_KEYS: Readonly<Record<SoulOnboardingContentStep, string>> = {
+  ACTIVITY: 'onboarding.activity',
+  OBJECTIVES: 'onboarding.objectives',
+  NEEDS: 'onboarding.needs',
+  PREFERENCES: 'onboarding.preferences',
+};
+export const SOUL_FIRST_OBJECTIVE_FACT_KEY = 'onboarding.first_objective';
+/** Progress is persisted per user/workspace; no answer content is stored in this record. */
+export type SoulOnboardingRecord = Readonly<{
+  id: ID; userId: ID; workspaceId: ID; status: SoulOnboardingStatus; step: SoulOnboardingStep;
+  locale: 'en' | 'fr'; consentId?: ID; skippedSteps: readonly SoulOnboardingStep[];
+  startedAt: ISODate; updatedAt: ISODate; completedAt?: ISODate; dismissedAt?: ISODate;
+}>;
+export const soulOnboardingStepOrder: readonly SoulOnboardingStep[] = SOUL_ONBOARDING_STEPS;

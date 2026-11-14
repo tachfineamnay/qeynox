@@ -21,6 +21,8 @@ export class SoulController {
   constructor(@Inject(SOUL_SERVICE) private readonly soul: SoulService) {}
   @Get('context')
   context(@Req() request: Request) { return this.soul.viewContext(principal(request)); }
+  @Get('consents')
+  consents(@Req() request: Request) { return this.soul.listConsents(principal(request)); }
   @Post('consents')
   grant(@Req() request: Request, @Body() body: unknown) {
     const input = consentSchema.parse(body);
@@ -30,6 +32,10 @@ export class SoulController {
   async revoke(@Req() request: Request, @Param('id') id: string) {
     await this.soul.revokeConsent(principal(request), requireId(id));
     return { revoked: true };
+  }
+  @Delete('context')
+  async deleteAllContext(@Req() request: Request) {
+    return this.soul.deleteAllContext(principal(request));
   }
   @Post('context/facts')
   saveFact(@Req() request: Request, @Body() body: unknown) {

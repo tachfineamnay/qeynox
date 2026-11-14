@@ -10,7 +10,14 @@ export async function login(previous: FormState, form: FormData): Promise<FormSt
   try {
     const result = sessionSchema.parse(await api('/v1/auth/login', 'POST', { email: form.get('email'), password: form.get('password') }, false));
     (await cookies()).set('qx-session', JSON.stringify(result), { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', expires: new Date(result.expiresAt) });
-    destination = `/${locale(String(form.get('locale')))}/mydash`;
+    const lang = locale(String(form.get('locale')));
+    destination = '/' + lang + '/mydash';
+    try {
+      const onboarding = await api('/v1/soul/onboarding') as { status?: string };
+      if (onboarding.status === 'NOT_STARTED' || onboarding.status === 'IN_PROGRESS' || onboarding.status === 'PAUSED') {
+        destination = '/' + lang + '/soul';
+      }
+    } catch { /* an unavailable onboarding view never blocks access to MyDash */ }
   } catch (error) { return { code: error instanceof ApiError ? error.code : 'UNAVAILABLE' }; }
   redirect(destination);
 }

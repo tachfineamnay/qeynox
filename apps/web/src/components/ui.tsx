@@ -11,7 +11,7 @@ export function StatusBadge({ status, lang }: { status: string; lang: Locale }) 
 }
 export function AppShell({ lang, active, children }: { lang: Locale; active: string; children: ReactNode }) {
   const t = copy[lang];
-  const links = [['', t.home], ['mydash', t.dash], ['missions', t.missions], ['capabilities', t.capabilities], ['account', t.account]];
+  const links = [['', t.home], ['mydash', t.dash], ['missions', t.missions], ['soul', t.soul], ['capabilities', t.capabilities], ['account', t.account]];
   const nav = <nav aria-label={t.menu}>{links.map(([path, label]) => <Link key={path} href={`/${lang}/${path}`} aria-current={active === path ? 'page' : undefined}>{label}</Link>)}</nav>;
   return <><a className="skip" href="#content">{t.skip}</a><aside className="sidebar"><Link className="brand" href={`/${lang}`}><span className="mark">Q</span>QeyNox</Link><span className="brand-caption">Results as a Service</span><div className="desktop-nav">{nav}</div><details className="mobile-nav"><summary>{t.menu}</summary>{nav}</details><p className="sidebar-note">{t.footer}</p></aside><div className="workspace"><header className="topbar"><span>{active === '' ? 'QeyNox' : t.dash}</span><nav aria-label="Language"><Link href={`/en/${active}`} lang="en" aria-current={lang === 'en' ? 'true' : undefined}>EN</Link><Link href={`/fr/${active}`} lang="fr" aria-current={lang === 'fr' ? 'true' : undefined}>FR</Link></nav></header><main id="content">{children}</main><footer>{t.footer}</footer></div></>;
 }

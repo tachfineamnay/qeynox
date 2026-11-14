@@ -139,3 +139,26 @@ same isolated database: qa:platform-admin PASS (70), qa:platform-users PASS (165
 harness cannot complete DROP DATABASE (checkpoint signal denied), so teardown logged a warning and the
 disposable server was stopped and deleted manually; assertions ran against the real database.
 No push, merge or deployment.
+
+## 2026-11-14 — Soul onboarding (Mission 05, code-only)
+
+Added the pre-mission Soul onboarding flow required before any mission exists. It lives in the existing
+`apps/api/src/soul` module, `packages/roles/src/soul.ts`, the existing consents/user_contexts tables and
+`apps/web`: no second onboarding and no MyDash rework. Migration 0016 adds one progress table per
+user/workspace (status, step, locale, consent reference, dates; no answer content). The existing
+`/v1/soul/converse` contract (operationId + attemptId) is untouched and never called pre-mission;
+onboarding has its own operation-free routes under `/v1/soul/onboarding` (view, start, answer, skip,
+consent, pause, resume, dismiss, complete) plus `GET /v1/soul/consents` and `DELETE /v1/soul/context` for
+context consultation, edition, deletion and consent revocation. Answers are only written as
+user_context facts after the explicit consent step; a refused/revoked consent blocks memorisation.
+Guidance is deterministic and explicitly labelled (`deterministic: true`, `aiAvailable: false`,
+reason PRE_MISSION_CONTRACT): no fake LLM conversation is produced. The web route `/[lang]/soul`
+offers one useful question at a time (activity, objectives, language, needs, preferences), skip/pause/
+resume/dismiss, direct MyDash access and the consented-context panel; first login redirects there
+while onboarding is NOT_STARTED/IN_PROGRESS/PAUSED. The first objective is completed through the
+existing mission creation contract (`POST /v1/operations`) and redirects to the existing mission page.
+Platform administration now receives per-workspace onboarding status/step/dates only (no private
+content), displayed in QeyNox Control user detail.
+
+NOT VERIFIED (per Mission 04–09 FAST MODE: code only): no typecheck, build, migration run, QA suite,
+screenshot or certification was executed for this lot. No push, merge or deployment.

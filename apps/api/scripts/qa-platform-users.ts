@@ -44,6 +44,7 @@ import type {
   PlatformUserActivityRow,
   PlatformUserCursor,
   PlatformUserMembershipRow,
+  PlatformUserOnboardingRow,
   PlatformUserRow,
 } from '@qeynox/persistence';
 import { and, count, eq } from 'drizzle-orm';
@@ -313,6 +314,10 @@ class FakeUserRepository implements PlatformUserRepository {
         || (row.happenedAt.getTime() === before.at.getTime() && row.id < before.id))
       .sort((a, b) => b.happenedAt.getTime() - a.happenedAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
     return merged.slice(0, limit + 1);
+  }
+  async listOnboardingStatuses(_userId: string): Promise<readonly PlatformUserOnboardingRow[]> {
+    void _userId;
+    return [];
   }
 }
 

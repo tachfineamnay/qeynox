@@ -101,3 +101,16 @@ VERIFIED: qa:platform-organizations PASS (87 assertions on disposable PostgreSQL
 qa:platform-admin PASS (70) and qa:platform-users PASS (165) on the same isolated database.
 NOT VERIFIED: production deployment, public identity hardening, e-mail transport, workspace deletion
 (deliberately out of scope). No push, merge or deployment.
+
+## Soul pre-mission onboarding (Mission 05, code-only)
+
+Source implemented: migration 0016 `soul_onboarding` (additive progress only), `SoulOnboardingService`
+in `packages/roles/src/soul.ts`, `/v1/soul/onboarding/*` controller (operation-free pre-mission
+contract; `/v1/soul/converse` untouched), web `/[lang]/soul` guided flow with explicit consent,
+consented-context CRUD/revocation, pause/resume/skip/dismiss and direct MyDash access, first objective
+handed to the existing mission creation endpoint, and platform-admin onboarding status (no private
+content) in QeyNox Control user detail.
+
+NOT VERIFIED: no tests, build, migration execution or UI certification was run (FAST MODE code only).
+Deterministic guidance is intentional and labelled; no LLM execution is claimed before a mission
+exists. Awaiting a later verification lot. No push, merge or deployment.
