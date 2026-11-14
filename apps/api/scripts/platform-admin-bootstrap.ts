@@ -43,7 +43,8 @@ async function main(): Promise<void> {
   if (process.env.QEYNOX_PLATFORM_BOOTSTRAP_ALLOW !== 'true') {
     throw new Error('QEYNOX_PLATFORM_BOOTSTRAP_ALLOW=true is required for an explicit bootstrap');
   }
-  if (process.env.NODE_ENV === 'production' || process.env.QEYNOX_DEPLOYMENT_ENV === 'production') {
+  if (process.env.QEYNOX_DEPLOYMENT_ENV === 'production' ||
+      (process.env.NODE_ENV === 'production' && process.env.QEYNOX_DEPLOYMENT_ENV !== 'preproduction')) {
     throw new Error('Refusing to bootstrap platform administrators on a production deployment');
   }
   const databaseUrl = process.env.DATABASE_URL;
