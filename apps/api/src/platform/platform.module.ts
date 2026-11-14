@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { PlatformAdminService, PlatformOrganizationsService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
-import { PlatformAdminStore, PlatformUserStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection } from '@qeynox/persistence';
+import { PlatformAdminStore, PlatformOperationsStore, PlatformUserStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection } from '@qeynox/persistence';
 import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';
 import { hashSessionToken } from '../auth/password';
@@ -15,6 +15,9 @@ import { PlatformOrganizationsController } from './platform-organizations.contro
 import { PlatformUsersController } from './platform-users.controller';
 import { ChatwootClient } from '../support/chatwoot.client';
 import { PlatformSupportController } from '../support/platform-support.controller';
+import { CoolifyReadOnlyClient } from './coolify-readonly.client';
+import { EnvironmentDeploymentInfo } from './deployment-info.provider';
+import { PlatformOperationsController } from './platform-operations.controller';
 import { CHATWOOT_PORT, PLATFORM_SUPPORT_SERVICE, SUPPORT_LINK_STORE } from '../support/support.tokens';
 import {
   EMAIL_TRANSPORT,
@@ -24,11 +27,15 @@ import {
   PLATFORM_STORE,
   PLATFORM_USERS_SERVICE,
   PLATFORM_USER_STORE,
+  PLATFORM_OPERATIONS_STORE,
+  PLATFORM_OPERATIONS_SERVICE,
+  RESOURCE_INVENTORY_PORT,
+  DEPLOYMENT_INFO,
 } from './platform.tokens';
 
 @Module({
   imports: [AuthModule],
-  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController],
+  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController, PlatformOperationsController],
   providers: [
     {
       provide: PLATFORM_STORE,
@@ -81,6 +88,19 @@ import {
       provide: PLATFORM_SUPPORT_SERVICE,
       useFactory: (port: ChatwootClient, links: SupportLinkStore, platform: PlatformAdminService) => new PlatformSupportService(port, links, platform),
       inject: [CHATWOOT_PORT, SUPPORT_LINK_STORE, PLATFORM_ADMIN_SERVICE],
+    },
+    {
+      provide: PLATFORM_OPERATIONS_STORE,
+      useFactory: (connection: DatabaseConnection) => new PlatformOperationsStore(connection.db),
+      inject: [DB_CONNECTION],
+    },
+    { provide: RESOURCE_INVENTORY_PORT, useFactory: () => new CoolifyReadOnlyClient() },
+    { provide: DEPLOYMENT_INFO, useFactory: () => new EnvironmentDeploymentInfo() },
+    {
+      provide: PLATFORM_OPERATIONS_SERVICE,
+      useFactory: (store: PlatformOperationsStore, runtime: PlatformAdminStore, platform: PlatformAdminService, deployment: EnvironmentDeploymentInfo, resources: CoolifyReadOnlyClient) =>
+        new PlatformOperationsService(store, runtime, platform, deployment, resources),
+      inject: [PLATFORM_OPERATIONS_STORE, PLATFORM_STORE, PLATFORM_ADMIN_SERVICE, DEPLOYMENT_INFO, RESOURCE_INVENTORY_PORT],
     },
     { provide: APP_GUARD, useClass: PlatformAccessGuard },
   ],

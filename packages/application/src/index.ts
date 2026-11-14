@@ -24,6 +24,7 @@ export * from './configuration';
 export * from './platform-admin';
 export * from './platform-users';
 export * from './platform-organizations';
+export * from './platform-operations';
 export * from './support';
 export * from './workspace-access';
 export * from './pagination';

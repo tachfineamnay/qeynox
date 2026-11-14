@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { copy, type Locale } from '../lib/copy';
-import { can, CONSULTATION, LIFECYCLE_READ, READ_ORGANIZATIONS, READ_USERS, SUPPORT } from '../lib/permissions';
+import { can, CONSULTATION, LIFECYCLE_READ, OPERATIONS, READ_ORGANIZATIONS, READ_USERS, SUPPORT } from '../lib/permissions';
 import { logoutAction } from '../lib/actions';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -51,6 +51,7 @@ export function Shell({ lang, path, permissions, userId, sessionExpiresAt, child
     { href: '/admin/' + lang + '/users', label: t.navUsers, match: 'users', allowed: can(permissions, READ_USERS) },
     { href: '/admin/' + lang + '/organizations', label: t.navOrganizations, match: 'organizations', allowed: can(permissions, READ_ORGANIZATIONS) },
     { href: '/admin/' + lang + '/support', label: t.navSupport, match: 'support', allowed: can(permissions, SUPPORT) },
+    { href: '/admin/' + lang + '/operations', label: t.navOperations, match: 'operations', allowed: can(permissions, OPERATIONS) },
     { href: '/admin/' + lang + '/audit', label: t.navAudit, match: 'audit', allowed: can(permissions, CONSULTATION) },
     { href: '/admin/' + lang + '/account', label: t.navAccount, match: 'account', allowed: true },
   ];

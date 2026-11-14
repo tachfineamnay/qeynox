@@ -183,3 +183,22 @@ a shared secret before writing. No Coolify resource was created or started.
 
 NOT VERIFIED (FAST MODE): no typecheck, build, migration run, Chatwoot provisioning or certification
 was executed. No push, merge or deployment.
+
+## 2026-11-14 — Operations desk (Mission 07, code-only)
+
+Added a read-only operations centre in QeyNox Control, gated by the existing OPERATIONS permission:
+missions by status with cross-workspace read-model counts and attention, incidents and recovery
+history (existing recovery_incidents/recovery_actions, read only), operation detail with summary,
+runtime dispatch/executions/attempts and event history, runtime health facts (PostgreSQL SELECT 1
+latency, schema_migrations facts, API uptime), deployed version/commit/date when the operator exposes
+them, and platform anomalies from the existing platform audit (24 h, DENIED/ERROR). New read-only
+endpoints live under `/v1/platform/operations/*` and reuse the existing operation summary/runtime
+readers and operation_views/event_envelopes read models. No mutation route exists: no cancel, retry,
+replay, redeploy or Docker command. A Coolify inventory adapter is included only as an optional
+read-only GET adapter (servers/applications/services); without QEYNOX_COOLIFY_BASE_URL and
+QEYNOX_COOLIFY_API_TOKEN it reports NOT_CONFIGURED; upstream failure reports UNAVAILABLE and never
+fabricates metrics. Missing values are rendered UNAVAILABLE. No new monitoring engine, no automatic
+redelivery, and no Coolify resource created or started.
+
+NOT VERIFIED (FAST MODE): no typecheck, build, migration run, Coolify provisioning or certification
+was executed. No push, merge or deployment.

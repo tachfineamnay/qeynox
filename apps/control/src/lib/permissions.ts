@@ -12,3 +12,5 @@ export function can(permissions: readonly string[], required: readonly string[])
 }
 
 export const SUPPORT = ['SUPPORT'] as const;
+
+export const OPERATIONS = ['OPERATIONS'] as const;

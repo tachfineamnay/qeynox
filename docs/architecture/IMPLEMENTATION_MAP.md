@@ -126,3 +126,14 @@ support message is stored in PostgreSQL. Chatwoot webhooks are not needed for th
 (any future webhook must be secret-verified before writes). NOT VERIFIED: no tests, build, migration
 run, provisioning or visual certification was executed. No Coolify resource created; no push/merge/
 deployment.
+
+## Operations desk — read-only supervision (Mission 07, code-only)
+
+Source implemented: `/v1/platform/operations/*` read-only routes (list/summary/incidents/health/
+releases/resources/detail), OPERATIONS-permission gated and audited on denial; QeyNox Control pages
+`/admin/{lang}/operations` (missions by status, incidents/actions), `/operations/[id]` (summary,
+runtime, executions, attempts, event history, recovery), `/operations/health` (measured checks +
+optional read-only Coolify inventory), `/operations/releases` (version/commit/date when exposed,
+last check, migrations, 24 h anomalies). Missing/inaccessible data is UNAVAILABLE; no metrics are
+invented. No mutation, redeploy or Docker command exists. NOT VERIFIED: no tests, build, migration
+execution or provisioning was run. No Coolify resource created; no push/merge/deployment.
