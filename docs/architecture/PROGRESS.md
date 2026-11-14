@@ -79,3 +79,23 @@ See docs/architecture/PREPRODUCTION_VERIFICATION.md. All ten requested resources
 Public verification is recorded in PUBLIC_ACCESS_VERIFICATION.md and supersedes the earlier missing-domain/public-download blockers. VPS eth0 and four DNS resolver/authoritative checks agree on 31.97.158.141. Native Coolify domain https://qeynox.io applied only to Web; valid Let's Encrypt/TLS1.3 certificate observed. Real rendered login form POST returned 303 to /fr/mydash; authenticated MyDash and the existing mission returned 200. Existing DRAFT mission persisted.
 
 Only Web, storage, API and worker were restarted, without application rebuild. Bucket-only Traefik routing on the same host preserves SigV4 Host/path; API/worker now load QEYNOX_ARTIFACT_ENDPOINT=https://qeynox.io. Actual encrypted HTTPS uploads/HEAD/downloads passed from both processes. Existing JSON/HTML exports signed 200 and correct hashes; anonymous and expired signatures 403. Download attachment, sandbox/no-store/nosniff/no-referrer protections are present. S3 console/admin and internal API were not published. DB/Redis host port bindings remain empty. Hermes/AnythingLLM still exited, production still empty, other projects untouched. Application images remain 541a60d. This is not independent production/public-identity certification.
+
+## 2026-11-13 — Global platform administration foundation (Mission 01)
+
+Added a strictly separated internal administration layer over the existing identity core: migration
+0012 (platform assignments, sessions, audit; 0001–0011 untouched), platform role/permission model,
+separate session namespace, fail-closed global guard with mandatory per-route access policy, explicit
+CLI bootstrap, audited assignment/revocation API, last-administrator protection and read-only
+support/operations diagnostics. Design and permission matrix: docs/architecture/PLATFORM_ADMINISTRATION.md.
+
+Reuse: AuthService.verifyCredentials (same scrypt/lockout path) and identity credentials; no
+credential or session code duplicated, and the platform port never reads workspace memberships.
+
+Verification: API typecheck and production tsc build PASS; qa:platform-authorization PASS
+(107 assertions — real service/guard against in-memory ports plus real NestJS HTTP wiring with an
+unreachable database). Hardened after adversarial review: assignment/revocation commit atomically with
+session revocation and audit, last-admin revocation locks and re-counts inside the transaction,
+append-only audit trigger, fail-closed guard for declared policies without the platform marker, and
+best-effort denial auditing. qa:platform-admin (isolated PostgreSQL HTTP e2e) is BLOCKED in this
+environment: no QEYNOX_QA_DATABASE_URL and no reachable Docker daemon. It reports BLOCKED and is not
+claimed as passing. No push, merge, deployment or production change was performed.

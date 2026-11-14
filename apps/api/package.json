@@ -9,7 +9,10 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "qa:task02": "tsx scripts/qa-task02.ts",
-    "qa:backend": "tsx scripts/qa-backend-certification.ts"
+    "qa:backend": "tsx scripts/qa-backend-certification.ts",
+    "qa:platform-authorization": "tsx scripts/qa-platform-authorization.ts",
+    "qa:platform-admin": "tsx scripts/qa-platform-admin.ts",
+    "admin:bootstrap": "tsx scripts/platform-admin-bootstrap.ts"
   },
   "dependencies": {
     "@qeynox/application": "workspace:*",

@@ -35,6 +35,22 @@ export class AuthService {
   }
   async login(body:unknown):Promise<IdentitySession> {
     const {email,password}=loginSchema.parse(body);
+    const userId=await this.verifiedUserId(email,password);
+    const [membership]=await this.db.select().from(identityMemberships).where(and(eq(identityMemberships.userId,userId),eq(identityMemberships.status,'ACTIVE'))).limit(1);
+    if(!membership)throw new DomainError('DENIED','No active workspace membership');
+    await this.db.insert(identityAudit).values({id:randomUUID(),userId,workspaceId:membership.workspaceId,action:'LOGIN',outcome:'SUCCESS'});
+    return this.issueSession(userId,membership.workspaceId as ID);
+  }
+  /**
+   * Verifies identity credentials only. Issues no workspace session and returns no workspace
+   * authority; global platform administration reuses this existing scrypt/lockout path instead of
+   * duplicating credential logic. Callers must never treat this result as a workspace principal.
+   */
+  async verifyCredentials(email:string,password:string):Promise<{userId:ID}> {
+    const input=loginSchema.parse({email,password});
+    return {userId:await this.verifiedUserId(input.email,input.password)};
+  }
+  private async verifiedUserId(email:string,password:string):Promise<ID> {
     const [row]=await this.db.select().from(identityUsers).where(eq(identityUsers.email,email.toLowerCase().trim())).limit(1);
     const [creds]=row?await this.db.select().from(identityCredentials).where(eq(identityCredentials.userId,row.id)).limit(1):[];
     if(!row||row.disabledAt||!creds||creds.lockedUntil&&creds.lockedUntil>new Date())throw new DomainError('DENIED','Invalid credentials');
@@ -45,10 +61,7 @@ export class AuthService {
       throw new DomainError('DENIED','Invalid credentials');
     }
     await this.db.update(identityCredentials).set({failedAttempts:0,lockedUntil:null}).where(eq(identityCredentials.userId,row.id));
-    const [membership]=await this.db.select().from(identityMemberships).where(and(eq(identityMemberships.userId,row.id),eq(identityMemberships.status,'ACTIVE'))).limit(1);
-    if(!membership)throw new DomainError('DENIED','No active workspace membership');
-    await this.db.insert(identityAudit).values({id:randomUUID(),userId:row.id,workspaceId:membership.workspaceId,action:'LOGIN',outcome:'SUCCESS'});
-    return this.issueSession(row.id as ID,membership.workspaceId as ID);
+    return row.id as ID;
   }
   async issueSession(userId:ID,workspaceId:ID):Promise<IdentitySession>{
     const [member]=await this.db.select().from(identityMemberships).where(and(eq(identityMemberships.userId,userId),eq(identityMemberships.workspaceId,workspaceId),eq(identityMemberships.status,'ACTIVE'))).limit(1);

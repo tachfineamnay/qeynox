@@ -58,3 +58,15 @@ Deployment compatibility: API/Web images include curl for Coolify's generated he
 Final phase-2 verification is recorded in PREPRODUCTION_VERIFICATION.md: ten separate resources; API/Web/worker plus five foundation resources running healthy at code SHA 541a60d; Hermes/RAG inactive. Actual authenticated MyDash, Core/Redis/encrypted S3, worker Hatchet listener, real Hatchet diagnostic dispatch/result, VPS isolated ToolBroker World Bank and independent restart persistence verified. Customer Hermes execution, configured business capabilities, public identity/TLS, external backups and independent production certification remain unverified. No production environment deployment or SaaS publication.
 
 Public ingress update (2026-11-13): PUBLIC_ACCESS_VERIFICATION.md supersedes the prior DNS/TLS/public-download blocker. Native Web domain qeynox.io, trusted automatic TLS, actual public login→MyDash→private API→existing DRAFT mission and HTTPS signed S3 uploads/downloads verified. No business-code rebuild; images remain 541a60d. S3 is routed only by its bucket path with unchanged SigV4 Host/path and download sandbox/attachment headers. Core/Redis ports remain unpublished; Hermes/RAG inactive. Identity hardening, external backup/KMS/security review, agent confinement and independent production certification remain gates.
+
+## Global platform administration (Mission 01)
+
+Source implemented and authorization-verified without a database (107 assertions; docs/architecture/PLATFORM_ADMINISTRATION.md). Authority-changing mutations are transactional with their audit row; last-administrator revocation is locking and race-safe; the audit table is append-only by trigger.
+Platform roles PLATFORM_ADMIN/SUPPORT/OPERATIONS/AUDITOR and permissions ADMINISTRATION/SUPPORT/OPERATIONS/CONSULTATION
+are strictly disjoint from workspace OWNER/ADMIN/MEMBER; separate platform_admin_sessions namespace, migration 0012,
+fail-closed global guard, explicit CLI bootstrap, audited assignment API, last-administrator protection and read-only
+support/operations diagnostics. The platform repository port reads no workspace membership.
+
+NOT VERIFIED: isolated-PostgreSQL HTTP e2e (`pnpm qa:platform-admin`) is BLOCKED without QEYNOX_QA_DATABASE_URL;
+no admin web UI exists; platform login still depends on the unhardened public-identity gate (no ingress rate limit,
+MFA, e-mail verification or account recovery). No production deployment, push or merge was performed.

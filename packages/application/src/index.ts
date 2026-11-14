@@ -21,4 +21,5 @@ export * from './engine-selection';
 export * from './context-policy';
 export * from './delivery';
 export * from './configuration';
+export * from './platform-admin';
 

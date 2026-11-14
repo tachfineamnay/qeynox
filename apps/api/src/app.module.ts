@@ -11,6 +11,7 @@ import { OperatorModule } from './operator/operator.module';
 import { ConfigurationModule } from './configuration/configuration.module';
 import { SoulModule } from './soul/soul.module';
 import { PilotModule } from './pilot/pilot.module';
-@Module({controllers:[HealthController],imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule,OperatorModule,ConfigurationModule,SoulModule,PilotModule]})
+import { PlatformModule } from './platform/platform.module';
+@Module({controllers:[HealthController],imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule,OperatorModule,ConfigurationModule,SoulModule,PilotModule,PlatformModule]})
 export class AppModule {}
 

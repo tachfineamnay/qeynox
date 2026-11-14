@@ -38,7 +38,14 @@ pnpm qa:connectors    # connector activation, egress/auth/rate-limit gates, real
 pnpm qa:raas          # real sourced claim → human verification → cited DELIVERABLE + exports
 pnpm qa:egress        # private/reserved DNS rejection, connection pinning, redirect refusal, live pinned World Bank call
 pnpm qa:storage       # real MinIO uploads, SHA-256 integrity, private/signed/expiry, tenant isolation, PENDING_UPLOAD recovery
+pnpm qa:platform-authorization  # global platform administration authorization invariants + HTTP wiring (no database)
+pnpm qa:platform-admin          # platform administration HTTP e2e against an isolated PostgreSQL database (BLOCKED without QEYNOX_QA_DATABASE_URL)
 ```
+
+Global platform administration (internal `PLATFORM_ADMIN`/`SUPPORT`/`OPERATIONS`/`AUDITOR` roles,
+strictly separate from workspace `OWNER`/`ADMIN`/`MEMBER`) is documented in
+`docs/architecture/PLATFORM_ADMINISTRATION.md`. The first administrator is granted only by the
+explicit, audited bootstrap CLI: `QEYNOX_PLATFORM_BOOTSTRAP_ALLOW=true pnpm admin:bootstrap -- --email … --role … --confirm --reason …`.
 
 A disposable MinIO can be started locally with generated credentials (never reuse production secrets), then pass the same values as `QEYNOX_QA_S3_*` for `qa:storage`.
 
