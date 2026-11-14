@@ -70,3 +70,18 @@ support/operations diagnostics. The platform repository port reads no workspace 
 NOT VERIFIED: isolated-PostgreSQL HTTP e2e (`pnpm qa:platform-admin`) is BLOCKED without QEYNOX_QA_DATABASE_URL;
 no admin web UI exists; platform login still depends on the unhardened public-identity gate (no ingress rate limit,
 MFA, e-mail verification or account recovery). No production deployment, push or merge was performed.
+
+## Platform user administration (Mission 02)
+
+Source implemented and authorization/pagination/revocation/isolation verified without a database
+(107 assertions; docs/architecture/USERS_MANAGEMENT.md). Suspension and revocation share one
+enabled-administrator rule under a PostgreSQL advisory transaction lock; both session namespaces are
+revoked atomically; platform sessions/roles are disclosed only to ADMINISTRATION. Reuses identity_users/credentials/sessions and
+the Mission 01 platform sessions/audit; suspension is reversible via disabled_at, session revocation
+marks revoked_at, and no delete operation exists. Migration 0013 adds additive indexes only.
+Invitations, e-mail verification and account recovery stay explicitly BLOCKED behind a
+not-configured EmailTransport (503 NOT_CONFIGURED, audited, no e-mail claimed or sent).
+
+NOT VERIFIED: the isolated-PostgreSQL users-management end-to-end flow (part C of
+`pnpm qa:platform-users`) is BLOCKED without QEYNOX_QA_DATABASE_URL. No admin UI exists. No
+production deployment, push or merge was performed.

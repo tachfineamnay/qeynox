@@ -14,5 +14,10 @@ export const PlatformRoute = () => SetMetadata(PLATFORM_ROUTE_KEY, true);
 
 /** Mandatory per-route access policy. A platform route without one fails closed. */
 export const PLATFORM_ACCESS_KEY = 'qeynox:platform-access';
-export type PlatformAccessPolicy = PlatformPermission | 'SELF' | 'PUBLIC_LOGIN';
+/**
+ * A single permission, an any-of permission list, a valid platform session for the caller
+ * ('SELF'), or the unauthenticated platform sign-in route. An array grants access when the
+ * principal holds at least one of the listed permissions.
+ */
+export type PlatformAccessPolicy = PlatformPermission | readonly PlatformPermission[] | 'SELF' | 'PUBLIC_LOGIN';
 export const PlatformAccess = (policy: PlatformAccessPolicy) => SetMetadata(PLATFORM_ACCESS_KEY, policy);

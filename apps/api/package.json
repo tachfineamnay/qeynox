@@ -12,6 +12,7 @@
     "qa:backend": "tsx scripts/qa-backend-certification.ts",
     "qa:platform-authorization": "tsx scripts/qa-platform-authorization.ts",
     "qa:platform-admin": "tsx scripts/qa-platform-admin.ts",
+    "qa:platform-users": "tsx scripts/qa-platform-users.ts",
     "admin:bootstrap": "tsx scripts/platform-admin-bootstrap.ts"
   },
   "dependencies": {

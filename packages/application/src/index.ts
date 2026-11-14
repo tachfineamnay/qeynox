@@ -22,4 +22,5 @@ export * from './context-policy';
 export * from './delivery';
 export * from './configuration';
 export * from './platform-admin';
+export * from './platform-users';
 

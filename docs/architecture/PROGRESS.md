@@ -99,3 +99,24 @@ append-only audit trigger, fail-closed guard for declared policies without the p
 best-effort denial auditing. qa:platform-admin (isolated PostgreSQL HTTP e2e) is BLOCKED in this
 environment: no QEYNOX_QA_DATABASE_URL and no reachable Docker daemon. It reports BLOCKED and is not
 claimed as passing. No push, merge, deployment or production change was performed.
+
+## 2026-11-14 — Platform user administration (Mission 02)
+
+Added the platform user-administration API over the existing identity tables (no second
+authentication system, no credential writes, no deletion): paginated directory with e-mail search and
+status filter, user detail (registration date, workspaces/roles, status, session summary, activity),
+session metadata, merged activity timeline, reversible suspend/reactivate with mandatory
+justification and atomic audit, scoped session revocation, and any-of route policies
+(ADMINISTRATION/SUPPORT/…/CONSULTATION) extending the Mission 01 guard. Migration 0013 adds four
+additive indexes only; 0001–0012 are untouched. Invitations, e-mail verification and account recovery
+are explicitly blocked (503 NOT_CONFIGURED) behind a not-configured EmailTransport port: no message is
+sent and no account state changes.
+
+Verification: API typecheck and tsc build PASS; qa:platform-users PASS (107 assertions — parts A/B real
+service/guard/controller metadata and HTTP wiring; part C isolated-PostgreSQL e2e BLOCKED without
+QEYNOX_QA_DATABASE_URL); qa:platform-authorization regression PASS (107 assertions). Hardened after
+adversarial review: suspension and revocation share one enabled-administrator rule under a PostgreSQL
+advisory transaction lock (no lockout path), both session namespaces are revoked atomically on
+suspension/session revocation, platform sessions and roles are disclosed only to ADMINISTRATION, the
+account timeline is restricted to lifecycle actions, and workspace counts only ACTIVE memberships. No push, merge or
+deployment; no production data touched.

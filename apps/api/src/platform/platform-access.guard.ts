@@ -1,12 +1,18 @@
 import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { DomainError, type PlatformPrincipal } from '@qeynox/domain';
+import { DomainError, type PlatformPermission, type PlatformPrincipal } from '@qeynox/domain';
 import type { PlatformAdminService } from '@qeynox/application';
 import { PLATFORM_ACCESS_KEY, PLATFORM_ROUTE_KEY, type PlatformAccessPolicy } from '../auth/platform-route';
 import { PLATFORM_ADMIN_SERVICE } from './platform.tokens';
 import type { PlatformRequest } from './platform.request';
 
 const bearerPattern = /^Bearer ([A-Za-z0-9_-]{32,256})$/;
+
+function policyLabel(policy: PlatformAccessPolicy | undefined): string | null {
+  if (policy === undefined || policy === 'SELF' || policy === 'PUBLIC_LOGIN') return null;
+  if (typeof policy === 'string') return policy;
+  return (policy as readonly string[]).join('|');
+}
 
 /**
  * Global guard for the platform administration surface.
@@ -42,6 +48,10 @@ export class PlatformAccessGuard implements CanActivate {
       throw new DomainError('DENIED', 'Platform route has no declared access policy');
     }
     if (policy === 'PUBLIC_LOGIN') return true;
+    if (Array.isArray(policy) && policy.length === 0) {
+      await this.platform.recordAccessDenial({ action: 'PLATFORM_ACCESS', targetType: 'PLATFORM_ROUTE', targetId: handlerName, reason: 'EMPTY_ACCESS_POLICY' });
+      throw new DomainError('DENIED', 'Platform route declares an empty access policy');
+    }
     const request = context.switchToHttp().getRequest<PlatformRequest>();
     const authorization = request.headers.authorization;
     const match = typeof authorization === 'string' ? bearerPattern.exec(authorization) : null;
@@ -49,18 +59,16 @@ export class PlatformAccessGuard implements CanActivate {
     if (!token) {
       await this.platform.recordAccessDenial({
         action: 'PLATFORM_ACCESS', targetType: 'PLATFORM_ROUTE', targetId: handlerName,
-        permission: policy === 'SELF' ? null : policy,
+        permission: policyLabel(policy),
         reason: authorization === undefined ? 'MISSING_SESSION' : 'MALFORMED_SESSION_TOKEN',
       });
       throw new DomainError('DENIED', 'Platform bearer session required');
     }
     const principal: PlatformPrincipal = await this.platform.authenticate(token);
     if (policy !== 'SELF') {
-      await this.platform.requirePermission(principal, policy, {
-        action: 'PLATFORM_ACCESS',
-        targetType: 'PLATFORM_ROUTE',
-        targetId: handlerName,
-      });
+      const context = { action: 'PLATFORM_ACCESS', targetType: 'PLATFORM_ROUTE', targetId: handlerName };
+      if (Array.isArray(policy)) await this.platform.requireAnyPermission(principal, policy as readonly PlatformPermission[], context);
+      else await this.platform.requirePermission(principal, policy as PlatformPermission, context);
     }
     request.platformPrincipal = principal;
     return true;

@@ -117,7 +117,8 @@ function auditOf(row: typeof platformAdminAudit.$inferSelect): PlatformAuditReco
   };
 }
 
-function auditValues(record: PlatformAuditRecord) {
+/** Shared row mapper for the platform audit table (used by every platform administration store). */
+export function platformAuditValues(record: PlatformAuditRecord) {
   return {
     id: record.id, actorUserId: record.actorUserId, actorSessionId: record.actorSessionId,
     targetType: record.targetType, targetId: record.targetId, action: record.action,
@@ -164,7 +165,7 @@ export class PlatformAdminStore {
   }
 
   async insertAudit(record: PlatformAuditRecord): Promise<void> {
-    await this.db.insert(platformAdminAudit).values(auditValues(record));
+    await this.db.insert(platformAdminAudit).values(platformAuditValues(record));
   }
 
   async listAudit(limit: number): Promise<readonly PlatformAuditRecord[]> {
@@ -190,7 +191,7 @@ export class PlatformAdminStore {
         expiresAt: session.expiresAt, revokedAt: session.revokedAt,
         createdAt: session.createdAt, lastUsedAt: session.lastUsedAt,
       });
-      await tx.insert(platformAdminAudit).values(auditValues(audit));
+      await tx.insert(platformAdminAudit).values(platformAuditValues(audit));
     });
   }
 
@@ -198,7 +199,7 @@ export class PlatformAdminStore {
     await this.db.transaction(async tx => {
       await tx.update(platformAdminSessions).set({ revokedAt: at })
         .where(and(eq(platformAdminSessions.id, sessionId), isNull(platformAdminSessions.revokedAt)));
-      await tx.insert(platformAdminAudit).values(auditValues(audit));
+      await tx.insert(platformAdminAudit).values(platformAuditValues(audit));
     });
   }
 
@@ -217,7 +218,7 @@ export class PlatformAdminStore {
         });
         await tx.update(platformAdminSessions).set({ revokedAt: at })
           .where(and(eq(platformAdminSessions.userId, targetUserId), isNull(platformAdminSessions.revokedAt)));
-        await tx.insert(platformAdminAudit).values(auditValues(audit));
+        await tx.insert(platformAdminAudit).values(platformAuditValues(audit));
       });
       return 'INSERTED';
     } catch (error: unknown) {
@@ -228,21 +229,26 @@ export class PlatformAdminStore {
 
   async revokeAssignmentGuarded(input: PlatformRevokeGuardInput): Promise<PlatformRevokeOutcome> {
     return this.db.transaction(async tx => {
+      // One coarse registry lock serializes every mutation of the platform administrator set with
+      // suspensions (see PlatformUserStore). The enabled-administrator count below is therefore
+      // authoritative for this transaction and lock ordering cannot deadlock.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('qeynox.platform_admin_registry'))`);
       const [target] = await tx.select().from(platformAdminAssignments)
         .where(and(eq(platformAdminAssignments.id, input.assignmentId), eq(platformAdminAssignments.status, 'ACTIVE')))
         .limit(1);
       if (!target) return 'NOT_FOUND';
       if (input.role === 'PLATFORM_ADMIN') {
-        // Lock every active administrator row in a deterministic order, then re-count inside the
-        // same transaction: concurrent revocations serialize instead of both observing two admins.
-        const activeAdmins = await tx.select({ id: platformAdminAssignments.id }).from(platformAdminAssignments)
-          .where(and(eq(platformAdminAssignments.role, 'PLATFORM_ADMIN'), eq(platformAdminAssignments.status, 'ACTIVE')))
-          .orderBy(platformAdminAssignments.id).for('update');
+        // Count only administrators whose identity account is enabled: a suspended administrator
+        // must never keep the revocation guard from protecting the last usable administrator.
+        const activeAdmins = await tx.select({ id: platformAdminAssignments.id })
+          .from(platformAdminAssignments)
+          .innerJoin(identityUsers, eq(identityUsers.id, platformAdminAssignments.userId))
+          .where(and(
+            eq(platformAdminAssignments.role, 'PLATFORM_ADMIN'),
+            eq(platformAdminAssignments.status, 'ACTIVE'),
+            isNull(identityUsers.disabledAt),
+          ));
         if (activeAdmins.length <= 1) return 'LAST_ADMIN';
-      } else {
-        await tx.select({ id: platformAdminAssignments.id }).from(platformAdminAssignments)
-          .where(and(eq(platformAdminAssignments.id, input.assignmentId), eq(platformAdminAssignments.status, 'ACTIVE')))
-          .for('update');
       }
       const changed = await tx.update(platformAdminAssignments)
         .set({ status: 'REVOKED', revokedBy: input.revokedBy, revokeReason: input.reason, revokedAt: input.at })
@@ -251,7 +257,7 @@ export class PlatformAdminStore {
       if (!changed.length) return 'CONFLICT';
       await tx.update(platformAdminSessions).set({ revokedAt: input.at })
         .where(and(eq(platformAdminSessions.userId, input.targetUserId), isNull(platformAdminSessions.revokedAt)));
-      await tx.insert(platformAdminAudit).values(auditValues(input.successAudit));
+      await tx.insert(platformAdminAudit).values(platformAuditValues(input.successAudit));
       return 'REVOKED';
     });
   }

@@ -21,6 +21,7 @@
     "qa:egress": "pnpm --filter @qeynox/worker qa:egress",
     "qa:platform-authorization": "pnpm --filter @qeynox/api qa:platform-authorization",
     "qa:platform-admin": "pnpm --filter @qeynox/api qa:platform-admin",
+    "qa:platform-users": "pnpm --filter @qeynox/api qa:platform-users",
     "admin:bootstrap": "pnpm --filter @qeynox/api admin:bootstrap"
   },
   "devDependencies": {

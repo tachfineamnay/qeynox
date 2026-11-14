@@ -54,8 +54,19 @@ export function hasPlatformPermission(principal: PlatformPrincipal, permission: 
   return principal.permissions.includes(permission);
 }
 
+/** True when the principal holds at least one of the required permissions. */
+export function hasAnyPlatformPermission(principal: PlatformPrincipal, permissions: readonly PlatformPermission[]): boolean {
+  return permissions.some(permission => principal.permissions.includes(permission));
+}
+
 export function requirePlatformPermission(principal: PlatformPrincipal, permission: PlatformPermission): void {
   if (!hasPlatformPermission(principal, permission)) {
     throw new DomainError('DENIED', 'Platform permission required: ' + permission);
+  }
+}
+
+export function requireAnyPlatformPermission(principal: PlatformPrincipal, permissions: readonly PlatformPermission[]): void {
+  if (!hasAnyPlatformPermission(principal, permissions)) {
+    throw new DomainError('DENIED', 'Platform permission required: one of ' + permissions.join(', '));
   }
 }

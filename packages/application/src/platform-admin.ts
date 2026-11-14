@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   DomainError,
   PLATFORM_ROLES,
+  hasAnyPlatformPermission,
   hasPlatformPermission,
   isPlatformRole,
   platformPermissionsForRoles,
@@ -130,11 +131,23 @@ export interface PlatformPermissionContext {
   readonly targetId?: string | null;
 }
 
+/** Generic audit entry for sibling platform services (users management, account lifecycle). */
+export interface PlatformAuditEntry {
+  readonly actor?: PlatformPrincipal | undefined;
+  readonly targetType: string;
+  readonly targetId?: string | null;
+  readonly action: string;
+  readonly permission?: string | null;
+  readonly outcome: PlatformAuditOutcome;
+  readonly reason?: string | null;
+  readonly detail?: Record<string, unknown> | null;
+}
+
 export interface PlatformAccessDenial {
   readonly action: string;
   readonly targetType: string;
   readonly targetId?: string | null;
-  readonly permission?: PlatformPermission | null;
+  readonly permission?: string | null;
   readonly reason: string;
 }
 
@@ -153,7 +166,7 @@ interface AuditInput {
   readonly targetType: string;
   readonly targetId?: string | null;
   readonly action: string;
-  readonly permission?: PlatformPermission | null;
+  readonly permission?: string | null;
   readonly outcome: PlatformAuditOutcome;
   readonly reason?: string | null;
   readonly detail?: Record<string, unknown> | null;
@@ -325,6 +338,38 @@ export class PlatformAdminService {
       targetId: context.targetId ?? null, action: context.action, permission, outcome: 'DENIED', reason: 'PERMISSION_DENIED',
     });
     throw new DomainError('DENIED', 'Platform permission required: ' + permission);
+  }
+
+  /** Any-of variant used by routes that accept several platform permissions (users management). */
+  async requireAnyPermission(principal: PlatformPrincipal, permissions: readonly PlatformPermission[], context: PlatformPermissionContext): Promise<void> {
+    if (permissions.length === 0) throw new DomainError('DENIED', 'Platform permission required: empty permission list');
+    if (hasAnyPlatformPermission(principal, permissions)) return;
+    await this.writeAudit({
+      actorUserId: principal.userId, actorSessionId: principal.sessionId, targetType: context.targetType,
+      targetId: context.targetId ?? null, action: context.action, permission: permissions.join('|'),
+      outcome: 'DENIED', reason: 'PERMISSION_DENIED',
+    });
+    throw new DomainError('DENIED', 'Platform permission required: one of ' + permissions.join(', '));
+  }
+
+  /** Builds an audit record so a sibling service can commit it in the same transaction as its mutation. */
+  buildAuditRecord(entry: PlatformAuditEntry): PlatformAuditRecord {
+    return this.auditRecord({
+      actorUserId: entry.actor?.userId ?? null, actorSessionId: entry.actor?.sessionId ?? null,
+      targetType: entry.targetType, targetId: entry.targetId ?? null, action: entry.action,
+      permission: entry.permission ?? null, outcome: entry.outcome, reason: entry.reason ?? null,
+      detail: entry.detail ?? null,
+    });
+  }
+
+  /** Sibling platform services (users management) write their auditable outcomes through here. */
+  async recordAudit(entry: PlatformAuditEntry): Promise<void> {
+    await this.writeAudit({
+      actorUserId: entry.actor?.userId ?? null, actorSessionId: entry.actor?.sessionId ?? null,
+      targetType: entry.targetType, targetId: entry.targetId ?? null, action: entry.action,
+      permission: entry.permission ?? null, outcome: entry.outcome, reason: entry.reason ?? null,
+      detail: entry.detail ?? null,
+    });
   }
 
   /**
@@ -525,7 +570,7 @@ export class PlatformAdminService {
     action: string,
     targetType: string,
     targetId: string | null,
-    permission: PlatformPermission,
+    permission: string,
     reason: string,
     actor: PlatformPrincipal | undefined,
     detail?: Record<string, unknown>,
