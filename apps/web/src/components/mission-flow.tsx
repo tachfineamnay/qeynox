@@ -1,10 +1,14 @@
 'use client';
 import { useActionState } from 'react';
-import { decideApproval, startMission } from '../lib/plan-actions';
+import { acceptQuote, decideApproval, deliverResult, reassembleDocument, requestQuote, reviewClaim, startMission } from '../lib/plan-actions';
 import { missionCopy } from '../lib/mission-copy';
 import type { Locale } from '../lib/copy';
 import { errorText } from './forms';
 import { Feedback } from './ui';
+
+function outcome(lang: Locale, code: string, done: string): string {
+  return code === 'OK' ? done : errorText(code, lang) + ' (' + code + ')';
+}
 
 /**
  * Rendered only when GET /v1/operations/:id/readiness confirms execution availability. The key is
@@ -28,9 +32,7 @@ export function StartMission({ lang, operationId, version, canStart, idempotency
       <input type="hidden" name="locale" value={lang} />
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       <button disabled={pending}>{pending ? f.starting : (label ?? f.start)}</button>
-      {state.code ? (
-        <Feedback error={state.code !== 'OK'} title={state.code === 'OK' ? missionCopy(lang).success : errorText(state.code, lang) + ' (' + state.code + ')'} />
-      ) : null}
+      {state.code ? <Feedback error={state.code !== 'OK'} title={outcome(lang, state.code, missionCopy(lang).success)} /> : null}
     </form>
   );
 }
@@ -48,9 +50,92 @@ export function ApprovalDecision({ lang, operationId, approvalId }: { lang: Loca
         <button name="decision" value="APPROVED" disabled={pending}>{f.approve}</button>
         <button className="secondary" name="decision" value="REJECTED" disabled={pending}>{f.reject}</button>
       </div>
-      {state.code ? (
-        <Feedback error={state.code !== 'OK'} title={state.code === 'OK' ? f.decisionSaved : errorText(state.code, lang) + ' (' + state.code + ')'} />
-      ) : null}
+      {state.code ? <Feedback error={state.code !== 'OK'} title={outcome(lang, state.code, f.decisionSaved)} /> : null}
+    </form>
+  );
+}
+
+/** Requests a quote from one configured active offer for the current plan revision. */
+export function QuoteForm({ lang, operationId, revisionId, offerId }: { lang: Locale; operationId: string; revisionId: string; offerId: string }) {
+  const f = missionCopy(lang).flow;
+  const [state, action, pending] = useActionState(requestQuote, { code: '' });
+  return (
+    <form action={action} className="qx-inline-form">
+      <input type="hidden" name="operationId" value={operationId} />
+      <input type="hidden" name="revisionId" value={revisionId} />
+      <input type="hidden" name="offerId" value={offerId} />
+      <input type="hidden" name="locale" value={lang} />
+      <button className="secondary" disabled={pending}>{pending ? missionCopy(lang).busy : f.requestQuote}</button>
+      {state.code ? <Feedback error={state.code !== 'OK'} title={outcome(lang, state.code, missionCopy(lang).success)} /> : null}
+    </form>
+  );
+}
+
+/** Accepts a stored quote. The order state (AUTHORIZED or PAYMENT_REQUIRED) comes from the API. */
+export function AcceptQuoteForm({ lang, operationId, quoteId, idempotencyKey }: { lang: Locale; operationId: string; quoteId: string; idempotencyKey: string }) {
+  const f = missionCopy(lang).flow;
+  const [state, action, pending] = useActionState(acceptQuote, { code: '' });
+  return (
+    <form action={action} className="qx-inline-form">
+      <input type="hidden" name="operationId" value={operationId} />
+      <input type="hidden" name="quoteId" value={quoteId} />
+      <input type="hidden" name="locale" value={lang} />
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+      <button disabled={pending}>{pending ? missionCopy(lang).busy : f.acceptQuote}</button>
+      {state.code ? <Feedback error={state.code !== 'OK'} title={outcome(lang, state.code, missionCopy(lang).success)} /> : null}
+    </form>
+  );
+}
+
+/** Appends a new review version after claim re-assessment. */
+export function ReassembleForm({ lang, operationId }: { lang: Locale; operationId: string }) {
+  const f = missionCopy(lang).flow;
+  const [state, action, pending] = useActionState(reassembleDocument, { code: '' });
+  return (
+    <form action={action} className="qx-inline-form">
+      <input type="hidden" name="operationId" value={operationId} />
+      <input type="hidden" name="locale" value={lang} />
+      <button className="secondary" disabled={pending}>{pending ? missionCopy(lang).busy : f.reassemble}</button>
+      {state.code ? <Feedback error={state.code !== 'OK'} title={outcome(lang, state.code, missionCopy(lang).success)} /> : null}
+    </form>
+  );
+}
+
+/** Human evidence review; the API verifies that the claim has enough qualifying sources. */
+export function ClaimReviewForm({ lang, operationId, claimId }: { lang: Locale; operationId: string; claimId: string }) {
+  const f = missionCopy(lang).flow;
+  const [state, action, pending] = useActionState(reviewClaim, { code: '' });
+  return (
+    <form action={action} className="change-form qx-claim-review">
+      <input type="hidden" name="operationId" value={operationId} />
+      <input type="hidden" name="claimId" value={claimId} />
+      <input type="hidden" name="locale" value={lang} />
+      <label>{f.reviewReason}<textarea name="reason" required minLength={5} maxLength={2000} rows={2} /></label>
+      <label className="qx-check"><input type="checkbox" name="confirm" required /> <span>{f.reviewConfirm}</span></label>
+      <div className="qx-button-row">
+        <button name="decision" value="SUPPORTED" disabled={pending}>{f.reviewSupport}</button>
+        <button className="secondary" name="decision" value="DISPROVEN" disabled={pending}>{f.reviewDisprove}</button>
+        <button className="secondary" name="decision" value="CONFLICTING" disabled={pending}>{f.reviewConflict}</button>
+      </div>
+      {state.code ? <Feedback error={state.code !== 'OK'} title={outcome(lang, state.code, f.reviewNote)} /> : null}
+    </form>
+  );
+}
+
+/** Delivers a READY_FOR_REVIEW document for an approved RESULT_REVIEW approval. */
+export function DeliverForm({ lang, operationId, documentId, approvalId }: { lang: Locale; operationId: string; documentId: string; approvalId: string }) {
+  const f = missionCopy(lang).flow;
+  const [state, action, pending] = useActionState(deliverResult, { code: '' });
+  return (
+    <form action={action} className="change-form qx-deliver">
+      <input type="hidden" name="operationId" value={operationId} />
+      <input type="hidden" name="documentId" value={documentId} />
+      <input type="hidden" name="approvalId" value={approvalId} />
+      <input type="hidden" name="locale" value={lang} />
+      <p className="muted">{f.deliverNote}</p>
+      <label className="qx-check"><input type="checkbox" name="confirm" required /> <span>{f.reviewConfirm}</span></label>
+      <button disabled={pending}>{pending ? missionCopy(lang).busy : f.deliver}</button>
+      {state.code ? <Feedback error={state.code !== 'OK'} title={outcome(lang, state.code, f.deliveredNote)} /> : null}
     </form>
   );
 }

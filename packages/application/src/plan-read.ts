@@ -55,7 +55,8 @@ export interface OperationReadinessView {
   prerequisites: {
     plan: { ok: boolean; steps: number; revision: number | null };
     capability: { ok: boolean; required: number; active: number; missing: readonly string[] };
-    offer: { ok: boolean; offerId: string | null; amountMinor: number | null; currency: string | null; orderState: string | null };
+    offer: { ok: boolean; offerId: string | null; label: string | null; amountMinor: number | null; currency: string | null; isExplicitlyFree: boolean };
+    order: { ok: boolean; state: string | null; amountMinor: number | null; currency: string | null };
     budget: { ok: boolean; source: 'OPERATION' | 'POLICY' | 'NONE'; currency: string | null; ceiling: number | null; spent: number | null; reserved: number | null };
     permission: { ok: boolean; role: string | null };
     engine: { ok: boolean; runtime: string; missing: readonly string[] };
@@ -274,6 +275,9 @@ export class PlanReadService {
 
     const startable = startableStatuses.includes(operation.status);
     const orderAuthorized = Boolean(order && authorizedOrderStates.includes(order.state));
+    const offerConfiguration = coveringOffer?.configuration as { label?: unknown; isExplicitlyFree?: unknown } | undefined;
+    const offerLabel = typeof offerConfiguration?.label === 'string' ? offerConfiguration.label : null;
+    const offerFree = offerConfiguration?.isExplicitlyFree === true;
     const budgetOk = Boolean(operationBudget || policyPayload);
     return {
       operationId,
@@ -303,11 +307,18 @@ export class PlanReadService {
         plan: { ok: planExists, steps: planSteps.length, revision: currentRevision?.revision ?? null },
         capability: { ok: missingCapabilities.size === 0, required: planSteps.length, active: planSteps.filter(step => active.has(step.capabilityId)).length, missing: [...missingCapabilities] },
         offer: {
-          ok: order ? authorizedOrderStates.includes(order.state) : Boolean(coveringOffer),
+          ok: Boolean(coveringOffer),
           offerId: coveringOffer?.id ?? null,
+          label: offerLabel,
           amountMinor: coveringOffer?.amountMinor ?? null,
           currency: coveringOffer?.currency ?? null,
-          orderState: order?.state ?? null,
+          isExplicitlyFree: offerFree,
+        },
+        order: {
+          ok: Boolean(order && authorizedOrderStates.includes(order.state)),
+          state: order?.state ?? null,
+          amountMinor: order?.amountMinor ?? null,
+          currency: order?.currency ?? null,
         },
         budget: {
           ok: budgetOk,

@@ -207,6 +207,15 @@
 .qx-approval{border:1px solid var(--qx-border);border-left:3px solid var(--qx-warning);border-radius:var(--qx-radius-md);padding:14px 16px;margin:12px 0;background:var(--qx-surface-soft)}
 .qx-approval p{margin:0 0 6px}
 .qx-decision{margin:12px 0 0;max-width:none}
+/* Commercial, claims and delivery */
+.qx-offer-list,.qx-quote-list,.qx-claim-list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:12px}
+.qx-offer-list li,.qx-quote-list li{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--qx-border);border-radius:var(--qx-radius-md);padding:12px 14px;background:var(--qx-surface-soft)}
+.qx-offer-list p,.qx-quote-list p{margin:4px 0 0}
+.qx-claim-list li{border:1px solid var(--qx-border);border-radius:var(--qx-radius-md);padding:14px;background:var(--qx-surface-soft)}
+.qx-claim-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.qx-claim-list>li>p{margin:0 0 8px}
+.qx-claim-review,.qx-deliver{margin:10px 0 0;max-width:none}
+.qx-inline-form{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
 .qx-ready-line{margin:6px 0 0;font-size:13px;font-weight:650;color:var(--qx-success)}
 .qx-blocked-line{margin:6px 0 0;font-size:13px;font-weight:650;color:var(--qx-warning)}
 

@@ -7,12 +7,19 @@ import { ToolBroker,ToolRegistry,PgToolLedger,configuredProviderRateLimiter,type
 import { BudgetService } from './budgets';
 import type { CapabilityDefinition } from '@qeynox/domain';
 
+/** One captured provider observation linked to its source, evidence row and response digest. */
+export interface CapturedObservation {
+ readonly sourceId:ID;readonly evidenceId:ID;readonly responseDigest:string;
+ readonly provider:string;readonly uri?:string;readonly statement:string;
+}
+export interface BrokeredRunResult { readonly outcome:EngineOutcome; readonly observations:readonly CapturedObservation[] }
+
 export class BrokeredAgentExecutor {
  private readonly broker:ToolBroker;
  constructor(private readonly store:QeyNoxStore,private readonly engine:EnginePort,registry:ToolRegistry){
    this.broker=new ToolBroker(registry,new PgToolLedger(store.db),configuredProviderRateLimiter());
  }
- async run(request:EngineRequest,capability:CapabilityDefinition):Promise<EngineOutcome>{
+ async run(request:EngineRequest,capability:CapabilityDefinition):Promise<BrokeredRunResult>{
    const [operation,attempt]=await Promise.all([
      this.store.db.query.operations.findFirst({where:(t,{and,eq})=>and(eq(t.id,request.operationId),eq(t.workspaceId,request.workspaceId))}),
      this.store.getAttempt(request.stepAttemptId),
@@ -28,6 +35,7 @@ export class BrokeredAgentExecutor {
    const consentScopes=consent.filter(c=>!c.revokedAt&&(!c.expiresAt||c.expiresAt>new Date().toISOString())).flatMap(c=>c.scopes);
    const allowed=capability.allowedTools.filter(t=>request.profile.allowedTools.includes(t));
    const history: Array<{role:'user'|'assistant';content:string}>=[...(request.priorMessages??[])];
+   const captured:CapturedObservation[]=[];
    let callsUsed=0;
    const remainingCalls=capability.maximumToolCalls;
    for(let i=0;i<Math.max(1,Math.min(request.profile.maxIterations,capability.maximumSteps));i++){
@@ -41,8 +49,8 @@ export class BrokeredAgentExecutor {
        await budget.settle(principal,engineReservation.reservationId as ID,{origin:'UNKNOWN'});
        throw error;
      }
-     if(answer.status!=='COMPLETED')return answer;
-     if(!answer.proposedTools.length)return answer;
+     if(answer.status!=='COMPLETED')return {outcome:answer,observations:captured};
+     if(!answer.proposedTools.length)return {outcome:answer,observations:captured};
      if(answer.proposedTools.length>remainingCalls-callsUsed)throw new DomainError('DENIED','Agent requested more tools than its budget');
      const observations:unknown[]=[];
      for(let j=0;j<answer.proposedTools.length;j++){
@@ -69,11 +77,12 @@ export class BrokeredAgentExecutor {
        const evidence:Evidence={id:newId(),operationId:request.operationId,stepAttemptId:attempt.id,sourceId:source.id,statement:'Provider observation from '+proposal.toolName,observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['Provider response has not been independently assessed']};
        await this.store.recordEvidence(evidence);
        observations.push({tool:proposal.toolName,sourceId:source.id,evidenceId:evidence.id,observation:sanitize(result.value),provenance:result.provenance});
+       captured.push({sourceId:source.id,evidenceId:evidence.id,responseDigest:result.provenance.responseDigest,provider:result.provenance.provider,uri:result.provenance.sourceUri,statement:'Provider observation from '+proposal.toolName});
      }
      await new BudgetService(this.store).progress(principal,request.operationId,'agent:'+attempt.id,createHash('sha256').update(JSON.stringify(observations)).digest('hex'));
      history.push({role:'assistant',content:answer.content.slice(0,3000)},{role:'user',content:JSON.stringify({kind:'brokered_tool_observations',observations})});
    }
-   return {status:'INCOMPLETE',engine:'hermes',content:'Bounded execution reached maximum iterations',proposedTools:[],reason:'ITERATION_LIMIT',receivedAt:new Date().toISOString()};
+   return {outcome:{status:'INCOMPLETE',engine:'hermes',content:'Bounded execution reached maximum iterations',proposedTools:[],reason:'ITERATION_LIMIT',receivedAt:new Date().toISOString()},observations:captured};
  }
 }
 function sanitize(value:unknown,depth=0):unknown{

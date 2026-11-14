@@ -103,8 +103,12 @@ export const readinessSchema = z.object({
     plan: z.object({ ok: z.boolean(), steps: z.number().int(), revision: z.number().int().nullable() }),
     capability: z.object({ ok: z.boolean(), required: z.number().int(), active: z.number().int(), missing: z.array(z.string()) }),
     offer: z.object({
-      ok: z.boolean(), offerId: z.string().nullable(), amountMinor: z.number().int().nullable(),
-      currency: z.string().nullable(), orderState: z.string().nullable(),
+      ok: z.boolean(), offerId: z.string().nullable(), label: z.string().nullable(),
+      amountMinor: z.number().int().nullable(), currency: z.string().nullable(), isExplicitlyFree: z.boolean(),
+    }),
+    order: z.object({
+      ok: z.boolean(), state: z.string().nullable(),
+      amountMinor: z.number().int().nullable(), currency: z.string().nullable(),
     }),
     budget: z.object({
       ok: z.boolean(), source: z.enum(['OPERATION', 'POLICY', 'NONE']), currency: z.string().nullable(),
@@ -143,6 +147,33 @@ export const capabilityCatalogueSchema = z.object({
   available: z.number().int(),
 });
 export type CapabilityCatalogue = z.infer<typeof capabilityCatalogueSchema>;
+
+/** Mirrors GET /v1/operations/:id/commercial. */
+export const commercialViewSchema = z.object({
+  operationId: z.string(),
+  revisionId: z.string().nullable(),
+  offers: z.array(z.object({
+    id: z.string(), version: z.number().int(), label: z.string(), amountMinor: z.number().int(),
+    currency: z.string(), isExplicitlyFree: z.boolean(), termsVersion: z.string(),
+    scope: z.array(z.string()), exclusions: z.array(z.string()),
+  })),
+  quotes: z.array(z.object({
+    id: z.string(), offerId: z.string(), amountMinor: z.number().int(), currency: z.string(),
+    expiresAt: z.string(), createdAt: z.string(), accepted: z.boolean(), expired: z.boolean(),
+  })),
+  order: z.object({
+    id: z.string(), state: z.string(), amountMinor: z.number().int(), currency: z.string(), createdAt: z.string(),
+  }).nullable(),
+  executionAuthorized: z.boolean(),
+  payment: z.object({ required: z.boolean(), state: z.string().nullable() }),
+});
+export type CommercialView = z.infer<typeof commercialViewSchema>;
+
+export const claimSchema = z.object({
+  id: z.string(), statement: z.string(), kind: z.string(), status: z.string(), createdAt: z.string(),
+});
+export const claimListSchema = z.array(claimSchema);
+export type ClaimView = z.infer<typeof claimSchema>;
 
 export type PlanView = z.infer<typeof planViewSchema>;
 export type PlanAttempt = z.infer<typeof planAttemptSchema>;

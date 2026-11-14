@@ -9,6 +9,12 @@ const accept=z.object({idempotencyKey:z.string().min(8).max(200)});
 @Controller('v1/operations/:operationId/commercial')
 export class CommerceController{
  constructor(@Inject(COMMERCE_SERVICE)private readonly commerce:CommerceService){}
+ /** Customer-visible offers, quotes and order for the current plan revision. */
+ @Get()
+ view(@Req()req:Authed,@Param('operationId')operationId:string){
+  if(!req.principal)throw new DomainError('DENIED','Session required');
+  return this.commerce.view(req.principal,requireId(operationId));
+ }
  @Post('quote')
  quote(@Req()req:Authed,@Param('operationId')operationId:string,@Body()body:unknown){
   if(!req.principal)throw new DomainError('DENIED','Session required');

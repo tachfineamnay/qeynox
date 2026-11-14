@@ -85,3 +85,86 @@ export async function decideApproval(previous: ActionResult, form: FormData): Pr
     return failure(error);
   }
 }
+
+/** Requests a real quote for the current plan revision from a configured active offer. */
+export async function requestQuote(previous: ActionResult, form: FormData): Promise<ActionResult> {
+  try {
+    const operationId = idSchema.parse(form.get('operationId'));
+    const offerId = idSchema.parse(form.get('offerId'));
+    const revisionId = idSchema.parse(form.get('revisionId'));
+    const lang = locale(String(form.get('locale')));
+    await api(`/v1/operations/${operationId}/commercial/quote`, 'POST', { offerId, revisionId });
+    revalidatePath(`/${lang}/missions/${operationId}`);
+    return { code: 'OK' };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/** Accepts a stored quote. The server decides whether the order is authorized or requires payment. */
+export async function acceptQuote(previous: ActionResult, form: FormData): Promise<ActionResult> {
+  try {
+    const operationId = idSchema.parse(form.get('operationId'));
+    const quoteId = idSchema.parse(form.get('quoteId'));
+    const idempotencyKey = z.string().min(8).max(200).parse(form.get('idempotencyKey'));
+    const lang = locale(String(form.get('locale')));
+    await api(`/v1/operations/${operationId}/commercial/quotes/${quoteId}/accept`, 'POST', { idempotencyKey });
+    revalidatePath(`/${lang}/missions/${operationId}`);
+    return { code: 'OK' };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/** Records a human review decision and re-assembles the review document when review is open. */
+export async function reviewClaim(previous: ActionResult, form: FormData): Promise<ActionResult> {
+  try {
+    const operationId = idSchema.parse(form.get('operationId'));
+    const claimId = idSchema.parse(form.get('claimId'));
+    const lang = locale(String(form.get('locale')));
+    if (form.get('confirm') !== 'on') return { code: 'INVALID_INPUT' };
+    const reviewerDecision = z.enum(['SUPPORTED', 'DISPROVEN', 'CONFLICTING']).parse(form.get('decision'));
+    const reason = z.string().trim().min(5).max(2000).parse(form.get('reason'));
+    await api(`/v1/operations/${operationId}/claims/${claimId}/assess-active`, 'POST', { reviewerDecision, reason });
+    try {
+      await api(`/v1/operations/${operationId}/documents/assemble`, 'POST');
+    } catch (error) {
+      // Re-assembly is only possible while result review is open; the review itself is recorded.
+      if (!(error instanceof ApiError) || error.code !== 'INVALID_STATE') throw error;
+    }
+    revalidatePath(`/${lang}/missions/${operationId}`);
+    return { code: 'OK' };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/** Re-assembles the review version from the current claim assessments. */
+export async function reassembleDocument(previous: ActionResult, form: FormData): Promise<ActionResult> {
+  try {
+    const operationId = idSchema.parse(form.get('operationId'));
+    const lang = locale(String(form.get('locale')));
+    await api(`/v1/operations/${operationId}/documents/assemble`, 'POST');
+    revalidatePath(`/${lang}/missions/${operationId}`);
+    return { code: 'OK' };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/** Delivers the reviewed document for an approved RESULT_REVIEW approval. */
+export async function deliverResult(previous: ActionResult, form: FormData): Promise<ActionResult> {
+  try {
+    const operationId = idSchema.parse(form.get('operationId'));
+    const documentId = idSchema.parse(form.get('documentId'));
+    const approvalId = idSchema.parse(form.get('approvalId'));
+    const lang = locale(String(form.get('locale')));
+    if (form.get('confirm') !== 'on') return { code: 'INVALID_INPUT' };
+    await api(`/v1/operations/${operationId}/documents/${documentId}/deliver`, 'POST', { approvalId });
+    revalidatePath(`/${lang}/missions/${operationId}`);
+    revalidatePath(`/${lang}/missions/${operationId}/results/${documentId}`);
+    return { code: 'OK' };
+  } catch (error) {
+    return failure(error);
+  }
+}

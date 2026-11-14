@@ -55,6 +55,19 @@ export class ClaimsService {
   await this.store.getOperation(actor,operationId);
   return this.store.db.select().from(claims).where(and(eq(claims.workspaceId,actor.workspaceId),eq(claims.operationId,operationId))).orderBy(desc(claims.createdAt));
  }
+ /** Resolves the claim's own capability and active policy, then evaluates it. */
+ async assessActive(actor:Principal,claimId:ID,review?:{reviewerDecision?:'SUPPORTED'|'DISPROVEN'|'CONFLICTING';reason?:string}){
+  const claim=await this.get(actor,claimId);
+  const attempt=await this.store.getAttempt(claim.attemptId as ID);
+  if(!attempt||attempt.operationId!==claim.operationId)throw new DomainError('DENIED','Claim attempt no longer belongs to its operation');
+  const steps=await this.store.getSteps(attempt.planRevisionId);
+  const step=steps.find(candidate=>candidate.id===attempt.workStepId);
+  if(!step)throw new DomainError('NOT_FOUND','Claim step unavailable');
+  const [policy]=await this.store.db.select().from(verificationPolicies).where(and(eq(verificationPolicies.capabilityId,step.capabilityId),eq(verificationPolicies.status,'ACTIVE'))).orderBy(desc(verificationPolicies.version)).limit(1);
+  if(!policy)throw new DomainError('NOT_CONFIGURED','Active capability verification policy unavailable');
+  if(review?.reviewerDecision&&(!review.reason||review.reason.trim().length<5))throw new DomainError('INVALID_INPUT','Review rationale required');
+  return this.assess(actor,{claimId:claim.id as ID,capabilityId:step.capabilityId,policyVersion:policy.version,reason:review?.reason??'policy evaluation',reviewerDecision:review?.reviewerDecision});
+ }
  async assess(actor:Principal,input:ClaimAssessmentInput){
   const claim=await this.get(actor,input.claimId);
   const now=Date.now();

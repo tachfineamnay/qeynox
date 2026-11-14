@@ -11,6 +11,12 @@ export class ResultsController {
   if(!req.principal)throw new DomainError('DENIED','Workspace required');
   return this.docs.list(req.principal,requireId(operationId));
  }
+ /** Re-assembles the review version from current claim assessments; earlier versions are kept. */
+ @Post('assemble')
+ reassemble(@Req()req:Request,@Param('operationId')operationId:string){
+  if(!req.principal)throw new DomainError('DENIED','Workspace required');
+  return this.docs.reassemble(req.principal,requireId(operationId));
+ }
  @Get(':documentId')
  detail(@Req()req:Request,@Param('operationId')operationId:string,@Param('documentId')documentId:string){
   if(!req.principal)throw new DomainError('DENIED','Workspace required');

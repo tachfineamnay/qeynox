@@ -3,12 +3,12 @@ import { z } from 'zod';
 import { idSchema } from '@qeynox/contracts';
 import { AppShell, Card, EmptyState, Feedback, SectionHeading, StatusBadge } from '../../../../components/ui';
 import { ChangeForm, RefreshMission } from '../../../../components/mission-controls';
-import { ApprovalDecision, StartMission } from '../../../../components/mission-flow';
+import { AcceptQuoteForm, ApprovalDecision, ClaimReviewForm, QuoteForm, ReassembleForm, StartMission } from '../../../../components/mission-flow';
 import { PlanEditor, type DraftStep } from '../../../../components/plan-editor';
 import { copy, locale } from '../../../../lib/copy';
 import { missionCopy } from '../../../../lib/mission-copy';
 import { read, detailSchema, summarySchema, activitySchema, documentSchema, guidanceSchema, contextSchema } from '../../../../lib/mission';
-import { planViewSchema, readinessSchema, formatMoney, type PlanAttempt } from '../../../../lib/plan';
+import { planViewSchema, readinessSchema, commercialViewSchema, claimListSchema, formatMoney, type PlanAttempt } from '../../../../lib/plan';
 
 const consentsSchema = z.array(z.object({ id: z.string(), scope: z.array(z.string()).optional(), scopes: z.array(z.string()).optional(), revokedAt: z.string().optional(), expiresAt: z.string().optional(), grantedAt: z.string() }));
 
@@ -38,12 +38,14 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const pageSize = 50;
   const after = z.coerce.number().int().nonnegative().safeParse((await searchParams).after ?? 0);
   const cursor = after.success ? after.data : 0;
-  const [plan, readiness, summary, activity, pilot, documents, facts, consents] = await Promise.all([
+  const [plan, readiness, summary, activity, pilot, commercial, claims, documents, facts, consents] = await Promise.all([
     read(base + '/plan', planViewSchema),
     read(base + '/readiness', readinessSchema),
     read('/v1/mydash/operations/' + id.data + '/summary', summarySchema),
     read('/v1/mydash/operations/' + id.data + '/activity?after=' + cursor + '&limit=' + pageSize, activitySchema),
     read('/v1/pilot/operations/' + id.data + '/next-action', guidanceSchema),
+    read(base + '/commercial', commercialViewSchema),
+    read(base + '/claims', claimListSchema),
     read(base + '/documents', z.array(documentSchema)),
     read('/v1/soul/context', contextSchema),
     read('/v1/soul/consents', consentsSchema),
@@ -55,6 +57,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     { label: f.prereq.plan, ok: readinessData.prerequisites.plan.ok, missing: [] },
     { label: f.prereq.capability, ok: readinessData.prerequisites.capability.ok, missing: readinessData.prerequisites.capability.missing },
     { label: f.prereq.offer, ok: readinessData.prerequisites.offer.ok, missing: [] },
+    { label: f.prereq.order, ok: readinessData.prerequisites.order.ok, missing: [] },
     { label: f.prereq.budget, ok: readinessData.prerequisites.budget.ok, missing: [] },
     { label: f.prereq.permission, ok: readinessData.prerequisites.permission.ok, missing: [] },
     { label: f.prereq.engine, ok: readinessData.prerequisites.engine.ok, missing: readinessData.prerequisites.engine.missing },
@@ -76,6 +79,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   }
   for (const list of attemptsFor.values()) list.sort((left, right) => right.sequence - left.sequence);
   const pendingApprovals = (planData?.approvals ?? []).filter(approval => approval.status === 'PENDING' && !approval.stale);
+  const commercialRevision = commercial.data?.revisionId ?? null;
   const editable = ['DRAFT', 'READY', 'INTERRUPTED', 'FAILED', 'COMPLETED'].includes(op.status);
   const running = ['RUNNING', 'WAITING_APPROVAL', 'INTERRUPT_REQUESTED'].includes(op.status);
   const canInterrupt = ['RUNNING', 'WAITING_APPROVAL'].includes(op.status);
@@ -259,6 +263,72 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                   </details>
                 ) : null}
               </>
+            )}
+          </Card>
+
+          <Card>
+            <SectionHeading title={f.commercialTitle} note={f.commercialIntro} />
+            {!commercial.data ? unavailable(commercial.code) : commercialRevision === null ? <p className="muted">{f.quoteNeedsPlan}</p> : (
+              <>
+                {commercial.data.offers.length === 0 ? <p className="muted">{f.noCommercialOffer}</p> : (
+                  <ul className="qx-offer-list">
+                    {commercial.data.offers.map(offer => (
+                      <li key={offer.id}>
+                        <div>
+                          <strong>{offer.label}</strong>
+                          <p className="muted">{formatMoney(offer.amountMinor, offer.currency, lang)} · {offer.termsVersion}{offer.isExplicitlyFree ? ' · ' + f.freeOffer : ''}</p>
+                        </div>
+                        <QuoteForm lang={lang} operationId={op.id} revisionId={commercialRevision} offerId={offer.id} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {commercial.data.quotes.length === 0 ? <p className="muted">{f.noCommercialQuote}</p> : (
+                  <ul className="qx-quote-list">
+                    {commercial.data.quotes.map(quote => (
+                      <li key={quote.id}>
+                        <div>
+                          <strong>{formatMoney(quote.amountMinor, quote.currency, lang)}</strong>
+                          <p className="muted">{f.quoteExpires} {stamp(lang, quote.expiresAt)}</p>
+                        </div>
+                        {quote.accepted
+                          ? <span className="badge success">{f.quoteAccepted}</span>
+                          : quote.expired
+                            ? <span className="badge neutral">{f.quoteExpired}</span>
+                            : <AcceptQuoteForm lang={lang} operationId={op.id} quoteId={quote.id} idempotencyKey={crypto.randomUUID()} />}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {commercial.data.order ? (
+                  <p><span className="qx-kicker">{f.orderLabel}</span> <StatusBadge status={commercial.data.order.state} lang={lang} /> {formatMoney(commercial.data.order.amountMinor, commercial.data.order.currency, lang)}</p>
+                ) : null}
+                {commercial.data.payment.required ? <Feedback error title={f.paymentRequired} /> : null}
+                {commercial.data.executionAuthorized ? <p className="qx-ready">✓ {f.scopeAccepted}</p> : null}
+                <p className="muted qx-hint">{f.quoteNote}</p>
+              </>
+            )}
+          </Card>
+
+          <Card>
+            <SectionHeading
+              title={f.claimsTitle}
+              note={f.claimsIntro}
+              action={op.status === 'WAITING_APPROVAL' ? <ReassembleForm lang={lang} operationId={op.id} /> : null}
+            />
+            {!claims.data ? unavailable(claims.code) : claims.data.length === 0 ? <p className="muted">{f.claimsEmpty}</p> : (
+              <ul className="qx-claim-list">
+                {claims.data.map(claim => (
+                  <li key={claim.id}>
+                    <div className="qx-claim-head">
+                      <StatusBadge status={claim.status} lang={lang} />
+                      <span className="muted">{claim.kind} · {stamp(lang, claim.createdAt)}</span>
+                    </div>
+                    <p>{claim.statement}</p>
+                    {op.status === 'WAITING_APPROVAL' ? <ClaimReviewForm lang={lang} operationId={op.id} claimId={claim.id} /> : null}
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
 

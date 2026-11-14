@@ -9,6 +9,21 @@ export interface ConfiguredOffer {
  regions:readonly string[];locales:readonly string[];termsVersion:string;currency:string;
  amountMinor:number;taxPolicy:'CONFIG_REQUIRED'|'CONFIGURED';isExplicitlyFree:boolean;
 }
+export interface CommercialOfferView {
+ readonly id:string;readonly version:number;readonly label:string;readonly amountMinor:number;readonly currency:string;
+ readonly isExplicitlyFree:boolean;readonly termsVersion:string;readonly scope:readonly string[];readonly exclusions:readonly string[];
+}
+export interface CommercialQuoteView {
+ readonly id:string;readonly offerId:string;readonly amountMinor:number;readonly currency:string;
+ readonly expiresAt:string;readonly createdAt:string;readonly accepted:boolean;readonly expired:boolean;
+}
+export interface CommercialView {
+ readonly operationId:string;readonly revisionId:string|null;
+ readonly offers:readonly CommercialOfferView[];readonly quotes:readonly CommercialQuoteView[];
+ readonly order:{readonly id:string;readonly state:string;readonly amountMinor:number;readonly currency:string;readonly createdAt:string}|null;
+ readonly executionAuthorized:boolean;
+ readonly payment:{readonly required:boolean;readonly state:string|null};
+}
 export class CommerceService {
  constructor(private readonly store:QeyNoxStore){}
  async quote(actor:Principal,operationId:ID,offerId:string,revisionId:ID):Promise<unknown>{
@@ -52,6 +67,35 @@ export class CommerceService {
    await tx.insert(commercialOrders).values({id:orderId,workspaceId:actor.workspaceId,operationId:quote.operationId,revisionId:quote.revisionId,quoteId,state,amountMinor:quote.amountMinor,currency:quote.currency,createdAt:now,updatedAt:now});
    return {orderId,state,alreadyAccepted:false};
   });
+ }
+ /** Customer-visible commercial state for the current plan revision: offers, quotes and order. */
+ async view(actor:Principal,operationId:ID):Promise<CommercialView>{
+  const operation=await this.store.getOperation(actor,operationId);
+  const revisionId=operation.currentRevisionId??null;
+  const [order]=revisionId
+   ?await this.store.db.select().from(commercialOrders).where(and(eq(commercialOrders.workspaceId,actor.workspaceId),eq(commercialOrders.operationId,operationId),eq(commercialOrders.revisionId,revisionId))).limit(1)
+   :[];
+  const orderView=order?{id:order.id,state:order.state,amountMinor:order.amountMinor,currency:order.currency,createdAt:order.createdAt}:null;
+  if(!revisionId)return {operationId,revisionId:null,offers:[],quotes:[],order:orderView,executionAuthorized:false,payment:{required:false,state:orderView?.state??null}};
+  const steps=await this.store.getSteps(revisionId);
+  const required=new Set(steps.map(step=>step.capabilityId));
+  const offerRows=await this.store.db.select().from(offers).where(eq(offers.status,'ACTIVE'));
+  const offered:CommercialOfferView[]=[];
+  for(const row of offerRows){
+   const configuration=row.configuration as unknown as ConfiguredOffer;
+   const capabilityIds=Array.isArray(configuration.capabilityIds)?configuration.capabilityIds:[];
+   if(!capabilityIds.length||![...required].every(id=>capabilityIds.includes(id)))continue;
+   offered.push({id:row.id,version:row.version,label:configuration.label,amountMinor:row.amountMinor,currency:row.currency,isExplicitlyFree:configuration.isExplicitlyFree===true,termsVersion:configuration.termsVersion,scope:configuration.scope??[],exclusions:configuration.exclusions??[]});
+  }
+  const quoteRows=await this.store.db.select().from(quotes).where(and(eq(quotes.workspaceId,actor.workspaceId),eq(quotes.operationId,operationId),eq(quotes.revisionId,revisionId))).orderBy(desc(quotes.createdAt));
+  const now=new Date().toISOString();
+  return {
+   operationId,revisionId,offers:offered,
+   quotes:quoteRows.map(quote=>({id:quote.id,offerId:quote.offerId,amountMinor:quote.amountMinor,currency:quote.currency,expiresAt:quote.expiresAt,createdAt:quote.createdAt,accepted:Boolean(order&&order.quoteId===quote.id),expired:quote.expiresAt<=now})),
+   order:orderView,
+   executionAuthorized:Boolean(order&&['AUTHORIZED','FULFILLING'].includes(order.state)),
+   payment:{required:order?.state==='PAYMENT_REQUIRED',state:order?.state??null},
+  };
  }
  async assertExecutionAllowed(actor:Principal,operationId:ID,revisionId:ID):Promise<void>{
   await this.store.getOperation(actor,operationId);

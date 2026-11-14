@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { idSchema } from '@qeynox/contracts';
 import { api, ApiError } from './api';
 import { detailSchema, safeUrl } from './mission';
-export type ChangeState = { code: string; consentId?: string; artifactId?: string; url?: string };
+export type ChangeState = { code: string; consentId?: string; artifactId?: string; url?: string; sha256?: string };
 export async function change(previous: ChangeState, form: FormData): Promise<ChangeState> {
   try {
     const kind = String(form.get('kind'));
@@ -35,13 +35,21 @@ export async function change(previous: ChangeState, form: FormData): Promise<Cha
       const operationId = idSchema.parse(form.get('operationId'));
       const documentId = idSchema.parse(form.get('documentId'));
       const base = `/v1/operations/${operationId}/documents/${documentId}`;
-      const artifactId = kind === 'renew' ? idSchema.parse(form.get('artifactId')) : z.object({ artifactId: idSchema }).parse(await api(`${base}/export/${z.enum(['json','html']).parse(form.get('format'))}`, 'POST')).artifactId;
+      let artifactId: string;
+      let sha256: string | undefined;
+      if (kind === 'renew') {
+        artifactId = idSchema.parse(form.get('artifactId'));
+      } else {
+        const saved = z.object({ artifactId: idSchema, sha256: z.string().regex(/^[a-fA-F0-9]{64}$/) }).parse(await api(`${base}/export/${z.enum(['json','html']).parse(form.get('format'))}`, 'POST'));
+        artifactId = saved.artifactId;
+        sha256 = saved.sha256;
+      }
       try {
         const grant = z.object({ url: z.string() }).parse(await api(`${base}/artifacts/${artifactId}`));
         const url = safeUrl(grant.url);
         if (!url) return { code: 'INVALID_RESPONSE', artifactId };
-        return { code: 'OK', artifactId, url };
-      } catch (error) { return { code: error instanceof ApiError ? error.code : 'UNAVAILABLE', artifactId }; }
+        return { code: 'OK', artifactId, url, sha256 };
+      } catch (error) { return { code: error instanceof ApiError ? error.code : 'UNAVAILABLE', artifactId, sha256 }; }
     } else return { code: 'INVALID_INPUT' };
     return { code: 'OK' };
   } catch (error) { return { code: error instanceof ApiError ? error.code : 'INVALID_INPUT' }; }

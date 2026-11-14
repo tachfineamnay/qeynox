@@ -1,0 +1,138 @@
+{
+  "idempotencyKey": "mission10-economic-research-v1",
+  "dryRun": false,
+  "entries": [
+    {
+      "domain": "TOOL",
+      "connectorId": "world-bank",
+      "version": "1",
+      "status": "ACTIVE",
+      "manifest": {
+        "description": "World Bank Indicators API v2, read-only economic indicator observations",
+        "provider": "World Bank",
+        "regions": [
+          "GLOBAL"
+        ],
+        "operations": [
+          "INDICATOR_RESEARCH"
+        ],
+        "mode": "READ_ONLY",
+        "licenseNotes": "Verify data reuse and attribution terms; figures may be published with a delay.",
+        "termsUrl": "https://datahelpdesk.worldbank.org/knowledgebase/articles/889392",
+        "freshness": {
+          "ttlSeconds": 86400,
+          "publishedAtSource": "UNKNOWN"
+        },
+        "rateLimit": {
+          "maxPerMinute": 20
+        },
+        "tools": [
+          {
+            "name": "indicator",
+            "version": "1"
+          }
+        ]
+      }
+    },
+    {
+      "domain": "BUSINESS_CAPABILITY",
+      "slot": 1,
+      "version": 1,
+      "status": "ACTIVE",
+      "name": "Economic indicator research",
+      "purpose": "Retrieve and interpret official World Bank indicator series for a country and indicator code, with explicit sources and stated limits.",
+      "scope": [
+        "Macroeconomic indicator retrieval",
+        "Country comparison",
+        "Source-backed interpretation"
+      ],
+      "allowedTools": [
+        "world-bank:indicator@1"
+      ],
+      "privacyScopes": [],
+      "inputSchemaVersion": 1,
+      "outputSchemaVersion": 1,
+      "maximumSteps": 4,
+      "maximumToolCalls": 4
+    },
+    {
+      "domain": "AGENT_PROFILE",
+      "slot": 1,
+      "version": 1,
+      "status": "ACTIVE",
+      "title": "Economic research analyst",
+      "systemInstructions": "You analyse official economic indicators. Request the world-bank indicator tool for the country and indicator codes. Separate observed values from interpretation, never invent figures, dates or sources, and state data freshness limits.",
+      "skillRefs": [
+        "world-bank:indicator"
+      ],
+      "allowedTools": [
+        "world-bank:indicator@1"
+      ],
+      "permittedContextKeys": [],
+      "maxOutputTokens": 2048,
+      "maxIterations": 4
+    },
+    {
+      "domain": "VERIFICATION_POLICY",
+      "capabilityId": "capability-slot-1-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "minimumSources": 1,
+      "maxAgeDays": 365,
+      "approvedProviders": [
+        "world-bank"
+      ],
+      "humanReviewRequired": false,
+      "validFrom": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "domain": "RAAS_OFFER",
+      "offerId": "offer-economic-test-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "label": "Economic indicator brief — free test",
+      "capabilityIds": [
+        "capability-slot-1-v1"
+      ],
+      "deliverableSchemaVersion": 1,
+      "scope": [
+        "One country and one indicator series",
+        "Evidence-backed interpretation",
+        "JSON/HTML export"
+      ],
+      "exclusions": [
+        "No financial advice",
+        "No proprietary data"
+      ],
+      "regions": [
+        "FR",
+        "BE"
+      ],
+      "locales": [
+        "fr",
+        "en"
+      ],
+      "termsVersion": "2026-11",
+      "currency": "EUR",
+      "amountMinor": 0,
+      "taxPolicy": "CONFIGURED",
+      "isExplicitlyFree": true
+    },
+    {
+      "domain": "BUDGET_POLICY",
+      "policyId": "budget-economic-test",
+      "version": 1,
+      "status": "ACTIVE",
+      "currency": "EUR",
+      "maxMoneyMinor": 500,
+      "maxAgentCalls": 12,
+      "maxToolCalls": 8,
+      "maxDurationSeconds": 900,
+      "maxConcurrent": 1,
+      "unitMaxMinor": {
+        "hermes": 40,
+        "world-bank:indicator@1": 0
+      }
+    }
+  ]
+}

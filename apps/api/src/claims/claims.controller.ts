@@ -12,6 +12,10 @@ const attachSchema=z.object({
   sourceId:z.string().min(4),relationship:z.enum(['SUPPORTS','CONTRADICTS']),
   evidenceId:z.string().min(4),observationDigest:z.string().regex(/^[a-fA-F0-9]{64}$/),
 });
+const assessActiveSchema=z.object({
+  reviewerDecision:z.enum(['SUPPORTED','DISPROVEN','CONFLICTING']).optional(),
+  reason:z.string().trim().min(5).max(2000).optional(),
+});
 const assessSchema=z.object({
   capabilityId:z.string().min(4),policyVersion:z.number().int().positive(),
   reason:z.string().trim().min(5).max(2000),reviewerDecision:z.enum(['SUPPORTED','DISPROVEN','CONFLICTING']).optional(),
@@ -49,6 +53,14 @@ export class ClaimsController {
   const input=attachSchema.parse(body);
   await this.requireClaim(req,operationId,claimId);
   return this.claims.attach(principal(req),requireId(claimId),requireId(input.sourceId),input.relationship,requireId(input.evidenceId),input.observationDigest);
+ }
+ /** Evaluates the claim against the active policy for its own capability, with optional human review. */
+ @Post(':claimId/assess-active')
+ async assessActive(@Req()req:Authed,@Param('operationId')operationId:string,@Param('claimId')claimId:string,@Body()body:unknown){
+  const input=assessActiveSchema.parse(body??{});
+  await this.requireClaim(req,operationId,claimId);
+  if(input.reviewerDecision&&!input.reason)throw new DomainError('INVALID_INPUT','Review rationale required');
+  return this.claims.assessActive(principal(req),requireId(claimId),{reviewerDecision:input.reviewerDecision,reason:input.reason});
  }
  @Post(':claimId/assess')
  async assess(@Req()req:Authed,@Param('operationId')operationId:string,@Param('claimId')claimId:string,@Body()body:unknown){

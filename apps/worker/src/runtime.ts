@@ -35,15 +35,28 @@ export async function createWorkerDependencies(){
     const prior=await progression.priorOutputs(request.operationId,request.planRevisionId,step.id);
     const owner={userId:row.payload.createdBy,workspaceId:row.payload.workspaceId,roles:['system:worker']};
     await selections.select(owner,request.operationId,request.planRevisionId,attempt.id,profile,'hermes');
-    const answer=await executor.run({
+    const run=await executor.run({
       workspaceId:row.workspaceId as ID,operationId:row.id as ID,stepAttemptId:attempt.id,
       profile,userMessage:step.description,context:{operationTitle:row.payload.title,stepTitle:step.title,capabilityPurpose:cap.purpose,priorOutputs:prior},
       correlationId:request.idempotencyKey,
     },cap);
+    const answer=run.outcome;
     if(answer.status!=='COMPLETED')throw new DomainError('INVALID_STATE','Agent did not finish business step');
     const evidence:Evidence={id:newId(),operationId:row.id as ID,stepAttemptId:attempt.id,statement:answer.content,observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['AI summary requires evidence assessment']};
     await store.recordEvidence(evidence);
-    await claims.register(owner,{operationId:request.operationId,attemptId:attempt.id,statement:answer.content,kind:'AGENT_FINDING',profileId:profile.id,profileVersion:profile.version});
+    const claim=await claims.register(owner,{operationId:request.operationId,attemptId:attempt.id,statement:answer.content,kind:'AGENT_FINDING',profileId:profile.id,profileVersion:profile.version});
+    // Every provider observation captured by the broker is linked to this claim with its exact
+    // response digest, then assessed against the active verification policy for the capability.
+    for(const observation of run.observations){
+      await claims.attach(owner,claim.id as ID,observation.sourceId,'SUPPORTS',observation.evidenceId,observation.responseDigest);
+    }
+    if(run.observations.length){
+      try{await claims.assessActive(owner,claim.id as ID);}
+      catch(error:unknown){
+        // No active policy means the claim stays UNVERIFIED; any other failure is an integrity error.
+        if(!(error instanceof DomainError)||error.code!=='NOT_CONFIGURED')throw error;
+      }
+    }
     const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id},'UNVERIFIED');
     if(state==='AWAITING_REVIEW')await documents.assemble(owner,request.operationId,request.planRevisionId,row.payload.title,[],[]);
     return {outcome:'COMPLETED' as const,detail:state};

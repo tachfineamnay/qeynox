@@ -56,6 +56,14 @@ export class ResultAssembler {
   await this.store.db.insert(resultDocuments).values({id:result.id,workspaceId:result.workspaceId,operationId,revisionId,version:result.version,state,document:result as unknown as Record<string,unknown>,createdAt:result.createdAt,supersedesId:result.priorId});
   return result;
  }
+ /** Re-assembles the review version after claim re-assessment; history is preserved by version. */
+ async reassemble(actor:Principal,operationId:ID){
+  const op=await this.store.getOperation(actor,operationId);
+  if(!op.currentRevisionId)throw new DomainError('INVALID_STATE','No plan revision to assemble');
+  if(op.status!=='WAITING_APPROVAL')throw new DomainError('INVALID_STATE','Result review is not open');
+  const steps=await this.store.getSteps(op.currentRevisionId);
+  return this.assemble(actor,operationId,op.currentRevisionId,op.title,steps.map(step=>step.title),[]);
+ }
  async list(actor:Principal,operationId:ID){
   await this.store.getOperation(actor,operationId);
   return (await this.store.db.select().from(resultDocuments).where(and(eq(resultDocuments.workspaceId,actor.workspaceId),eq(resultDocuments.operationId,operationId))).orderBy(desc(resultDocuments.version))).map(r=>r.document as unknown as ResultDocument);
