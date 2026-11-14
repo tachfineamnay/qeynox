@@ -8,7 +8,7 @@ import { PlanEditor, type DraftStep } from '../../../../components/plan-editor';
 import { copy, locale } from '../../../../lib/copy';
 import { missionCopy } from '../../../../lib/mission-copy';
 import { read, detailSchema, summarySchema, activitySchema, documentSchema, guidanceSchema, contextSchema } from '../../../../lib/mission';
-import { planViewSchema, readinessSchema, formatMoney } from '../../../../lib/plan';
+import { planViewSchema, readinessSchema, formatMoney, type PlanAttempt } from '../../../../lib/plan';
 
 const consentsSchema = z.array(z.object({ id: z.string(), scope: z.array(z.string()).optional(), scopes: z.array(z.string()).optional(), revokedAt: z.string().optional(), expiresAt: z.string().optional(), grantedAt: z.string() }));
 
@@ -51,13 +51,30 @@ export default async function Page({ params, searchParams }: { params: Promise<{
 
   const planData = plan.data && plan.data.operation.id === op.id ? plan.data : null;
   const readinessData = readiness.data && readiness.data.operationId === op.id ? readiness.data : null;
+  const prerequisiteChecks: { label: string; ok: boolean; missing: readonly string[] }[] = readinessData ? [
+    { label: f.prereq.plan, ok: readinessData.prerequisites.plan.ok, missing: [] },
+    { label: f.prereq.capability, ok: readinessData.prerequisites.capability.ok, missing: readinessData.prerequisites.capability.missing },
+    { label: f.prereq.offer, ok: readinessData.prerequisites.offer.ok, missing: [] },
+    { label: f.prereq.budget, ok: readinessData.prerequisites.budget.ok, missing: [] },
+    { label: f.prereq.permission, ok: readinessData.prerequisites.permission.ok, missing: [] },
+    { label: f.prereq.engine, ok: readinessData.prerequisites.engine.ok, missing: readinessData.prerequisites.engine.missing },
+    { label: f.prereq.orchestrator, ok: readinessData.prerequisites.orchestrator.ok, missing: readinessData.prerequisites.orchestrator.missing },
+    { label: f.prereq.profile, ok: readinessData.prerequisites.profile.ok, missing: readinessData.prerequisites.profile.missing },
+    { label: f.prereq.provider, ok: readinessData.prerequisites.provider.ok, missing: readinessData.prerequisites.provider.missing },
+  ] : [];
   const steps = planData?.steps ?? [];
   const stepCount = summary.data?.stepCount ?? steps.length;
   const completedSteps = summary.data?.completedSteps ?? steps.filter(step => step.state === 'COMPLETED').length;
   const progress = stepCount > 0 ? Math.round((completedSteps / stepCount) * 100) : 0;
   const capabilities = planData?.capabilities ?? [];
   const capabilityName = (capabilityId: string) => capabilities.find(item => item.id === capabilityId)?.name ?? capabilityId;
-  const attemptFor = new Map((planData?.attempts ?? []).map(attempt => [attempt.stepId, attempt]));
+  const attemptsFor = new Map<string, PlanAttempt[]>();
+  for (const attempt of planData?.attempts ?? []) {
+    const list = attemptsFor.get(attempt.stepId);
+    if (list) list.push(attempt);
+    else attemptsFor.set(attempt.stepId, [attempt]);
+  }
+  for (const list of attemptsFor.values()) list.sort((left, right) => right.sequence - left.sequence);
   const pendingApprovals = (planData?.approvals ?? []).filter(approval => approval.status === 'PENDING' && !approval.stale);
   const editable = ['DRAFT', 'READY', 'INTERRUPTED', 'FAILED', 'COMPLETED'].includes(op.status);
   const running = ['RUNNING', 'WAITING_APPROVAL', 'INTERRUPT_REQUESTED'].includes(op.status);
@@ -134,12 +151,23 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                   <ul className="qx-blockers">
                     {readinessData.blockers.map(blocker => (
                       <li key={blocker.code + blocker.detail}>
+                        <span className="qx-kicker">{dict(f.category as Record<string, string>, blocker.category, blocker.category)}</span>
                         <strong>{dict(f.blocker as Record<string, string>, blocker.code, blocker.code)}</strong>
                         <span className="muted">{blocker.detail}</span>
                       </li>
                     ))}
                   </ul>
                 ) : null}
+                {readinessData.plan.present ? <ul className="qx-prereqs" aria-label={f.prerequisitesTitle}>
+                  {prerequisiteChecks.map(item => (
+                    <li key={item.label} data-ok={item.ok ? 'true' : 'false'}>
+                      <span className="qx-prereq-state" aria-hidden="true">{item.ok ? '✓' : '!'}</span>
+                      <span className="qx-prereq-label">{item.label}</span>
+                      <span className="qx-sr-only">{item.ok ? f.checkOk : f.checkKo}</span>
+                      {!item.ok && item.missing.length ? <small>{item.missing.join(', ')}</small> : null}
+                    </li>
+                  ))}
+                </ul> : null}
                 <dl className="qx-readiness-grid">
                   <div><dt>{f.planState}</dt><dd>{readinessData.plan.present ? f.planRecorded + (readinessData.plan.revision ? ' · v' + readinessData.plan.revision : '') : f.planMissing}</dd></div>
                   <div><dt>{f.capabilitiesState}</dt><dd>{readinessData.capabilities.active + ' / ' + readinessData.capabilities.required}</dd></div>
@@ -175,7 +203,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                 <p className="muted">{f.revision} {planData.revision?.revision ?? 1} · {stamp(lang, planData.revision?.createdAt ?? op.lastActivityAt)}</p>
                 <ol className="qx-steps">
                   {steps.map((step, position) => {
-                    const attempt = attemptFor.get(step.id);
+                    const history = attemptsFor.get(step.id) ?? [];
+                    const attempt = history[0];
                     return (
                       <li key={step.id} className="qx-step-view">
                         <div className="qx-step-top">
@@ -197,6 +226,21 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                             {attempt.startedAt ? ' · ' + f.startedAt + ' ' + stamp(lang, attempt.startedAt) : ''}
                             {attempt.errorCode ? ' · ' + attempt.errorCode : ''}
                           </p>
+                        ) : null}
+                        {history.length > 1 ? (
+                          <details className="qx-attempts">
+                            <summary>{f.attemptsHistory} ({history.length})</summary>
+                            <ol>
+                              {history.map(item => (
+                                <li key={item.attemptId}>
+                                  <strong>#{item.sequence}</strong> · {dict(f.stepStates as Record<string, string>, item.state, item.state)}
+                                  {item.startedAt ? ' · ' + f.startedAt + ' ' + stamp(lang, item.startedAt) : ''}
+                                  {item.finishedAt ? ' · ' + stamp(lang, item.finishedAt) : ''}
+                                  {item.errorCode ? ' · ' + f.attemptError + ': ' + item.errorCode : ''}
+                                </li>
+                              ))}
+                            </ol>
+                          </details>
                         ) : null}
                         {redoAllowed && attempt && attempt.state !== 'RUNNING' && attempt.state !== 'WAITING_APPROVAL' ? (
                           <ChangeForm lang={lang} label={f.redo} fields={{ kind: 'redo', operationId: op.id, attemptId: attempt.attemptId, version: String(op.version), idempotencyKey: crypto.randomUUID() }}>

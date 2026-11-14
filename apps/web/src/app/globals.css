@@ -207,6 +207,41 @@
 .qx-approval{border:1px solid var(--qx-border);border-left:3px solid var(--qx-warning);border-radius:var(--qx-radius-md);padding:14px 16px;margin:12px 0;background:var(--qx-surface-soft)}
 .qx-approval p{margin:0 0 6px}
 .qx-decision{margin:12px 0 0;max-width:none}
+.qx-ready-line{margin:6px 0 0;font-size:13px;font-weight:650;color:var(--qx-success)}
+.qx-blocked-line{margin:6px 0 0;font-size:13px;font-weight:650;color:var(--qx-warning)}
+
+/* Execution prerequisites */
+.qx-prereqs{list-style:none;padding:0;margin:6px 0 16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.qx-prereqs li{display:flex;flex-wrap:wrap;align-items:center;gap:6px;border:1px solid var(--qx-border);border-radius:var(--qx-radius-sm);padding:8px 10px;font-size:13px;background:var(--qx-surface-soft)}
+.qx-prereqs li[data-ok=false]{border-color:var(--qx-warning);background:var(--qx-warning-bg)}
+.qx-prereq-state{font-weight:800;color:var(--qx-success)}
+.qx-prereqs li[data-ok=false] .qx-prereq-state{color:var(--qx-warning)}
+.qx-prereq-label{font-weight:600}
+.qx-prereqs small{flex-basis:100%;color:var(--qx-text-secondary);overflow-wrap:anywhere}
+
+/* Attempt history */
+.qx-attempts{margin:8px 0}
+.qx-attempts ol{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px}
+.qx-attempts li{font-size:13px;color:var(--qx-text-secondary);overflow-wrap:anywhere}
+
+/* Capability slots */
+.qx-capability-summary{display:flex;gap:32px;flex-wrap:wrap;margin:0 0 8px}
+.qx-capability-summary p{margin:0;font-size:15px}
+.qx-capability-summary strong{font-size:26px;font-weight:750;font-variant-numeric:tabular-nums}
+.qx-capability-grid{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px}
+.qx-capability-card{background:var(--qx-surface);border:1px solid var(--qx-border);border-radius:var(--qx-radius-lg);padding:20px;box-shadow:var(--qx-shadow-card);min-width:0}
+.qx-capability-card[data-available=true]{border-color:var(--qx-blue-100)}
+.qx-capability-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.qx-slot{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--qx-text-muted)}
+.qx-capability-card h2{font-size:19px;margin:4px 0 6px}
+.qx-capability-limits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.qx-capability-limits dt{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--qx-text-muted);font-weight:700}
+.qx-capability-limits dd{margin:2px 0 0;font-weight:650;font-variant-numeric:tabular-nums}
+.qx-capability-foot{margin-top:20px}
+.qx-capacity{margin:0 0 8px;font-size:22px;font-weight:750;font-variant-numeric:tabular-nums}
+.qx-capacity .muted{font-size:13px;font-weight:500}
+@media(max-width:900px){.qx-prereqs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.qx-prereqs{grid-template-columns:1fr}.qx-capability-grid{grid-template-columns:1fr}}
 
 @media(max-width:1279px){.qx-workbench{grid-template-columns:minmax(0,1fr) 300px}}
 @media(max-width:1100px){

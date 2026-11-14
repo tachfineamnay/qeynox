@@ -18,6 +18,28 @@ const en = {
   attention: { APPROVAL: 'Approval required', FAILED: 'Failed', INCOMPLETE: 'In progress', REQUIRES_REVIEW: 'Review required', NONE: 'No action' },
   statsActive: 'Active missions', statsDecisions: 'Decisions', statsResults: 'Results',
   unavailable: 'Availability cannot be confirmed', capabilityCopy: 'Configured capabilities are listed inside each mission workspace. The current API exposes no workspace-wide catalogue, and no capability is assumed active.',
+  blockedBy: 'Blocked: ', readyToLaunch: 'Ready to launch',
+  capabilityPage: {
+    title: 'Business capabilities',
+    intro: 'Eight configurable capability slots. Only active slots can be selected in a mission plan; configuration stays with the operator.',
+    slotsLabel: 'slots', slotLabel: 'Slot',
+    activeCount: 'active',
+    availableCount: 'execution-ready',
+    operatorOnly: 'Capability, tool, profile and budget configuration is operator-only. A customer session cannot activate a slot, change its limits or enable a provider.',
+    unconfigured: 'No capability is configured for this slot. An operator must activate one before a mission can use it.',
+    configuredBlocked: 'Configured, execution incomplete',
+    missingProvider: 'Missing enabled tool configuration',
+    missingProfile: 'No active business profile for this slot',
+    limits: 'Limits',
+    maxSteps: 'Maximum steps',
+    maxTools: 'Maximum tool calls',
+    external: 'External actions permitted',
+    noExternal: 'No external action',
+    scope: 'Scope',
+    empty: 'No capability slot is active yet.',
+    openMissions: 'Open missions',
+    refresh: 'Refresh',
+  },
   login: 'Sign in to your workspace', email: 'Email', password: 'Password', signin: 'Sign in', signout: 'Sign out', pending: 'Please wait…', sessionNote: 'Your session is stored in an HTTP-only cookie. Credentials are sent only to the configured QeyNox API.',
   signInRequired: 'Sign in to view or save your missions.', notConfigured: 'The QeyNox API connection is not configured.', error: 'The request could not be completed. Your recorded work has not been replaced with sample data.', denied: 'Access was denied. Check your session and workspace permissions.', invalid: 'Check the input and try again.', unknown: 'The outcome could not be confirmed. Check your missions before submitting again.',
   detail: 'Mission workspace', back: 'Back to MyDash', blocked: 'Planning and execution unavailable here', blockedCopy: 'The current customer API does not expose a resumable plan, approval details or cost readiness. This interface does not start execution or fabricate a proposed plan.', saved: 'Draft saved', missing: 'Mission could not be loaded.',
@@ -25,7 +47,8 @@ const en = {
   statuses: { DRAFT: 'Draft', READY: 'Plan ready', RUNNING: 'Execution requested / running', WAITING_APPROVAL: 'Awaiting approval', INTERRUPT_REQUESTED: 'Stop requested', INTERRUPTED: 'Interrupted', FAILED: 'Failed', COMPLETED: 'Completed', SUPERSEDED: 'Superseded', PARTIAL: 'Partial', READY_FOR_REVIEW: 'Ready for review', DELIVERABLE: 'Delivered result', UNVERIFIED: 'Unverified', SUPPORTED: 'Supported by evidence', DISPROVEN: 'Disproven', CONFLICTING: 'Conflicting evidence', STALE: 'Stale source', NEEDS_HUMAN_REVIEW: 'Awaiting human review',
     PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected', EXPIRED: 'Expired', CANCELLED: 'Cancelled', UNKNOWN: 'Unknown',
     SKIPPED: 'Skipped', INVALIDATED: 'Invalidated', QUEUED: 'Queued',
-    AUTHORIZED: 'Authorized', FULFILLING: 'Fulfilling', PAYMENT_REQUIRED: 'Payment required', AWAITING_ACCEPTANCE: 'Awaiting acceptance' }
+    AUTHORIZED: 'Authorized', FULFILLING: 'Fulfilling', PAYMENT_REQUIRED: 'Payment required', AWAITING_ACCEPTANCE: 'Awaiting acceptance',
+    ACTIVE: 'Active', UNCONFIGURED: 'Not configured', DISABLED: 'Disabled' }
 };
 const fr: typeof en = {
   home: 'Présentation', dash: 'MyDash', missions: 'Missions', soul: 'Soul', support: 'Support', capabilities: 'Capacités', account: 'Compte', menu: 'Navigation', skip: 'Aller au contenu',
@@ -45,6 +68,28 @@ const fr: typeof en = {
   attention: { APPROVAL: 'Approbation requise', FAILED: 'Échec', INCOMPLETE: 'En cours', REQUIRES_REVIEW: 'Examen requis', NONE: 'Aucune action' },
   statsActive: 'Missions actives', statsDecisions: 'Décisions', statsResults: 'Résultats',
   unavailable: 'Disponibilité non confirmée', capabilityCopy: 'Les capacités configurées sont listées dans chaque espace mission. L’API actuelle n’expose pas de catalogue global, et aucune capacité n’est supposée active.',
+  blockedBy: 'Bloqué : ', readyToLaunch: 'Prêt à lancer',
+  capabilityPage: {
+    title: 'Capacités métier',
+    intro: 'Huit emplacements de capacités configurables. Seuls les emplacements actifs peuvent être sélectionnés dans un plan de mission ; la configuration reste réservée à l’opérateur.',
+    slotsLabel: 'emplacements', slotLabel: 'Emplacement',
+    activeCount: 'actifs',
+    availableCount: 'prêts à exécuter',
+    operatorOnly: 'La configuration des capacités, outils, profils et budgets est réservée à l’opérateur. Une session client ne peut ni activer un emplacement, ni modifier ses limites, ni activer un fournisseur.',
+    unconfigured: 'Aucune capacité n’est configurée pour cet emplacement. Un opérateur doit en activer une avant qu’une mission puisse l’utiliser.',
+    configuredBlocked: 'Configurée, exécution incomplète',
+    missingProvider: 'Configuration d’outil active manquante',
+    missingProfile: 'Aucun profil d’agent métier actif pour cet emplacement',
+    limits: 'Limites',
+    maxSteps: 'Étapes maximum',
+    maxTools: 'Appels d’outil maximum',
+    external: 'Actions externes autorisées',
+    noExternal: 'Aucune action externe',
+    scope: 'Périmètre',
+    empty: 'Aucun emplacement de capacité n’est actif pour l’instant.',
+    openMissions: 'Ouvrir les missions',
+    refresh: 'Actualiser',
+  },
   login: 'Connexion à votre espace', email: 'Adresse e-mail', password: 'Mot de passe', signin: 'Se connecter', signout: 'Se déconnecter', pending: 'Veuillez patienter…', sessionNote: 'Votre session est conservée dans un cookie HTTP-only. Les identifiants sont envoyés uniquement à l’API QeyNox configurée.',
   signInRequired: 'Connectez-vous pour consulter ou enregistrer vos missions.', notConfigured: 'La connexion à l’API QeyNox n’est pas configurée.', error: 'La requête n’a pas abouti. Aucune donnée de démonstration ne remplace votre travail.', denied: 'Accès refusé. Vérifiez votre session et vos autorisations.', invalid: 'Vérifiez les informations saisies.', unknown: 'Le résultat de la requête est incertain. Vérifiez vos missions avant de renvoyer la demande.',
   detail: 'Espace mission', back: 'Retour à MyDash', blocked: 'Planification et exécution indisponibles ici', blockedCopy: 'L’API client actuelle n’expose pas de plan reprenable, de détails d’approbation ni de coût disponible. Cette interface ne lance pas d’exécution et n’invente pas de plan.', saved: 'Brouillon enregistré', missing: 'La mission n’a pas pu être chargée.',
@@ -52,7 +97,8 @@ const fr: typeof en = {
   statuses: { DRAFT: 'Brouillon', READY: 'Plan prêt', RUNNING: 'Exécution demandée / en cours', WAITING_APPROVAL: 'Approbation attendue', INTERRUPT_REQUESTED: 'Arrêt demandé', INTERRUPTED: 'Interrompue', FAILED: 'Échec', COMPLETED: 'Terminée', SUPERSEDED: 'Remplacée', PARTIAL: 'Partiel', READY_FOR_REVIEW: 'Prêt pour examen', DELIVERABLE: 'Résultat livré', UNVERIFIED: 'Non vérifié', SUPPORTED: 'Étayé par les preuves', DISPROVEN: 'Réfuté', CONFLICTING: 'Preuves contradictoires', STALE: 'Source obsolète', NEEDS_HUMAN_REVIEW: 'En attente d’un examen humain',
     PENDING: 'En attente', APPROVED: 'Approuvé', REJECTED: 'Refusé', EXPIRED: 'Expiré', CANCELLED: 'Annulé', UNKNOWN: 'Inconnu',
     SKIPPED: 'Ignorée', INVALIDATED: 'Invalidée', QUEUED: 'En file',
-    AUTHORIZED: 'Autorisé', FULFILLING: 'En exécution', PAYMENT_REQUIRED: 'Paiement requis', AWAITING_ACCEPTANCE: 'En attente d’acceptation' }
+    AUTHORIZED: 'Autorisé', FULFILLING: 'En exécution', PAYMENT_REQUIRED: 'Paiement requis', AWAITING_ACCEPTANCE: 'En attente d’acceptation',
+    ACTIVE: 'Active', UNCONFIGURED: 'Non configurée', DISABLED: 'Désactivée' }
 };
 export const copy = { en, fr };
 

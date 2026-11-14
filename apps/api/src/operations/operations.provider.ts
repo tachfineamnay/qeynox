@@ -1,6 +1,7 @@
 import { QeyNoxStore } from '@qeynox/persistence';
 import { OperationService,OperationExecutionService,PlanningService,OperationControlService,PlanRevisionService,PlanReadService } from '@qeynox/application';
 import { QEYNOX_STORE } from '../database/database.module';
+import { apiRuntimeReadiness } from './runtime-readiness';
 export const OPERATIONS_SERVICE=Symbol('OPERATIONS_SERVICE');
 export const EXECUTION_SERVICE=Symbol('EXECUTION_SERVICE');
 export const PLANNING_SERVICE=Symbol('PLANNING_SERVICE');
@@ -12,4 +13,4 @@ export const provideExecution={provide:EXECUTION_SERVICE,useFactory:(s:QeyNoxSto
 export const providePlanning={provide:PLANNING_SERVICE,useFactory:(s:QeyNoxStore)=>new PlanningService(s),inject:[QEYNOX_STORE]};
 export const provideControls={provide:CONTROLS_SERVICE,useFactory:(s:QeyNoxStore)=>new OperationControlService(s),inject:[QEYNOX_STORE]};
 export const provideRevisions={provide:REVISIONS_SERVICE,useFactory:(s:QeyNoxStore)=>new PlanRevisionService(s),inject:[QEYNOX_STORE]};
-export const providePlanRead={provide:PLAN_READ_SERVICE,useFactory:(s:QeyNoxStore)=>new PlanReadService(s),inject:[QEYNOX_STORE]};
+export const providePlanRead={provide:PLAN_READ_SERVICE,useFactory:(s:QeyNoxStore)=>new PlanReadService(s,apiRuntimeReadiness),inject:[QEYNOX_STORE]};
