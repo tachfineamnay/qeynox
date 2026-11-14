@@ -1,0 +1,50 @@
+
+> qeynox@0.1.0 build C:\Users\hp\Desktop\qeynox-cert-qa
+> turbo run build
+
+turbo 2.5.8
+
+• Packages in scope: @qeynox/api, @qeynox/application, @qeynox/contracts, @qeynox/control, @qeynox/domain, @qeynox/engine, @qeynox/orchestration, @qeynox/persistence, @qeynox/roles, @qeynox/tools, @qeynox/web, @qeynox/worker
+• Running build in 12 packages
+• Remote caching disabled
+@qeynox/control:build: cache miss, executing bf80923fbcd400ae
+@qeynox/web:build: cache miss, executing 188d8cf86dc993eb
+@qeynox/worker:build: cache miss, executing 5b29589763d65b53
+@qeynox/api:build: cache miss, executing a869114dede4faf8
+@qeynox/web:build:
+@qeynox/web:build: > @qeynox/web@0.1.0 build C:\Users\hp\Desktop\qeynox-cert-qa\apps\web
+@qeynox/web:build: > next build
+@qeynox/web:build:
+@qeynox/control:build:
+@qeynox/control:build: > @qeynox/control@0.1.0 build C:\Users\hp\Desktop\qeynox-cert-qa\apps\control
+@qeynox/control:build: > next build
+@qeynox/control:build:
+@qeynox/worker:build:
+@qeynox/worker:build: > @qeynox/worker@0.1.0 build C:\Users\hp\Desktop\qeynox-cert-qa\apps\worker
+@qeynox/worker:build: > tsc -p tsconfig.json
+@qeynox/worker:build:
+@qeynox/api:build:
+@qeynox/api:build: > @qeynox/api@0.1.0 build C:\Users\hp\Desktop\qeynox-cert-qa\apps\api
+@qeynox/api:build: > tsc -p tsconfig.json
+@qeynox/api:build:
+@qeynox/control:build: ▲ Next.js 16.4.6 (Turbopack)
+@qeynox/web:build: ▲ Next.js 16.4.6 (Turbopack)
+@qeynox/web:build: ✓ Running next.config.ts took 2.0s
+@qeynox/control:build: ✓ Running next.config.ts took 2.0s
+@qeynox/web:build:
+@qeynox/control:build:
+@qeynox/control:build:   Creating an optimized production build ...
+@qeynox/web:build:   Creating an optimized production build ...
+@qeynox/api:build: scripts/qa-support-isolation.ts(30,26): error TS2345: Argument of type '"send:10:outgoing"' is not assignable to parameter of type 'never'.
+@qeynox/api:build: scripts/qa-support-isolation.ts(33,26): error TS2345: Argument of type '"send:10:incoming"' is not assignable to parameter of type 'never'.
+@qeynox/api:build:  ELIFECYCLE  Command failed with exit code 2.
+@qeynox/api:build: ERROR: command finished with error: command (C:\Users\hp\Desktop\qeynox-cert-qa\apps\api) C:\Users\hp\AppData\Local\pnpm\.tools\pnpm\9.15.9\bin\pnpm.CMD run build exited (2)
+@qeynox/api#build: command (C:\Users\hp\Desktop\qeynox-cert-qa\apps\api) C:\Users\hp\AppData\Local\pnpm\.tools\pnpm\9.15.9\bin\pnpm.CMD run build exited (2)
+
+ Tasks:    1 successful, 4 total
+Cached:    0 cached, 4 total
+  Time:    2m36.815s
+Failed:    @qeynox/api#build
+
+ ERROR  run failed: command  exited (2)
+ ELIFECYCLE  Command failed with exit code 2.

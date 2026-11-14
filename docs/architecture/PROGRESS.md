@@ -243,3 +243,7 @@ files: syntax OK, relative imports resolve. Candidate commits 01–03 are preser
 
 NOT VERIFIED: no Docker build, candidate typecheck/build, migration execution, proxy validation or
 deployment. The candidate branch is not pushed; origin lacks apps/control. No push/merge/deployment.
+
+## Independent release audit (2026-11-14)
+
+**NO-GO** for main and deployment. See [FINAL_REPAIR_CERTIFICATION_2026-11-14.md](FINAL_REPAIR_CERTIFICATION_2026-11-14.md) for observed checks, an intermittent backend failure, partial Support/Control repairs and remaining Soul, Coolify, migration and integration blockers. Historical verification entries remain scoped to their stated revision and environment.

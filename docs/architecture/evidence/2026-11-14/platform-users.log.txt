@@ -1,0 +1,15 @@
+
+> qeynox@0.1.0 qa:platform-users C:\Users\hp\Desktop\qeynox-cert-qa
+> pnpm --filter @qeynox/api qa:platform-users
+
+
+> @qeynox/api@0.1.0 qa:platform-users C:\Users\hp\Desktop\qeynox-cert-qa\apps\api
+> tsx scripts/qa-platform-users.ts
+
+  part A users-management invariants: OK (92 assertions so far)
+  part B users-management HTTP wiring: OK
+Part B assertions: 15
+  part C isolated PostgreSQL users-management e2e: OK (58 assertions)
+QA database dropped: qeynox_qa_5933954fdd044200
+Part C assertions: 58
+Platform users-management authorization PASSED: 165 assertions.

@@ -27,17 +27,19 @@
       { "key": "NODE_ENV", "is_runtime": true, "is_buildtime": false },
       { "key": "QEYNOX_DEPLOYMENT_ENV", "is_runtime": true, "is_buildtime": false },
       { "key": "QEYNOX_PLATFORM_API_URL", "is_runtime": true, "is_buildtime": false },
+      { "key": "QEYNOX_PLATFORM_API_PRIVATE_ORIGIN", "is_runtime": true, "is_buildtime": false },
       { "key": "QEYNOX_PUBLIC_URL", "is_runtime": true, "is_buildtime": false }
     ],
     "env_values_to_set_in_coolify": {
       "NODE_ENV": "production",
       "QEYNOX_DEPLOYMENT_ENV": "preproduction",
-      "QEYNOX_PLATFORM_API_URL": "https://qeynox.io",
+      "QEYNOX_PLATFORM_API_URL": "http://qeynox-api:4000",
+      "QEYNOX_PLATFORM_API_PRIVATE_ORIGIN": "http://qeynox-api:4000",
       "QEYNOX_PUBLIC_URL": "https://qeynox.io"
     },
     "blockers": [
-      "The candidate branch feat/workspaces-organizations on origin currently points to 7190819 and does not contain apps/control (local commits 938df0b..d2be292 and the release commit are not pushed).",
-      "Creating this resource before the branch is pushed would build a commit without infra/Dockerfile.control and fail.",
+      "The deployed revision must be explicitly selected and verified before creating this resource.",
+      "The Control container must resolve and reach qeynox-api on the private network; this has not been verified for Control.",
       "Coolify path-domain support for https://qeynox.io/admin must be verified; otherwise add the documented Traefik PathPrefix router on the same host without touching the existing qeynox-web router.",
       "No deployment, no instant_deploy, no restart and no production change is authorized by this file."
     ]

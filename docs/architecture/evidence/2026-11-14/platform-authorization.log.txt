@@ -1,0 +1,12 @@
+
+> qeynox@0.1.0 qa:platform-authorization C:\Users\hp\Desktop\qeynox-cert-qa
+> pnpm --filter @qeynox/api qa:platform-authorization
+
+
+> @qeynox/api@0.1.0 qa:platform-authorization C:\Users\hp\Desktop\qeynox-cert-qa\apps\api
+> tsx scripts/qa-platform-authorization.ts
+
+  part A authorization invariants: OK
+  part B HTTP wiring and protection: OK
+Part B assertions: 13
+Platform administration authorization PASSED: 107 assertions; no database required.

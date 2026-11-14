@@ -1,0 +1,10 @@
+
+> qeynox@0.1.0 qa:platform-organizations C:\Users\hp\Desktop\qeynox-cert-qa
+> pnpm --filter @qeynox/api qa:platform-organizations
+
+
+> @qeynox/api@0.1.0 qa:platform-organizations C:\Users\hp\Desktop\qeynox-cert-qa\apps\api
+> tsx scripts/qa-platform-organizations.ts
+
+Organizations & memberships e2e PASSED: 87 assertions against an isolated PostgreSQL database
+QA database dropped: qeynox_qa_57e43ebbc1d342d8

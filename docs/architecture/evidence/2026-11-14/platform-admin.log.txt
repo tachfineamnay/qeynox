@@ -1,0 +1,10 @@
+
+> qeynox@0.1.0 qa:platform-admin C:\Users\hp\Desktop\qeynox-cert-qa
+> pnpm --filter @qeynox/api qa:platform-admin
+
+
+> @qeynox/api@0.1.0 qa:platform-admin C:\Users\hp\Desktop\qeynox-cert-qa\apps\api
+> tsx scripts/qa-platform-admin.ts
+
+Platform administration e2e PASSED: 70 assertions against an isolated PostgreSQL database
+QA database dropped: qeynox_qa_3e6f2177cc274686

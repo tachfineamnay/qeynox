@@ -1,0 +1,11 @@
+
+> qeynox@0.1.0 qa:connectors C:\Users\hp\Desktop\qeynox-cert-qa
+> pnpm --filter @qeynox/worker qa:connectors
+
+
+> @qeynox/worker@0.1.0 qa:connectors C:\Users\hp\Desktop\qeynox-cert-qa\apps\worker
+> tsx scripts/qa-connectors.ts
+
+WORLD_BANK_LIVE_OBSERVATION {"indicator":"NY.GDP.MKTP.CD","country":"USA","date":"2025","value":30769700000000,"sourceUri":"https://api.worldbank.org/v2/country/USA/indicator/NY.GDP.MKTP.CD?format=json&mrnev=2&per_page=5"}
+Connector QA PASSED: 48 assertions
+QA database dropped: qeynox_qa_8282ec7bbe8b455d

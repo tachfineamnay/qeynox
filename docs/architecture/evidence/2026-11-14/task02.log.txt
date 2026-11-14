@@ -1,0 +1,11 @@
+
+> qeynox@0.1.0 qa:task02 C:\Users\hp\Desktop\qeynox-cert-qa
+> pnpm --filter @qeynox/api qa:task02
+
+
+> @qeynox/api@0.1.0 qa:task02 C:\Users\hp\Desktop\qeynox-cert-qa\apps\api
+> tsx scripts/qa-task02.ts
+
+QA database created: qeynox_qa_0a4197a6f78243c1
+QA verification PASSED: 3295 assertions
+QA database dropped: qeynox_qa_0a4197a6f78243c1

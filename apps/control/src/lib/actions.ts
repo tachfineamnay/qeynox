@@ -45,7 +45,7 @@ export async function loginAction(form: FormData): Promise<void> {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    path: '/',
+    path: '/admin',
     expires: new Date(value.expiresAt),
   });
   redirect(localePath(lang, ''));
@@ -53,9 +53,10 @@ export async function loginAction(form: FormData): Promise<void> {
 
 export async function logoutAction(form: FormData): Promise<void> {
   const lang = langOf(form);
-  try { await api('/v1/platform/auth/logout', 'POST'); } catch { /* revocation unconfirmed is reported after the local cookie is cleared */ }
-  (await cookies()).delete(CONTROL_COOKIE);
-  redirect(localePath(lang, '/account?signout=1'));
+  let revoked = true;
+  try { await api('/v1/platform/auth/logout', 'POST'); } catch { revoked = false; }
+  (await cookies()).set(CONTROL_COOKIE, '', { path: '/admin', httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 0 });
+  redirect(localePath(lang, revoked ? '/account?signout=1' : '/account?error=UNKNOWN_OUTCOME'));
 }
 
 export async function suspendUserAction(form: FormData): Promise<void> {

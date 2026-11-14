@@ -1,0 +1,11 @@
+
+> qeynox@0.1.0 qa:raas C:\Users\hp\Desktop\qeynox-cert-qa
+> pnpm --filter @qeynox/worker qa:raas-deliverable
+
+
+> @qeynox/worker@0.1.0 qa:raas-deliverable C:\Users\hp\Desktop\qeynox-cert-qa\apps\worker
+> tsx scripts/qa-raas-deliverable.ts
+
+REAL_DELIVERABLE {"operationId":"0faf67ae-44b0-4e50-9b2a-30708785d6d1","documentId":"ec097d8c-5820-4965-a34a-4e0a4b790e60","claim":"World Bank Indicators API reported GDP (current US$) for the United States in 2025 as 30769700000000.","citationUri":"https://api.worldbank.org/v2/country/USA/indicator/NY.GDP.MKTP.CD?format=json&mrnev=2&per_page=5","responseDigest":"0708bc015172aaf74a548c17976b32376e3e470151bd66b42fe50d2e39baec90","retrievedAt":"2026-11-14T13:31:12.185Z","observation":{"indicator":"NY.GDP.MKTP.CD","country":"USA","date":"2025","value":30769700000000},"exports":{"jsonSha256":"55721bf79b6062faf8451a737d32b873f409d6491640d621ea2f519d11dda01c","htmlSha256":"0ae6cae0cb6b4b26a24c08c094c8cde822df0c678c9eaee67acd474c9e6de588"}}
+RAAS deliverable QA PASSED: 47 assertions
+QA database dropped: qeynox_qa_eb0434ae2a2d42ef

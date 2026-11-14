@@ -25,7 +25,7 @@ export interface ChatwootPort {
   createConversation(input: { readonly contactId: string }): Promise<SupportConversation>;
   getConversation(chatwootConversationId: string): Promise<SupportConversationDetail | null>;
   listConversations(input: { readonly status?: string | undefined }): Promise<readonly SupportConversation[]>;
-  sendMessage(chatwootConversationId: string, content: string): Promise<SupportMessage>;
+  sendMessage(chatwootConversationId: string, content: string, direction: 'incoming' | 'outgoing'): Promise<SupportMessage>;
   updateStatus(chatwootConversationId: string, status: 'open' | 'pending' | 'resolved'): Promise<SupportConversation>;
 }
 
@@ -72,7 +72,7 @@ export class SupportService {
     const links = await this.links.listForUser(actor.userId, actor.workspaceId);
     const result: SupportConversationWithLink[] = [];
     for (const link of links) {
-      const detail = await this.port.getConversation(link.chatwootConversationId).catch(() => null);
+      const detail = await this.port.getConversation(link.chatwootConversationId);
       if (detail === null) continue;
       result.push({ conversation: detail.conversation, qeynox: { userId: actor.userId, workspaceId: actor.workspaceId } });
     }
@@ -89,11 +89,11 @@ export class SupportService {
       ? await this.port.createContact({ email: profile.email, displayName: profile.displayName, userId: actor.userId, workspaceId: actor.workspaceId })
       : { id: existing.chatwootContactId, name: profile.displayName, email: profile.email };
     const conversation = await this.port.createConversation({ contactId: contact.id });
-    const first = await this.port.sendMessage(conversation.id, content);
     await this.links.createLink({
       id: newId(), userId: actor.userId, workspaceId: actor.workspaceId,
       chatwootContactId: contact.id, chatwootConversationId: conversation.id, at: this.now(),
     });
+    const first = await this.port.sendMessage(conversation.id, content, 'incoming');
     return { conversation, messages: [first] };
   }
 
@@ -110,7 +110,7 @@ export class SupportService {
     requireCapability(this.port);
     const link = await this.links.findConversation(actor.userId, actor.workspaceId, chatwootConversationId);
     if (!link) throw new DomainError('NOT_FOUND', 'Support conversation not found');
-    await this.port.sendMessage(chatwootConversationId, requireContent(content));
+    await this.port.sendMessage(chatwootConversationId, requireContent(content), 'incoming');
     await this.links.touch(link.id, this.now());
     return this.get(actor, chatwootConversationId);
   }
@@ -147,26 +147,33 @@ export class PlatformSupportService {
     requireCapability(this.port);
     const conversations = await this.port.listConversations(input);
     const links = await this.links.listForConversations(conversations.map(conversation => conversation.id));
-    return conversations.map(conversation => {
+    return conversations.flatMap(conversation => {
       const link = links.find(item => item.chatwootConversationId === conversation.id);
-      return { conversation, qeynox: link ? { userId: link.userId, workspaceId: link.workspaceId } : null };
+      return link ? [{ conversation, qeynox: { userId: link.userId, workspaceId: link.workspaceId } }] : [];
     });
+  }
+
+  private async requireLinked(id: string): Promise<SupportLink> {
+    const links = await this.links.listForConversations([id]);
+    const link = links.find(item => item.chatwootConversationId === id);
+    if (!link) throw new DomainError('NOT_FOUND', 'Support conversation not found');
+    return link;
   }
 
   async get(principal: PlatformPrincipal, chatwootConversationId: string): Promise<PlatformSupportConversationDetailView> {
     await this.platform.requirePermission(principal, 'SUPPORT', { action: 'READ_SUPPORT_CONVERSATION', targetType: 'SUPPORT_CONVERSATION', targetId: chatwootConversationId });
     requireCapability(this.port);
+    const link = await this.requireLinked(chatwootConversationId);
     const detail = await this.port.getConversation(chatwootConversationId);
     if (!detail) throw new DomainError('NOT_FOUND', 'Support conversation not found');
-    const links = await this.links.listForConversations([chatwootConversationId]);
-    const link = links[0];
-    return { conversation: detail.conversation, messages: detail.messages, qeynox: link ? { userId: link.userId, workspaceId: link.workspaceId } : null };
+    return { conversation: detail.conversation, messages: detail.messages, qeynox: { userId: link.userId, workspaceId: link.workspaceId } };
   }
 
   async reply(principal: PlatformPrincipal, chatwootConversationId: string, content: string): Promise<PlatformSupportConversationDetailView> {
     await this.platform.requirePermission(principal, 'SUPPORT', { action: 'REPLY_SUPPORT_CONVERSATION', targetType: 'SUPPORT_CONVERSATION', targetId: chatwootConversationId });
     requireCapability(this.port);
-    await this.port.sendMessage(chatwootConversationId, requireContent(content));
+    await this.requireLinked(chatwootConversationId);
+    await this.port.sendMessage(chatwootConversationId, requireContent(content), 'outgoing');
     await this.platform.recordAudit({
       actor: principal, targetType: 'SUPPORT_CONVERSATION', targetId: chatwootConversationId,
       action: 'REPLY_SUPPORT_CONVERSATION', permission: 'SUPPORT', outcome: 'SUCCESS',
@@ -177,6 +184,7 @@ export class PlatformSupportService {
   async updateStatus(principal: PlatformPrincipal, chatwootConversationId: string, status: 'open' | 'pending' | 'resolved'): Promise<PlatformSupportConversationDetailView> {
     await this.platform.requirePermission(principal, 'SUPPORT', { action: 'UPDATE_SUPPORT_STATUS', targetType: 'SUPPORT_CONVERSATION', targetId: chatwootConversationId });
     requireCapability(this.port);
+    await this.requireLinked(chatwootConversationId);
     await this.port.updateStatus(chatwootConversationId, status);
     await this.platform.recordAudit({
       actor: principal, targetType: 'SUPPORT_CONVERSATION', targetId: chatwootConversationId,

@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { z } from 'zod';
+import { apiOrigin } from '../../../web/src/lib/api-origin';
 import type { PlatformMeView } from './types';
 
 export const CONTROL_COOKIE = 'qx-control-session';
@@ -26,14 +27,8 @@ export async function readSession(): Promise<ControlSession | null> {
 }
 
 function apiBase(): string {
-  const raw = process.env.QEYNOX_PLATFORM_API_URL;
-  if (!raw) throw new ApiError('NOT_CONFIGURED');
-  let url: URL;
-  try { url = new URL(raw); } catch { throw new ApiError('NOT_CONFIGURED'); }
-  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
-  if (!(url.protocol === 'https:' || (url.protocol === 'http:' && loopback))) throw new ApiError('NOT_CONFIGURED');
-  if (url.username || url.password || url.search || url.hash || url.pathname !== '/') throw new ApiError('NOT_CONFIGURED');
-  return url.href;
+  try { return apiOrigin(process.env.QEYNOX_PLATFORM_API_URL, process.env.QEYNOX_PLATFORM_API_PRIVATE_ORIGIN); }
+  catch { throw new ApiError('NOT_CONFIGURED'); }
 }
 
 export async function api(path: string, method = 'GET', body?: unknown, authenticated = true): Promise<unknown> {
@@ -44,6 +39,8 @@ export async function api(path: string, method = 'GET', body?: unknown, authenti
     const init: RequestInit = {
       method,
       cache: 'no-store',
+      redirect: 'error',
+      signal: AbortSignal.timeout(10_000),
       headers: {
         ...(body === undefined ? {} : { 'content-type': 'application/json' }),
         ...(current ? { authorization: 'Bearer ' + current.token } : {}),

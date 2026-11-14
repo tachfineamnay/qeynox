@@ -1,0 +1,17 @@
+
+> qeynox@0.1.0 qa:backend C:\Users\hp\Desktop\qeynox-cert-qa
+> pnpm --filter @qeynox/api qa:backend
+
+
+> @qeynox/api@0.1.0 qa:backend C:\Users\hp\Desktop\qeynox-cert-qa\apps\api
+> tsx scripts/qa-backend-certification.ts
+
+QA database dropped: qeynox_qa_8be1cf26715846b8
+Backend certification FAILED: Error: ASSERTION FAILED: explicitly enabled registration creates an owner session
+    at assert (C:\Users\hp\Desktop\qeynox-cert-qa\apps\api\scripts\qa-backend-certification.ts:20:25)
+    at main (C:\Users\hp\Desktop\qeynox-cert-qa\apps\api\scripts\qa-backend-certification.ts:71:5)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+C:\Users\hp\Desktop\qeynox-cert-qa\apps\api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @qeynox/api@0.1.0 qa:backend: `tsx scripts/qa-backend-certification.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.

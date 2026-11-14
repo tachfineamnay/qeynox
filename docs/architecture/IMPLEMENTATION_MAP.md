@@ -158,3 +158,7 @@ consolidation (routes under /[lang]; one PathPrefix proxy rule; assets under /ad
 apps/control importer, static import/syntax checks across modules 04–09. BLOCKED before deployment:
 candidate branch not pushed, no Docker/typecheck/build, no Coolify/proxy/migration execution.
 No push, merge or deployment.
+
+## Independent release audit (2026-11-14)
+
+**NO-GO**: the candidate is not certified for main. The current evidence and remaining blockers supersede any broader implication of earlier mission status entries; see [FINAL_REPAIR_CERTIFICATION_2026-11-14.md](FINAL_REPAIR_CERTIFICATION_2026-11-14.md).

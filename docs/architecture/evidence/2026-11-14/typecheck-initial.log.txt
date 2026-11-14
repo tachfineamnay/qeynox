@@ -1,0 +1,46 @@
+
+> qeynox@0.1.0 typecheck C:\Users\hp\Desktop\qeynox-cert-qa
+> turbo run typecheck
+
+turbo 2.5.8
+
+• Packages in scope: @qeynox/api, @qeynox/application, @qeynox/contracts, @qeynox/control, @qeynox/domain, @qeynox/engine, @qeynox/orchestration, @qeynox/persistence, @qeynox/roles, @qeynox/tools, @qeynox/web, @qeynox/worker
+• Running typecheck in 12 packages
+• Remote caching disabled
+@qeynox/control:typecheck: cache miss, executing 34dd05c1b8448dad
+@qeynox/web:typecheck: cache miss, executing f7cb9e80dacf643d
+@qeynox/worker:typecheck: cache miss, executing 050b8c433983db5b
+@qeynox/api:typecheck: cache miss, executing 42a577a93af08a8d
+@qeynox/control:typecheck:
+@qeynox/control:typecheck: > @qeynox/control@0.1.0 typecheck C:\Users\hp\Desktop\qeynox-cert-qa\apps\control
+@qeynox/control:typecheck: > next typegen && tsc --noEmit
+@qeynox/control:typecheck:
+@qeynox/web:typecheck:
+@qeynox/web:typecheck: > @qeynox/web@0.1.0 typecheck C:\Users\hp\Desktop\qeynox-cert-qa\apps\web
+@qeynox/web:typecheck: > next typegen && tsc --noEmit
+@qeynox/web:typecheck:
+@qeynox/api:typecheck:
+@qeynox/api:typecheck: > @qeynox/api@0.1.0 typecheck C:\Users\hp\Desktop\qeynox-cert-qa\apps\api
+@qeynox/api:typecheck: > tsc --noEmit -p tsconfig.json
+@qeynox/api:typecheck:
+@qeynox/worker:typecheck:
+@qeynox/worker:typecheck: > @qeynox/worker@0.1.0 typecheck C:\Users\hp\Desktop\qeynox-cert-qa\apps\worker
+@qeynox/worker:typecheck: > tsc --noEmit -p tsconfig.json
+@qeynox/worker:typecheck:
+@qeynox/web:typecheck: Generating route types...
+@qeynox/control:typecheck: Generating route types...
+@qeynox/control:typecheck: ✓ Types generated successfully
+@qeynox/web:typecheck: ✓ Types generated successfully
+@qeynox/api:typecheck: scripts/qa-support-isolation.ts(30,26): error TS2345: Argument of type '"send:10:outgoing"' is not assignable to parameter of type 'never'.
+@qeynox/api:typecheck: scripts/qa-support-isolation.ts(33,26): error TS2345: Argument of type '"send:10:incoming"' is not assignable to parameter of type 'never'.
+@qeynox/api:typecheck:  ELIFECYCLE  Command failed with exit code 2.
+@qeynox/api:typecheck: ERROR: command finished with error: command (C:\Users\hp\Desktop\qeynox-cert-qa\apps\api) C:\Users\hp\AppData\Local\pnpm\.tools\pnpm\9.15.9\bin\pnpm.CMD run typecheck exited (2)
+@qeynox/api#typecheck: command (C:\Users\hp\Desktop\qeynox-cert-qa\apps\api) C:\Users\hp\AppData\Local\pnpm\.tools\pnpm\9.15.9\bin\pnpm.CMD run typecheck exited (2)
+
+ Tasks:    3 successful, 4 total
+Cached:    0 cached, 4 total
+  Time:    1m50.19s
+Failed:    @qeynox/api#typecheck
+
+ ERROR  run failed: command  exited (2)
+ ELIFECYCLE  Command failed with exit code 2.

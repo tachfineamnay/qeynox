@@ -191,10 +191,10 @@ export class ChatwootClient implements ChatwootPort {
     return asArray(payloadOf(response.body)).map(normalizeConversation);
   }
 
-  async sendMessage(chatwootConversationId: string, content: string): Promise<SupportMessage> {
+  async sendMessage(chatwootConversationId: string, content: string, direction: 'incoming' | 'outgoing'): Promise<SupportMessage> {
     const response = await this.request('/conversations/' + encodeURIComponent(chatwootConversationId) + '/messages', {
       method: 'POST',
-      body: JSON.stringify({ content, message_type: 'outgoing', private: false }),
+      body: JSON.stringify({ content, message_type: direction, private: false }),
     });
     const payload = payloadOf(response.body);
     return normalizeMessage(Array.isArray(payload) ? payload[0] : payload);

@@ -1,0 +1,108 @@
+
+> qeynox@0.1.0 build C:\Users\hp\Desktop\qeynox-cert-qa
+> turbo run build
+
+turbo 2.5.8
+
+• Packages in scope: @qeynox/api, @qeynox/application, @qeynox/contracts, @qeynox/control, @qeynox/domain, @qeynox/engine, @qeynox/orchestration, @qeynox/persistence, @qeynox/roles, @qeynox/tools, @qeynox/web, @qeynox/worker
+• Running build in 12 packages
+• Remote caching disabled
+@qeynox/control:build: cache miss, executing bf80923fbcd400ae
+@qeynox/web:build: cache miss, executing 188d8cf86dc993eb
+@qeynox/api:build: cache miss, executing 5356827acaa4e50d
+@qeynox/worker:build: cache hit, replaying logs 5b29589763d65b53
+@qeynox/worker:build:
+@qeynox/worker:build: > @qeynox/worker@0.1.0 build C:\Users\hp\Desktop\qeynox-cert-qa\apps\worker
+@qeynox/worker:build: > tsc -p tsconfig.json
+@qeynox/worker:build:
+@qeynox/control:build:
+@qeynox/control:build: > @qeynox/control@0.1.0 build C:\Users\hp\Desktop\qeynox-cert-qa\apps\control
+@qeynox/control:build: > next build
+@qeynox/control:build:
+@qeynox/api:build:
+@qeynox/api:build: > @qeynox/api@0.1.0 build C:\Users\hp\Desktop\qeynox-cert-qa\apps\api
+@qeynox/api:build: > tsc -p tsconfig.json
+@qeynox/api:build:
+@qeynox/web:build:
+@qeynox/web:build: > @qeynox/web@0.1.0 build C:\Users\hp\Desktop\qeynox-cert-qa\apps\web
+@qeynox/web:build: > next build
+@qeynox/web:build:
+@qeynox/control:build: ▲ Next.js 16.4.6 (Turbopack)
+@qeynox/control:build: ✓ Running next.config.ts took 437ms
+@qeynox/web:build: ▲ Next.js 16.4.6 (Turbopack)
+@qeynox/web:build: ✓ Running next.config.ts took 632ms
+@qeynox/control:build:
+@qeynox/control:build:   Creating an optimized production build ...
+@qeynox/web:build:
+@qeynox/web:build:   Creating an optimized production build ...
+@qeynox/control:build: ✓ Compiled successfully in 89s
+@qeynox/control:build:   Running TypeScript ...
+@qeynox/web:build: ✓ Compiled successfully in 96s
+@qeynox/web:build:   Running TypeScript ...
+@qeynox/web:build: ✓ Finished writing to filesystem cache in 10.4s
+@qeynox/control:build: ✓ Finished writing to filesystem cache in 17.9s
+@qeynox/control:build:   Finished TypeScript in 52s ...
+@qeynox/control:build:   Collecting page data using 3 workers ...
+@qeynox/web:build:   Finished TypeScript in 43s ...
+@qeynox/web:build:   Collecting page data using 3 workers ...
+@qeynox/web:build:   Generating static pages using 3 workers (0/4) ...
+@qeynox/control:build:   Generating static pages using 3 workers (0/2) ...
+@qeynox/control:build: ✓ Generating static pages using 3 workers (2/2) in 1144ms
+@qeynox/control:build:   Finalizing page optimization ...
+@qeynox/web:build:   Generating static pages using 3 workers (1/4)
+@qeynox/control:build:
+@qeynox/web:build:   Generating static pages using 3 workers (2/4)
+@qeynox/control:build: Route (app)
+@qeynox/control:build: ┌ ○ /_not-found
+@qeynox/control:build: ├ ƒ /[lang]
+@qeynox/control:build: ├ ƒ /[lang]/account
+@qeynox/control:build: ├ ƒ /[lang]/audit
+@qeynox/control:build: ├ ƒ /[lang]/operations
+@qeynox/control:build: ├ ƒ /[lang]/operations/[id]
+@qeynox/control:build: ├ ƒ /[lang]/operations/health
+@qeynox/control:build: ├ ƒ /[lang]/operations/releases
+@qeynox/control:build: ├ ƒ /[lang]/organizations
+@qeynox/control:build: ├ ƒ /[lang]/organizations/[id]
+@qeynox/control:build: ├ ƒ /[lang]/support
+@qeynox/control:build: ├ ƒ /[lang]/support/[id]
+@qeynox/control:build: ├ ƒ /[lang]/users
+@qeynox/control:build: └ ƒ /[lang]/users/[id]
+@qeynox/control:build:
+@qeynox/control:build:
+@qeynox/control:build: ○  (Static)   prerendered as static content
+@qeynox/control:build: ƒ  (Dynamic)  server-rendered on demand
+@qeynox/control:build:
+@qeynox/web:build:   Generating static pages using 3 workers (3/4)
+@qeynox/web:build: ✓ Generating static pages using 3 workers (4/4) in 1872ms
+@qeynox/web:build:   Finalizing page optimization ...
+@qeynox/web:build:
+@qeynox/web:build: Route (app)
+@qeynox/web:build: ┌ ○ /_not-found
+@qeynox/web:build: ├ ƒ /[lang]
+@qeynox/web:build: ├ ƒ /[lang]/account
+@qeynox/web:build: ├ ƒ /[lang]/capabilities
+@qeynox/web:build: ├ ƒ /[lang]/contact
+@qeynox/web:build: ├ ƒ /[lang]/how-it-works
+@qeynox/web:build: ├ ƒ /[lang]/legal/cookies
+@qeynox/web:build: ├ ƒ /[lang]/legal/notice
+@qeynox/web:build: ├ ƒ /[lang]/legal/privacy
+@qeynox/web:build: ├ ƒ /[lang]/legal/terms
+@qeynox/web:build: ├ ƒ /[lang]/manifesto
+@qeynox/web:build: ├ ƒ /[lang]/missions
+@qeynox/web:build: ├ ƒ /[lang]/missions/[id]
+@qeynox/web:build: ├ ƒ /[lang]/missions/[id]/results/[documentId]
+@qeynox/web:build: ├ ƒ /[lang]/mydash
+@qeynox/web:build: ├ ƒ /[lang]/soul
+@qeynox/web:build: ├ ƒ /[lang]/support
+@qeynox/web:build: ├ ƒ /[lang]/support/[id]
+@qeynox/web:build: ├ ○ /robots.txt
+@qeynox/web:build: └ ○ /sitemap.xml
+@qeynox/web:build:
+@qeynox/web:build:
+@qeynox/web:build: ○  (Static)   prerendered as static content
+@qeynox/web:build: ƒ  (Dynamic)  server-rendered on demand
+@qeynox/web:build:
+
+ Tasks:    4 successful, 4 total
+Cached:    1 cached, 4 total
+  Time:    2m58.057s

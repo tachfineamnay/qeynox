@@ -1,0 +1,10 @@
+
+> qeynox@0.1.0 qa:agent-runtime C:\Users\hp\Desktop\qeynox-cert-qa
+> pnpm --filter @qeynox/worker qa:agent-runtime
+
+
+> @qeynox/worker@0.1.0 qa:agent-runtime C:\Users\hp\Desktop\qeynox-cert-qa\apps\worker
+> tsx scripts/qa-agent-runtime.ts
+
+Agent runtime QA PASSED: 62 assertions
+QA database dropped: qeynox_qa_df5a4d2af43e48e8
