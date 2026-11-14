@@ -92,5 +92,5 @@ input:focus,select:focus,textarea:focus,button:focus,a:focus{outline:none;box-sh
 .capability-list li{border:1px solid var(--qx-border);border-radius:var(--qx-radius-md);padding:14px;background:var(--qx-surface-soft);min-width:0}
 .capability-list h3{margin:8px 0 4px;font-size:16px}
 .plain-list li{margin:4px 0}
-@media (max-width:1023px){.sidebar-search{display:none}}.shell{grid-template-columns:1fr}.sidebar{position:relative;height:auto;flex-direction:row;align-items:center;flex-wrap:wrap;gap:12px;padding:14px 16px}.desktop-nav{display:none}.mobile-nav{display:block;margin-left:auto}.sidebar-foot{display:flex;flex-direction:row;align-items:center;gap:12px;margin-left:auto}.session-note{display:none}}
+@media (max-width:1023px){.sidebar-search{display:none}.shell{grid-template-columns:1fr}.sidebar{position:relative;height:auto;flex-direction:row;align-items:center;flex-wrap:wrap;gap:12px;padding:14px 16px}.desktop-nav{display:none}.mobile-nav{display:block;margin-left:auto}.sidebar-foot{display:flex;flex-direction:row;align-items:center;gap:12px;margin-left:auto}.session-note{display:none}}
 @media (max-width:640px){.content{padding:18px 14px}.card{padding:16px}.grid{grid-template-columns:1fr}.inline-form .field{min-width:100%}.page-head{align-items:flex-start}.kv{grid-template-columns:1fr}.kv dt{margin-top:6px}}
