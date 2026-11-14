@@ -91,3 +91,27 @@ export interface InviteState {
   expiresAt?: string;
   workspaceId?: string;
 }
+
+export interface SupportCapabilityView {
+  status: 'CONFIGURED' | 'NOT_CONFIGURED';
+  reason: string | null;
+  inboxConfigured: boolean;
+  webhooksRequired: false;
+}
+export interface SupportConversationView {
+  id: string; status: string; priority: string | null; inboxId: string | null;
+  createdAt: string | null; updatedAt: string | null; lastMessageAt: string | null;
+  contact: { id: string | null; name: string | null; email: string | null };
+  assignee: { id: string | null; name: string | null } | null;
+}
+export interface SupportMessageView {
+  id: string; content: string; messageType: string; private: boolean; createdAt: string;
+  sender: { id: string | null; name: string | null; type: string | null } | null;
+}
+export interface PlatformSupportConversationView {
+  conversation: SupportConversationView;
+  qeynox: { userId: string; workspaceId: string } | null;
+}
+export interface PlatformSupportConversationDetailView extends PlatformSupportConversationView {
+  messages: SupportMessageView[];
+}

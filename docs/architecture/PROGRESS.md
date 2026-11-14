@@ -162,3 +162,24 @@ content), displayed in QeyNox Control user detail.
 
 NOT VERIFIED (per Mission 04–09 FAST MODE: code only): no typecheck, build, migration run, QA suite,
 screenshot or certification was executed for this lot. No push, merge or deployment.
+
+## 2026-11-14 — Customer support via Chatwoot (Mission 06, code-only)
+
+Chatwoot is integrated as the external support engine; no CRM, no second messaging system and no
+message duplication in PostgreSQL. Migration 0017 adds only the account ↔ Chatwoot contact/
+conversation mapping (`support_chatwoot_links`); conversations, messages, status, priority and
+history are read live from the Chatwoot REST API by a server-only adapter
+(`apps/api/src/support/chatwoot.client.ts`). Missing `QEYNOX_CHATWOOT_*` server variables leave the
+integration NOT_CONFIGURED: API status endpoints return the explicit reason (variable names only,
+never values), customer pages show a blocked state instead of a form, and no request can pretend a
+message was delivered. The Chatwoot API token never reaches a browser. Customer routes
+(`/v1/support/*`, workspace session) are scoped by the authenticated user + active workspace through
+the mapping; a user cannot read or reply to another user's conversation. `/[lang]/support` and the
+MyDash "Contact support" entry reuse the existing web shell; reply/history/status/priority are shown
+live. The platform Support inbox lives in QeyNox Control (`/admin/{lang}/support`, nav visible only
+with the existing SUPPORT permission); replies and status changes are audited. Chatwoot webhooks are
+not required by this design (no message is persisted or state-synced); any future webhook must verify
+a shared secret before writing. No Coolify resource was created or started.
+
+NOT VERIFIED (FAST MODE): no typecheck, build, migration run, Chatwoot provisioning or certification
+was executed. No push, merge or deployment.

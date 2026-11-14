@@ -12,6 +12,7 @@ export * from './recovery-schema';
 export * from './runtime-schema';
 export * from './config-schema';
 export * from './platform-admin-schema';
+export * from './support-schema';
 export const operations=pgTable('operations',{id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),createdBy:text('created_by').notNull(),goalId:text('goal_id').notNull(),status:text('status').notNull(),version:integer('version').notNull(),currentRevisionId:text('current_revision_id'),lastActivityAt:text('last_activity_at').notNull(),payload:jsonb('payload').$type<Operation>().notNull()},t=>[index('operation_workspace_activity_idx').on(t.workspaceId,t.lastActivityAt)]);
 export const goals=pgTable('goals',{id:text('id').primaryKey(),operationId:text('operation_id').notNull(),payload:jsonb('payload').$type<Goal>().notNull()});
 export const plans=pgTable('operation_plans',{id:text('id').primaryKey(),operationId:text('operation_id').notNull().unique(),payload:jsonb('payload').$type<OperationPlan>().notNull()});

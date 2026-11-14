@@ -114,3 +114,15 @@ content) in QeyNox Control user detail.
 NOT VERIFIED: no tests, build, migration execution or UI certification was run (FAST MODE code only).
 Deterministic guidance is intentional and labelled; no LLM execution is claimed before a mission
 exists. Awaiting a later verification lot. No push, merge or deployment.
+
+## Customer support — external Chatwoot engine (Mission 06, code-only)
+
+Source implemented: server-only Chatwoot REST adapter, `/v1/support/*` customer endpoints,
+`/v1/platform/support/*` platform endpoints restricted by the existing SUPPORT permission,
+mapping-only migration 0017, MyDash support entry, `/[lang]/support` history/reply screens and the
+QeyNox Control Support inbox (list, status, priority, history, reply, status update, audit).
+NOT_CONFIGURED is the default when Chatwoot variables are absent; no token reaches the browser and no
+support message is stored in PostgreSQL. Chatwoot webhooks are not needed for this read-live design
+(any future webhook must be secret-verified before writes). NOT VERIFIED: no tests, build, migration
+run, provisioning or visual certification was executed. No Coolify resource created; no push/merge/
+deployment.

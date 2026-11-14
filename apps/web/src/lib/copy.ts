@@ -1,7 +1,7 @@
 export type Locale = 'en' | 'fr';
 export function locale(value: string): Locale { return value === 'fr' ? 'fr' : 'en'; }
 const en = {
-  home: 'Overview', dash: 'MyDash', missions: 'Missions', soul: 'Soul', capabilities: 'Capabilities', account: 'Account', menu: 'Navigation', skip: 'Skip to content',
+  home: 'Overview', dash: 'MyDash', missions: 'Missions', soul: 'Soul', support: 'Support', capabilities: 'Capabilities', account: 'Account', menu: 'Navigation', skip: 'Skip to content',
   eyebrow: 'RESULTS AS A SERVICE', headline: 'Your next business objective. A result you can use.', intro: 'Define the outcome. Review the plan and cost. Stay in control of the work, and inspect the evidence behind your deliverable.', enter: 'Open MyDash',
   steps: ['Describe your objective', 'Review and approve', 'Receive an evidenced result'], stepCopy: ['Start with what you need to understand or achieve.', 'Clarify scope, access and cost before execution.', 'Inspect sources, limitations and the next useful action.'],
   dashTitle: 'What result do you need next?', dashIntro: 'Start with an objective, or return to your recorded work.', goal: 'Describe the result you need', goalHint: 'Include the decision, market or question that matters. 5–5,000 characters.', placeholder: 'What do you need to understand or deliver?', save: 'Save mission draft', saving: 'Saving…', draftNote: 'Saving creates a draft only. Planning, cost approval and execution are separate steps.',
@@ -14,7 +14,7 @@ const en = {
   statuses: { DRAFT: 'Draft', READY: 'Plan ready', RUNNING: 'Execution requested / running', WAITING_APPROVAL: 'Awaiting approval', INTERRUPT_REQUESTED: 'Stop requested', INTERRUPTED: 'Interrupted', FAILED: 'Failed', COMPLETED: 'Completed', SUPERSEDED: 'Superseded', PARTIAL: 'Partial', READY_FOR_REVIEW: 'Ready for review', DELIVERABLE: 'Delivered result', UNVERIFIED: 'Unverified', SUPPORTED: 'Supported by evidence', DISPROVEN: 'Disproven', CONFLICTING: 'Conflicting evidence', STALE: 'Stale source', NEEDS_HUMAN_REVIEW: 'Awaiting human review' }
 };
 const fr: typeof en = {
-  home: 'Présentation', dash: 'MyDash', missions: 'Missions', soul: 'Soul', capabilities: 'Capacités', account: 'Compte', menu: 'Navigation', skip: 'Aller au contenu',
+  home: 'Présentation', dash: 'MyDash', missions: 'Missions', soul: 'Soul', support: 'Support', capabilities: 'Capacités', account: 'Compte', menu: 'Navigation', skip: 'Aller au contenu',
   eyebrow: 'RESULTS AS A SERVICE', headline: 'Votre prochain objectif. Un résultat utile.', intro: 'Définissez le résultat attendu. Examinez le plan et le coût. Gardez le contrôle et consultez les preuves qui étayent votre livrable.', enter: 'Ouvrir MyDash',
   steps: ['Décrivez votre objectif', 'Examinez et approuvez', 'Recevez un résultat étayé'], stepCopy: ['Partez de ce que vous souhaitez comprendre ou accomplir.', 'Précisez le périmètre, les accès et le coût avant toute exécution.', 'Consultez les sources, les limites et les prochaines actions utiles.'],
   dashTitle: 'Quel résultat souhaitez-vous obtenir ?', dashIntro: 'Partez d’un objectif ou reprenez vos missions enregistrées.', goal: 'Décrivez le résultat attendu', goalHint: 'Précisez la décision, le marché ou la question. De 5 à 5 000 caractères.', placeholder: 'Que souhaitez-vous comprendre ou produire ?', save: 'Enregistrer le brouillon', saving: 'Enregistrement…', draftNote: 'L’enregistrement crée uniquement un brouillon. Le plan, l’approbation du coût et l’exécution sont des étapes distinctes.',
@@ -124,5 +124,68 @@ export const soulCopy = {
     continued: 'Étape enregistrée.',
     language: 'Langue',
     welcomeStart: 'Commencer',
+  },
+} as const;
+
+
+/** Customer support entry (Chatwoot external engine; no message is stored by QeyNox). */
+export const supportCopy = {
+  en: {
+    entryTitle: 'Contact support',
+    entryCopy: 'Reach the QeyNox support team. Conversations are handled in the external support engine; QeyNox does not duplicate their messages.',
+    entryCta: 'Open support',
+    title: 'Support',
+    intro: 'Your support conversations with QeyNox. Status, priority and history are read live from the external support engine.',
+    notConfigured: 'Support is not configured yet.',
+    reason: 'Reason',
+    configHint: 'The operator must provision Chatwoot and set its server-side connection before this screen can open a conversation.',
+    conversations: 'My conversations',
+    empty: 'No support conversation yet.',
+    open: 'Open',
+    newTitle: 'Start a conversation',
+    message: 'Message',
+    send: 'Send to support',
+    status: 'Status',
+    priority: 'Priority',
+    history: 'History',
+    reply: 'Reply',
+    replySend: 'Send reply',
+    back: 'Back to support',
+    updated: 'Last activity',
+    noMessages: 'No message returned by the support engine.',
+    chatwootNote: 'Chatwoot is the external support engine. No customer message is copied into QeyNox PostgreSQL.',
+    signInRequired: 'Sign in to contact support or read your conversations.',
+    done: 'Message sent.',
+    error: 'The support action could not be completed',
+    configReason: 'Server configuration',
+  },
+  fr: {
+    entryTitle: 'Contacter le support',
+    entryCopy: 'Contactez l’équipe support QeyNox. Les conversations sont gérées dans le moteur externe ; QeyNox ne duplique pas leurs messages.',
+    entryCta: 'Ouvrir le support',
+    title: 'Support',
+    intro: 'Vos conversations de support avec QeyNox. Statut, priorité et historique sont lus en direct depuis le moteur externe.',
+    notConfigured: 'Le support n’est pas encore configuré.',
+    reason: 'Raison',
+    configHint: 'L’opérateur doit provisionner Chatwoot et configurer sa connexion côté serveur avant que cet écran puisse ouvrir une conversation.',
+    conversations: 'Mes conversations',
+    empty: 'Aucune conversation de support pour le moment.',
+    open: 'Ouvrir',
+    newTitle: 'Démarrer une conversation',
+    message: 'Message',
+    send: 'Envoyer au support',
+    status: 'Statut',
+    priority: 'Priorité',
+    history: 'Historique',
+    reply: 'Répondre',
+    replySend: 'Envoyer la réponse',
+    back: 'Retour au support',
+    updated: 'Dernière activité',
+    noMessages: 'Aucun message retourné par le moteur de support.',
+    chatwootNote: 'Chatwoot est le moteur externe. Aucun message client n’est copié dans PostgreSQL QeyNox.',
+    signInRequired: 'Connectez-vous pour contacter le support ou lire vos conversations.',
+    done: 'Message envoyé.',
+    error: 'L’action support n’a pas pu être effectuée',
+    configReason: 'Configuration serveur',
   },
 } as const;

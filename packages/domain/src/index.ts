@@ -6,4 +6,5 @@ export * from './plans';
 export * from './consent';
 export * from './platform-admin';
 export * from './workspaces';
+export * from './support';
 

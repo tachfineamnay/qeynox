@@ -10,3 +10,5 @@ export const LIFECYCLE_READ = ['ADMINISTRATION', 'SUPPORT', 'CONSULTATION'] as c
 export function can(permissions: readonly string[], required: readonly string[]): boolean {
   return required.some(permission => permissions.includes(permission));
 }
+
+export const SUPPORT = ['SUPPORT'] as const;

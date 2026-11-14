@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { PlatformAdminService, PlatformOrganizationsService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
-import { PlatformAdminStore, PlatformUserStore, WorkspaceStore, type DatabaseConnection } from '@qeynox/persistence';
+import { PlatformAdminStore, PlatformUserStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection } from '@qeynox/persistence';
 import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';
 import { hashSessionToken } from '../auth/password';
@@ -13,6 +13,9 @@ import { PlatformAdminController } from './platform-admin.controller';
 import { PlatformAuthController } from './platform-auth.controller';
 import { PlatformOrganizationsController } from './platform-organizations.controller';
 import { PlatformUsersController } from './platform-users.controller';
+import { ChatwootClient } from '../support/chatwoot.client';
+import { PlatformSupportController } from '../support/platform-support.controller';
+import { CHATWOOT_PORT, PLATFORM_SUPPORT_SERVICE, SUPPORT_LINK_STORE } from '../support/support.tokens';
 import {
   EMAIL_TRANSPORT,
   PLATFORM_ADMIN_SERVICE,
@@ -25,7 +28,7 @@ import {
 
 @Module({
   imports: [AuthModule],
-  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController],
+  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController],
   providers: [
     {
       provide: PLATFORM_STORE,
@@ -67,6 +70,17 @@ import {
       provide: PLATFORM_ORGANIZATIONS_SERVICE,
       useFactory: (store: WorkspaceStore, platform: PlatformAdminService) => new PlatformOrganizationsService(store, platform),
       inject: [PLATFORM_ORGANIZATION_STORE, PLATFORM_ADMIN_SERVICE],
+    },
+    { provide: CHATWOOT_PORT, useFactory: () => new ChatwootClient() },
+    {
+      provide: SUPPORT_LINK_STORE,
+      useFactory: (connection: DatabaseConnection) => new SupportLinkStore(connection.db),
+      inject: [DB_CONNECTION],
+    },
+    {
+      provide: PLATFORM_SUPPORT_SERVICE,
+      useFactory: (port: ChatwootClient, links: SupportLinkStore, platform: PlatformAdminService) => new PlatformSupportService(port, links, platform),
+      inject: [CHATWOOT_PORT, SUPPORT_LINK_STORE, PLATFORM_ADMIN_SERVICE],
     },
     { provide: APP_GUARD, useClass: PlatformAccessGuard },
   ],
