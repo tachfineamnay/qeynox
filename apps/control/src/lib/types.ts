@@ -92,6 +92,30 @@ export interface InviteState {
   workspaceId?: string;
 }
 
+
+export interface PlatformAssignmentView {
+  id: string; userId: string;
+  role: 'PLATFORM_ADMIN' | 'SUPPORT' | 'OPERATIONS' | 'AUDITOR';
+  status: 'ACTIVE' | 'REVOKED';
+  grantedBy: string; grantReason: string; grantedAt: string;
+  revokedBy: string | null; revokeReason: string | null; revokedAt: string | null;
+}
+
+export interface CapabilitySlotDetailView {
+  id: string; version: number; name: string; purpose: string; scope: string[];
+  maximumSteps: number; maximumToolCalls: number; externalActions: boolean;
+  providerReady: boolean; missingProviders: string[]; profileReady: boolean;
+}
+export interface PlatformCatalogueView {
+  slots: { slot: number; status: 'ACTIVE' | 'UNCONFIGURED'; available: boolean; capability: CapabilitySlotDetailView | null }[];
+  total: number; active: number; available: number;
+  runtime: {
+    engine: { id: string; configured: boolean; missing: string[] };
+    orchestrator: { id: string; configured: boolean; missing: string[] };
+  };
+  operator: { scope: 'WORKSPACE'; configurationEndpoint: string; allowlistConfigured: boolean };
+}
+
 export interface SupportCapabilityView {
   status: 'CONFIGURED' | 'NOT_CONFIGURED';
   reason: string | null;

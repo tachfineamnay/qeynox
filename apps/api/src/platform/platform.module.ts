@@ -1,12 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { PlatformAdminService, PlatformOperationsService, PlatformOrganizationsService, PlatformSupportService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
-import { PlatformAdminStore, PlatformOperationsStore, PlatformUserStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection } from '@qeynox/persistence';
+import { PlatformAdminService, PlatformCatalogueService, PlatformOperationsService, PlatformOrganizationsService, PlatformSupportService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
+import { PlatformAdminStore, PlatformOperationsStore, PlatformUserStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection, type QeyNoxStore } from '@qeynox/persistence';
 import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';
 import { hashSessionToken } from '../auth/password';
-import { DB_CONNECTION } from '../database/database.module';
+import { DB_CONNECTION, QEYNOX_STORE } from '../database/database.module';
 import { createEmailTransport } from './email-transport.provider';
 import { PlatformAccessGuard } from './platform-access.guard';
 import { PlatformAdminController } from './platform-admin.controller';
@@ -18,6 +18,8 @@ import { PlatformSupportController } from '../support/platform-support.controlle
 import { CoolifyReadOnlyClient } from './coolify-readonly.client';
 import { EnvironmentDeploymentInfo } from './deployment-info.provider';
 import { PlatformOperationsController } from './platform-operations.controller';
+import { PlatformCatalogueController } from './platform-catalogue.controller';
+import { apiRuntimeReadiness } from '../operations/runtime-readiness';
 import { CHATWOOT_PORT, PLATFORM_SUPPORT_SERVICE, SUPPORT_LINK_STORE } from '../support/support.tokens';
 import {
   EMAIL_TRANSPORT,
@@ -31,11 +33,12 @@ import {
   PLATFORM_OPERATIONS_SERVICE,
   RESOURCE_INVENTORY_PORT,
   DEPLOYMENT_INFO,
+  PLATFORM_CATALOGUE_SERVICE,
 } from './platform.tokens';
 
 @Module({
   imports: [AuthModule],
-  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController, PlatformOperationsController],
+  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController, PlatformOperationsController, PlatformCatalogueController],
   providers: [
     {
       provide: PLATFORM_STORE,
@@ -101,6 +104,20 @@ import {
       useFactory: (store: PlatformOperationsStore, runtime: PlatformAdminStore, platform: PlatformAdminService, deployment: EnvironmentDeploymentInfo, resources: CoolifyReadOnlyClient) =>
         new PlatformOperationsService(store, runtime, platform, deployment, resources),
       inject: [PLATFORM_OPERATIONS_STORE, PLATFORM_STORE, PLATFORM_ADMIN_SERVICE, DEPLOYMENT_INFO, RESOURCE_INVENTORY_PORT],
+    },
+    {
+      provide: PLATFORM_CATALOGUE_SERVICE,
+      // Read-only: the operator allowlist and endpoint are reported, never invoked from here.
+      useFactory: (store: QeyNoxStore, platform: PlatformAdminService) => new PlatformCatalogueService(
+        store,
+        platform,
+        apiRuntimeReadiness,
+        {
+          allowlistConfigured: Boolean((process.env.QEYNOX_OPERATOR_USER_IDS ?? '').trim()),
+          configurationEndpoint: '/v1/operator/configuration/apply',
+        },
+      ),
+      inject: [QEYNOX_STORE, PLATFORM_ADMIN_SERVICE],
     },
     { provide: APP_GUARD, useClass: PlatformAccessGuard },
   ],

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { requirePlatformMe, tryApi } from '../../../lib/api';
 import { copy, locale } from '../../../lib/copy';
 import { can, OPERATIONS } from '../../../lib/permissions';
-import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
+import { ApiErrorNotice, Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
 import type { OperationsListView, RecoveryIncidentView } from '../../../lib/types';
 
 function first(value: string | string[] | undefined): string { return typeof value === 'string' ? value : ''; }
@@ -20,7 +20,7 @@ export default async function OperationsPage({ params, searchParams }: { params:
   const counts = listResult && listResult.ok ? listResult.value.counts : null;
   let content: ReactNode;
   if (!allowed) content = <PermissionDenied lang={lang} />;
-  else if (!listResult || !listResult.ok) content = <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + (listResult && !listResult.ok ? listResult.code : 'UNAVAILABLE')}</Notice>;
+  else if (!listResult || !listResult.ok) content = <ApiErrorNotice lang={lang} code={listResult && !listResult.ok ? listResult.code : 'UNAVAILABLE'} />;
   else if (listResult.value.items.length === 0) content = <Card><Empty>{t.operationsEmpty}</Empty></Card>;
   else {
     content = (

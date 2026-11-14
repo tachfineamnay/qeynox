@@ -3,7 +3,7 @@ import { requirePlatformMe, tryApi } from '../../../../lib/api';
 import { reactivateUserAction, revokeUserSessionsAction, suspendUserAction } from '../../../../lib/actions';
 import { copy, locale } from '../../../../lib/copy';
 import { ADMINISTRATION, can, READ_ACTIVITY, READ_USERS } from '../../../../lib/permissions';
-import { Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
+import { ApiErrorNotice, Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
 import type { ActivityPageView, UserDetailView, UserSessionsView } from '../../../../lib/types';
 
 export default async function UserDetailPage({ params, searchParams }: { params: Promise<{ lang: string; id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -28,7 +28,7 @@ export default async function UserDetailPage({ params, searchParams }: { params:
       <p className="pager"><Link href={'/' + lang + '/users'}>{t.previous}</Link></p>
       {!allowed ? <PermissionDenied lang={lang} /> : null}
       <OutcomeNotice lang={lang} done={done} error={error} />
-      {detailResult && !detailResult.ok ? <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + detailResult.code}</Notice> : null}
+      {detailResult && !detailResult.ok ? <ApiErrorNotice lang={lang} code={detailResult.code} /> : null}
       {detailResult && detailResult.ok ? (
         <>
           <PageHeader
@@ -158,7 +158,7 @@ export default async function UserDetailPage({ params, searchParams }: { params:
                     ))}
                   </ul>
                 )
-              ) : <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + activityResult.code}</Notice>}
+              ) : <ApiErrorNotice lang={lang} code={activityResult.code} />}
             </Card>
           ) : null}
         </>

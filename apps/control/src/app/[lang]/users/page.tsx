@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { requirePlatformMe, tryApi } from '../../../lib/api';
 import { copy, locale } from '../../../lib/copy';
 import { can, READ_USERS } from '../../../lib/permissions';
-import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
+import { ApiErrorNotice, Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
 import type { UserPageView } from '../../../lib/types';
 
 function first(value: string | string[] | undefined): string { return typeof value === 'string' ? value : ''; }
@@ -25,7 +25,7 @@ export default async function UsersPage({ params, searchParams }: { params: Prom
   const result = allowed ? await tryApi<UserPageView>('/v1/platform/users?' + paramsString.toString()) : null;
   let content: ReactNode;
   if (!allowed) content = <PermissionDenied lang={lang} />;
-  else if (!result || !result.ok) content = <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + (result && !result.ok ? result.code : 'UNAVAILABLE')}</Notice>;
+  else if (!result || !result.ok) content = <ApiErrorNotice lang={lang} code={result && !result.ok ? result.code : 'UNAVAILABLE'} />;
   else if (result.value.items.length === 0) content = <Card><Empty>{t.noResults}</Empty></Card>;
   else {
     const nextParams = new URLSearchParams(paramsString);

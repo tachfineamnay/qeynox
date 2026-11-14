@@ -1,7 +1,7 @@
 import { requirePlatformMe, tryApi } from '../../../lib/api';
 import { copy, locale } from '../../../lib/copy';
 import { can, CONSULTATION } from '../../../lib/permissions';
-import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
+import { ApiErrorNotice, Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
 import type { AuditEntryView } from '../../../lib/types';
 
 export default async function AuditPage({ params }: { params: Promise<{ lang: string }> }) {
@@ -14,7 +14,7 @@ export default async function AuditPage({ params }: { params: Promise<{ lang: st
     <Shell lang={lang} path="/audit" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
       <PageHeader title={t.auditTitle} intro={t.auditIntro} />
       {!allowed ? <PermissionDenied lang={lang} /> : null}
-      {result && !result.ok ? <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + result.code}</Notice> : null}
+      {result && !result.ok ? <ApiErrorNotice lang={lang} code={result.code} /> : null}
       {result && result.ok ? (
         <Card>
           {result.value.length === 0 ? <Empty>{t.noResults}</Empty> : (

@@ -11,6 +11,10 @@ export function can(permissions: readonly string[], required: readonly string[])
   return required.some(permission => permissions.includes(permission));
 }
 
+export const READ_ASSIGNMENTS = ['ADMINISTRATION', 'CONSULTATION'] as const;
+export const MANAGE_ASSIGNMENTS = ['ADMINISTRATION'] as const;
+export const READ_CATALOGUE = ['CONSULTATION'] as const;
+
 export const SUPPORT = ['SUPPORT'] as const;
 
 export const OPERATIONS = ['OPERATIONS'] as const;

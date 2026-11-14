@@ -1,7 +1,7 @@
 import { requirePlatformMe, tryApi } from '../../../../lib/api';
 import { copy, locale } from '../../../../lib/copy';
 import { can, OPERATIONS } from '../../../../lib/permissions';
-import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
+import { ApiErrorNotice, Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
 import type { HealthView, ResourcesView } from '../../../../lib/types';
 
 export default async function HealthPage({ params }: { params: Promise<{ lang: string }> }) {
@@ -15,7 +15,7 @@ export default async function HealthPage({ params }: { params: Promise<{ lang: s
     <Shell lang={lang} path="/operations" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
       <PageHeader title={t.operationsHealthTitle} intro={t.operationsHealthIntro} />
       {!allowed ? <PermissionDenied lang={lang} /> : null}
-      {healthResult && !healthResult.ok ? <Notice tone="warning" title={t.operationsUnavailable}>{t.apiCode + ': ' + healthResult.code}</Notice> : null}
+      {healthResult && !healthResult.ok ? <ApiErrorNotice lang={lang} code={healthResult.code} /> : null}
       {healthResult && healthResult.ok ? (
         <Card>
           <h2>{t.operationsCheck}</h2>

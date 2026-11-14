@@ -59,6 +59,36 @@ export async function logoutAction(form: FormData): Promise<void> {
   redirect(localePath(lang, revoked ? '/account?signout=1' : '/account?error=UNKNOWN_OUTCOME'));
 }
 
+
+const platformUserIdSchema = z.string().trim().regex(/^[A-Za-z0-9_-]{4,120}$/);
+const platformRoleSchema = z.enum(['PLATFORM_ADMIN', 'SUPPORT', 'OPERATIONS', 'AUDITOR']);
+
+export async function assignPlatformRoleAction(form: FormData): Promise<void> {
+  const lang = langOf(form);
+  const userId = platformUserIdSchema.safeParse(String(form.get('userId') ?? ''));
+  const role = platformRoleSchema.safeParse(String(form.get('role') ?? ''));
+  const reason = reasonSchema.safeParse(String(form.get('reason') ?? ''));
+  if (!userId.success || !role.success || !reason.success) withError(lang, '/admins', 'INVALID_INPUT');
+  try {
+    await api('/v1/platform/admins/' + encodeURIComponent(userId.data) + '/assign', 'POST', { role: role.data, reason: reason.data });
+  } catch (error) { withError(lang, '/admins', errorCode(error)); }
+  revalidate(lang, '/admins');
+  withDone(lang, '/admins');
+}
+
+export async function revokePlatformRoleAction(form: FormData): Promise<void> {
+  const lang = langOf(form);
+  const userId = platformUserIdSchema.safeParse(String(form.get('userId') ?? ''));
+  const role = platformRoleSchema.safeParse(String(form.get('role') ?? ''));
+  const reason = reasonSchema.safeParse(String(form.get('reason') ?? ''));
+  if (!userId.success || !role.success || !reason.success) withError(lang, '/admins', 'INVALID_INPUT');
+  try {
+    await api('/v1/platform/admins/' + encodeURIComponent(userId.data) + '/revoke', 'POST', { role: role.data, reason: reason.data });
+  } catch (error) { withError(lang, '/admins', errorCode(error)); }
+  revalidate(lang, '/admins');
+  withDone(lang, '/admins');
+}
+
 export async function suspendUserAction(form: FormData): Promise<void> {
   const lang = langOf(form);
   const userId = String(form.get('userId') ?? '');

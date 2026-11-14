@@ -1,7 +1,7 @@
 import { requirePlatformMe, tryApi } from '../../../../lib/api';
 import { copy, locale } from '../../../../lib/copy';
 import { can, OPERATIONS } from '../../../../lib/permissions';
-import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
+import { ApiErrorNotice, Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
 import type { ReleasesView } from '../../../../lib/types';
 
 export default async function ReleasesPage({ params }: { params: Promise<{ lang: string }> }) {
@@ -15,7 +15,7 @@ export default async function ReleasesPage({ params }: { params: Promise<{ lang:
     <Shell lang={lang} path="/operations" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
       <PageHeader title={t.operationsReleasesTitle} intro={t.operationsReleasesIntro} />
       {!allowed ? <PermissionDenied lang={lang} /> : null}
-      {result && !result.ok ? <Notice tone="warning" title={t.operationsUnavailable}>{t.apiCode + ': ' + result.code}</Notice> : null}
+      {result && !result.ok ? <ApiErrorNotice lang={lang} code={result.code} /> : null}
       {result && result.ok ? (
         <>
           <Card>

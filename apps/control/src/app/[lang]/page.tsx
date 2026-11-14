@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requirePlatformMe, tryApi } from '../../lib/api';
 import { copy, locale } from '../../lib/copy';
 import { can, CONSULTATION, LIFECYCLE_READ, READ_ORGANIZATIONS, READ_USERS } from '../../lib/permissions';
-import { Badge, Card, Notice, PageHeader, permissionLabels, Shell } from '../../components/shell';
+import { ApiErrorNotice, Badge, Card, Notice, PageHeader, permissionLabels, Shell } from '../../components/shell';
 import type { AuditEntryView, CapabilitiesView } from '../../lib/types';
 
 export default async function DashboardPage({ params }: { params: Promise<{ lang: string }> }) {
@@ -61,7 +61,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
                 </ul>
                 <p className="muted">{capabilitiesResult.value.note}</p>
               </>
-            ) : <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + capabilitiesResult.code}</Notice>}
+            ) : <ApiErrorNotice lang={lang} code={capabilitiesResult.code} />}
           </Card>
         ) : null}
       </div>
@@ -85,7 +85,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
                 </tbody>
               </table></div>
             )
-          ) : <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + auditResult.code}</Notice>}
+          ) : <ApiErrorNotice lang={lang} code={auditResult.code} />}
           <p className="pager"><Link href={'/' + lang + '/audit'}>{t.navAudit}</Link></p>
         </Card>
       ) : null}

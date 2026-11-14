@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { requirePlatformMe, tryApi } from '../../../lib/api';
 import { copy, locale } from '../../../lib/copy';
 import { can, READ_ORGANIZATIONS } from '../../../lib/permissions';
-import { Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
+import { ApiErrorNotice, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
 import type { OrganizationPageView } from '../../../lib/types';
 
 function first(value: string | string[] | undefined): string { return typeof value === 'string' ? value : ''; }
@@ -23,7 +23,7 @@ export default async function OrganizationsPage({ params, searchParams }: { para
   const result = allowed ? await tryApi<OrganizationPageView>('/v1/platform/organizations?' + paramsString.toString()) : null;
   let content: ReactNode;
   if (!allowed) content = <PermissionDenied lang={lang} />;
-  else if (!result || !result.ok) content = <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + (result && !result.ok ? result.code : 'UNAVAILABLE')}</Notice>;
+  else if (!result || !result.ok) content = <ApiErrorNotice lang={lang} code={result && !result.ok ? result.code : 'UNAVAILABLE'} />;
   else if (result.value.items.length === 0) content = <Card><Empty>{t.noResults}</Empty></Card>;
   else {
     const nextParams = new URLSearchParams(paramsString);

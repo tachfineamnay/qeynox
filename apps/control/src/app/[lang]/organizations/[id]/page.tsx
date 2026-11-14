@@ -4,7 +4,7 @@ import { changeRoleAction, revokeMembershipAction } from '../../../../lib/action
 import { InviteForm } from '../../../../components/invite-form';
 import { copy, locale } from '../../../../lib/copy';
 import { ADMINISTRATION, can, READ_ORGANIZATIONS } from '../../../../lib/permissions';
-import { Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
+import { ApiErrorNotice, Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
 import type { MemberPageView, MemberView, OrganizationDetailView } from '../../../../lib/types';
 
 function first(value: string | string[] | undefined): string { return typeof value === 'string' ? value : ''; }
@@ -34,7 +34,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: {
       <p className="pager"><Link href={'/' + lang + '/organizations'}>{t.previous}</Link></p>
       {!allowed ? <PermissionDenied lang={lang} /> : null}
       <OutcomeNotice lang={lang} done={done} error={error} />
-      {detailResult && !detailResult.ok ? <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + detailResult.code}</Notice> : null}
+      {detailResult && !detailResult.ok ? <ApiErrorNotice lang={lang} code={detailResult.code} /> : null}
       {detailResult && detailResult.ok ? (
         <>
           <PageHeader title={detailResult.value.name} intro={t.organizationTitle} actions={<Badge>{detailResult.value.stats.activeMembers + ' ' + t.active.toLowerCase()}</Badge>} />
@@ -76,7 +76,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: {
               </label>
               <button className="button secondary" type="submit">{t.filter}</button>
             </form>
-            {membersResult && !membersResult.ok ? <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + membersResult.code}</Notice> : null}
+            {membersResult && !membersResult.ok ? <ApiErrorNotice lang={lang} code={membersResult.code} /> : null}
             {membersResult && membersResult.ok ? (
               membersResult.value.items.length === 0 ? <Empty>{t.noResults}</Empty> : (
                 <div className="table-wrap"><table>

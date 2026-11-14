@@ -40,6 +40,11 @@ export class CapabilityCatalogueService {
 
   async list(actor: Principal): Promise<CapabilityCatalogueView> {
     if (!actor.userId || !actor.workspaceId) throw new DomainError('DENIED', 'Authenticated workspace required');
+    return this.snapshot();
+  }
+
+  /** Configuration snapshot without a caller check; callers must authorize their own surface. */
+  async snapshot(): Promise<CapabilityCatalogueView> {
     const definitions = await this.store.getCapabilities();
     const active = definitions.filter(definition => definition.status === 'ACTIVE');
     const availability = await capabilityAvailability(this.store, active);

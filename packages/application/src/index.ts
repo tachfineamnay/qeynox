@@ -20,6 +20,7 @@ export * from './plan-read';
 export * from './runtime-readiness';
 export * from './capability-availability';
 export * from './capability-catalogue';
+export * from './platform-catalogue';
 export * from './recovery';
 export * from './engine-selection';
 export * from './context-policy';
