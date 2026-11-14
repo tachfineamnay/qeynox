@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev:web": "pnpm --filter @qeynox/web dev",
+    "dev:control": "pnpm --filter @qeynox/control dev",
     "dev:api": "pnpm --filter @qeynox/api dev",
     "dev:worker": "pnpm --filter @qeynox/worker dev",
     "build": "turbo run build",
