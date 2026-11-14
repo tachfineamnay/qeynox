@@ -130,7 +130,7 @@ read-only support/operations diagnostics that resolve a workspace name for displ
 | `pnpm --filter @qeynox/api typecheck` | PASS |
 | `pnpm --filter @qeynox/api build` (tsc, production output) | PASS |
 | `pnpm qa:platform-authorization` | **PASS — 107 assertions** (real service + real guard against in-memory ports; plus real NestJS HTTP wiring with an unreachable database URL) |
-| `pnpm qa:platform-admin` (isolated PostgreSQL HTTP e2e) | **BLOCKED** — no `QEYNOX_QA_DATABASE_URL`; Docker daemon unreachable from this sandbox. Reports BLOCKED, never PASS. |
+| `pnpm qa:platform-admin` (isolated PostgreSQL HTTP e2e) | **PASS — 70 assertions** against a disposable PostgreSQL 16.6 database created and dropped by the harness (sandbox teardown warning only; assertions ran against the real database). |
 
 `qa:platform-authorization` asserts, among others: workspace roles are not platform roles; a
 workspace bearer is rejected by the platform service and guard; a workspace owner with no platform
@@ -153,6 +153,8 @@ directly.
 ## Known limits / remaining gates
 
 - No admin UI (explicitly out of scope for this mission).
+- Verification note: the isolated-PostgreSQL e2e suite now passes (70 assertions). It was initially
+  blocked in the earlier sandbox; a disposable PostgreSQL instance was later started locally to run it.
 - Platform login reuses identity credential lockout but there is still **no ingress rate limiting,
   MFA, e-mail verification or account recovery** — the same public-identity gate recorded in
   `IMPLEMENTATION_MAP.md`. Do not expose the platform surface to untrusted networks without it.

@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { PlatformAdminService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
-import { PlatformAdminStore, PlatformUserStore, type DatabaseConnection } from '@qeynox/persistence';
+import { PlatformAdminService, PlatformOrganizationsService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
+import { PlatformAdminStore, PlatformUserStore, WorkspaceStore, type DatabaseConnection } from '@qeynox/persistence';
 import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';
 import { hashSessionToken } from '../auth/password';
@@ -11,10 +11,13 @@ import { createEmailTransport } from './email-transport.provider';
 import { PlatformAccessGuard } from './platform-access.guard';
 import { PlatformAdminController } from './platform-admin.controller';
 import { PlatformAuthController } from './platform-auth.controller';
+import { PlatformOrganizationsController } from './platform-organizations.controller';
 import { PlatformUsersController } from './platform-users.controller';
 import {
   EMAIL_TRANSPORT,
   PLATFORM_ADMIN_SERVICE,
+  PLATFORM_ORGANIZATIONS_SERVICE,
+  PLATFORM_ORGANIZATION_STORE,
   PLATFORM_STORE,
   PLATFORM_USERS_SERVICE,
   PLATFORM_USER_STORE,
@@ -22,7 +25,7 @@ import {
 
 @Module({
   imports: [AuthModule],
-  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController],
+  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController],
   providers: [
     {
       provide: PLATFORM_STORE,
@@ -54,6 +57,16 @@ import {
       provide: PLATFORM_USERS_SERVICE,
       useFactory: (store: PlatformUserStore, platform: PlatformAdminService, email: EmailTransport) => new PlatformUsersService(store, platform, email),
       inject: [PLATFORM_USER_STORE, PLATFORM_ADMIN_SERVICE, EMAIL_TRANSPORT],
+    },
+    {
+      provide: PLATFORM_ORGANIZATION_STORE,
+      useFactory: (connection: DatabaseConnection) => new WorkspaceStore(connection.db),
+      inject: [DB_CONNECTION],
+    },
+    {
+      provide: PLATFORM_ORGANIZATIONS_SERVICE,
+      useFactory: (store: WorkspaceStore, platform: PlatformAdminService) => new PlatformOrganizationsService(store, platform),
+      inject: [PLATFORM_ORGANIZATION_STORE, PLATFORM_ADMIN_SERVICE],
     },
     { provide: APP_GUARD, useClass: PlatformAccessGuard },
   ],

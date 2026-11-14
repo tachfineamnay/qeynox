@@ -85,3 +85,19 @@ not-configured EmailTransport (503 NOT_CONFIGURED, audited, no e-mail claimed or
 NOT VERIFIED: the isolated-PostgreSQL users-management end-to-end flow (part C of
 `pnpm qa:platform-users`) is BLOCKED without QEYNOX_QA_DATABASE_URL. No admin UI exists. No
 production deployment, push or merge was performed.
+
+## Workspaces & organisations (Mission 03)
+
+Source implemented and verified end-to-end on an isolated PostgreSQL 16.6 database (87 assertions;
+docs/architecture/WORKSPACES_ORGANIZATIONS.md). Uses identity_workspaces/identity_memberships only
+(no second organisation entity); migrations 0014/0015 are additive. Provides paginated
+organisation/member consultation, invitations of existing accounts without fake e-mail (single-use
+hashed token, delivery BLOCKED), role changes with before/after audit, revocation, explicit workspace
+switch with session rotation, last-enabled-owner protection (role change, revocation and Mission 02
+suspension), and session invalidation when the last active membership is removed. Cross-tenant access
+and cross-user invitation acceptance are denied and audited.
+
+VERIFIED: qa:platform-organizations PASS (87 assertions on disposable PostgreSQL); regressions
+qa:platform-admin PASS (70) and qa:platform-users PASS (165) on the same isolated database.
+NOT VERIFIED: production deployment, public identity hardening, e-mail transport, workspace deletion
+(deliberately out of scope). No push, merge or deployment.

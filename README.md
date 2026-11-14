@@ -41,6 +41,7 @@ pnpm qa:storage       # real MinIO uploads, SHA-256 integrity, private/signed/ex
 pnpm qa:platform-authorization  # global platform administration authorization invariants + HTTP wiring (no database)
 pnpm qa:platform-admin          # platform administration HTTP e2e against an isolated PostgreSQL database (BLOCKED without QEYNOX_QA_DATABASE_URL)
 pnpm qa:platform-users          # platform user administration: permissions, pagination, revocation, isolation (part C needs QEYNOX_QA_DATABASE_URL)
+pnpm qa:platform-organizations  # workspaces/organisations: memberships, invitations, roles, switching (needs QEYNOX_QA_DATABASE_URL)
 ```
 
 Global platform administration (internal `PLATFORM_ADMIN`/`SUPPORT`/`OPERATIONS`/`AUDITOR` roles,

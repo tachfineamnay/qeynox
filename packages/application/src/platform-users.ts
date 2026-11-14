@@ -460,6 +460,10 @@ export class PlatformUsersService {
       await this.denied(principal, 'SUSPEND_PLATFORM_USER', userId, 'LAST_PLATFORM_ADMIN');
       throw new DomainError('DENIED', 'Cannot suspend the last enabled platform administrator');
     }
+    if (outcome === 'LAST_WORKSPACE_OWNER') {
+      await this.denied(principal, 'SUSPEND_PLATFORM_USER', userId, 'LAST_WORKSPACE_OWNER');
+      throw new DomainError('DENIED', 'Cannot suspend the last enabled owner of a workspace');
+    }
     return { userId, status: 'SUSPENDED', disabledAt: at.toISOString() };
   }
 

@@ -23,4 +23,7 @@ export * from './delivery';
 export * from './configuration';
 export * from './platform-admin';
 export * from './platform-users';
+export * from './platform-organizations';
+export * from './workspace-access';
+export * from './pagination';
 

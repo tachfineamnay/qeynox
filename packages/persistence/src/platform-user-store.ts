@@ -49,13 +49,20 @@ export interface PlatformUserActivityRow {
   readonly permission: string | null;
 }
 
-export type PlatformSuspendOutcome = 'SUSPENDED' | 'ALREADY_SUSPENDED' | 'NOT_FOUND' | 'LAST_ADMIN';
+export type PlatformSuspendOutcome = 'SUSPENDED' | 'ALREADY_SUSPENDED' | 'NOT_FOUND' | 'LAST_ADMIN' | 'LAST_WORKSPACE_OWNER';
 export type PlatformReactivateOutcome = 'REACTIVATED' | 'NOT_SUSPENDED' | 'NOT_FOUND';
 export type PlatformSessionRevokeOutcome = 'REVOKED' | 'NOT_FOUND';
 
 const maximumSessionsListed = 200;
 /** Only account-lifecycle actions appear in a user timeline; unrelated platform audits stay hidden. */
-const accountLifecycleActions = ['SUSPEND_PLATFORM_USER', 'REACTIVATE_PLATFORM_USER', 'REVOKE_USER_SESSIONS'] as const;
+const accountLifecycleActions = [
+  'SUSPEND_PLATFORM_USER',
+  'REACTIVATE_PLATFORM_USER',
+  'REVOKE_USER_SESSIONS',
+  'INVITE_WORKSPACE_MEMBER',
+  'CHANGE_MEMBERSHIP_ROLE',
+  'REVOKE_MEMBERSHIP',
+] as const;
 
 export interface PlatformSessionCounts {
   readonly workspaceSessions: number;
@@ -245,6 +252,29 @@ export class PlatformUserStore {
             isNull(identityUsers.disabledAt),
           ));
         if (enabledAdmins.length <= 1) return 'LAST_ADMIN';
+      }
+      // A suspended account must not be the only usable owner of a workspace: that would leave
+      // the organisation without any account able to administer it.
+      const ownedWorkspaces = await tx.select({ workspaceId: identityMemberships.workspaceId })
+        .from(identityMemberships)
+        .innerJoin(identityUsers, eq(identityUsers.id, identityMemberships.userId))
+        .where(and(
+          eq(identityMemberships.userId, input.userId),
+          eq(identityMemberships.role, 'OWNER'),
+          eq(identityMemberships.status, 'ACTIVE'),
+          isNull(identityUsers.disabledAt),
+        ));
+      for (const owned of ownedWorkspaces) {
+        const [owners] = await tx.select({ value: sql<number>`count(*)::int` })
+          .from(identityMemberships)
+          .innerJoin(identityUsers, eq(identityUsers.id, identityMemberships.userId))
+          .where(and(
+            eq(identityMemberships.workspaceId, owned.workspaceId),
+            eq(identityMemberships.role, 'OWNER'),
+            eq(identityMemberships.status, 'ACTIVE'),
+            isNull(identityUsers.disabledAt),
+          ));
+        if ((owners?.value ?? 0) <= 1) return 'LAST_WORKSPACE_OWNER';
       }
       await tx.update(identityUsers).set({ disabledAt: input.at }).where(and(eq(identityUsers.id, input.userId), isNull(identityUsers.disabledAt)));
       const workspaceSessions = await tx.update(identitySessions).set({ revokedAt: input.at })

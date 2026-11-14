@@ -745,9 +745,9 @@ async function partC(): Promise<void> {
   const beforeC = assertions;
   try {
     const report = await runMigrations(qa.url);
-    assert(report.total === 13 && report.applied.length === 13, 'all 13 migrations (including the 0013 user-management indexes) applied');
+    assert(report.total >= 13 && report.applied.length === report.total, 'every migration (including the 0013 user-management indexes and later additive ones) applied');
     const rerun = await runMigrations(qa.url);
-    assert(rerun.applied.length === 0 && rerun.skipped.length === 13, 'migrations 0001-0013 stay immutable on re-run');
+    assert(rerun.applied.length === 0 && rerun.skipped.length === report.total, 'applied migrations stay immutable on re-run');
     await seedPlatformAccountsForQa(qa.url);
 
     app = await NestFactory.create(AppModule, { logger: false });
@@ -763,7 +763,7 @@ async function partC(): Promise<void> {
     const aliceSession = aliceRegistered.body as { token: string; userId: string; workspaceId: string };
     const bobRegistered = await qaHttp(base, '/v1/auth/register', qaPost({ email: bobEmail, password: 'workspace-passphrase', workspaceName: 'QA Users Workspace Two' }));
     assert(bobRegistered.status === 201, 'second workspace user registers');
-    const bobSession = bobRegistered.body as { token: string; userId: string };
+    const bobSession = bobRegistered.body as { token: string; userId: string; workspaceId: string };
 
     // A workspace owner cannot reach the platform users administration.
     const workspaceDeniedRoutes: ReadonlyArray<readonly [string, 'GET' | 'POST']> = [
@@ -828,11 +828,21 @@ async function partC(): Promise<void> {
     const adminTwoAfterReactivate = await qaHttp(base, '/v1/platform/auth/me', { headers: qaBearer(adminTwoToken) });
     assert(adminTwoAfterReactivate.status === 403, 'a revoked platform session never revives after reactivation');
 
+    // A workspace owner who is the sole enabled owner cannot be suspended (Mission 03 invariant),
+    // so add a co-owner through the organization invitation flow before testing suspension.
+    const inviteCoOwner = await qaHttp(base, '/v1/platform/organizations/' + aliceSession.workspaceId + '/invitations', {
+      ...qaPost({ email: bobEmail, role: 'OWNER', reason: 'co-owner required for suspension QA' }), headers: qaBearer(adminToken),
+    });
+    assert(inviteCoOwner.status === 201, 'co-owner invitation created for the suspension scenario');
+    const coOwnerToken = (inviteCoOwner.body as { invitationToken: string }).invitationToken;
+    const coOwnerAccept = await qaHttp(base, '/v1/invitations/token/accept', qaPost({ token: coOwnerToken }));
+    assert(coOwnerAccept.status === 201 || coOwnerAccept.status === 200, 'co-owner invitation accepted through the token path');
+
     // Suspension and reactivation are reversible and audited.
     const supportSuspend = await qaHttp(base, '/v1/platform/users/' + aliceSession.userId + '/suspend', { ...qaPost({ reason: 'support cannot suspend accounts' }), headers: qaBearer(supportToken) });
     assert(supportSuspend.status === 403 && qaErrorCode(supportSuspend) === 'DENIED', 'support cannot suspend accounts');
     const suspended = await qaHttp(base, '/v1/platform/users/' + aliceSession.userId + '/suspend', { ...qaPost({ reason: 'account misuse investigation opened' }), headers: qaBearer(adminToken) });
-    assert(suspended.status === 201 && (suspended.body as { status?: string }).status === 'SUSPENDED', 'administrator suspends the account');
+    assert(suspended.status === 201 && (suspended.body as { status?: string }).status === 'SUSPENDED', 'administrator suspends the account (status=' + suspended.status + ' body=' + JSON.stringify(suspended.body) + ' invite=' + JSON.stringify(inviteCoOwner.body) + ')');
     const aliceAfterSuspend = await qaHttp(base, '/v1/operations', { headers: qaBearer(aliceSession.token) });
     assert(aliceAfterSuspend.status === 403 && qaErrorCode(aliceAfterSuspend) === 'DENIED', 'suspended workspace session is rejected by the existing auth guard');
     const aliceLoginSuspended = await qaHttp(base, '/v1/auth/login', qaPost({ email: aliceEmail, password: 'workspace-passphrase' }));
@@ -845,7 +855,7 @@ async function partC(): Promise<void> {
     assert(aliceLoginRestored.status === 201, 'reactivated account can log in again');
 
     // Session revocation targets only the requested user.
-    const bobBearer = qaBearer(bobSession.token);
+    const bobBearer = { ...qaBearer(bobSession.token), 'x-qeynox-workspace': bobSession.workspaceId };
     const aliceSecond = await qaHttp(base, '/v1/auth/login', qaPost({ email: aliceEmail, password: 'workspace-passphrase' }));
     assert(aliceSecond.status === 201, 'second alice session issued');
     const aliceTokenTwo = (aliceSecond.body as { token: string }).token;

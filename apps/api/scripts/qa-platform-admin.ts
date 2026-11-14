@@ -112,9 +112,9 @@ async function main(): Promise<void> {
   let app: INestApplication | undefined;
   try {
     const report = await runMigrations(qa.url);
-    assert(report.total === 12 && report.applied.length === 12, 'all 12 migrations (including 0012 platform administration) applied to the disposable database');
+    assert(report.total >= 12 && report.applied.length === report.total, 'every migration (including 0012 platform administration and later additive ones) applied to the disposable database');
     const rerun = await runMigrations(qa.url);
-    assert(rerun.applied.length === 0 && rerun.skipped.length === 12, 're-running migrations changes nothing: applied migration content stays immutable');
+    assert(rerun.applied.length === 0 && rerun.skipped.length === report.total, 're-running migrations changes nothing: applied migration content stays immutable');
     await seedPlatformAccounts(qa.url);
 
     app = await NestFactory.create(AppModule, { logger: false });
@@ -219,7 +219,10 @@ async function main(): Promise<void> {
     assert(auditRows.length > 10, 'audit trail records the exercised platform operations');
     assert(auditRows.every(row => typeof row.id === 'string' && typeof row.targetType === 'string' && typeof row.action === 'string' && typeof row.outcome === 'string' && typeof row.happenedAt === 'string'), 'every audit row carries target, action, date and result');
     const actions = new Set(auditRows.map(row => row.action));
-    assert(actions.has('LOGIN') && actions.has('ASSIGN_PLATFORM_ROLE') && actions.has('REVOKE_PLATFORM_ROLE') && actions.has('LIST_PLATFORM_AUDIT'), 'audit trail covers login, assignment, revocation and consultation');
+    assert(actions.has('LOGIN') && actions.has('ASSIGN_PLATFORM_ROLE') && actions.has('REVOKE_PLATFORM_ROLE'), 'audit trail covers login, assignment and revocation');
+    const auditSecond = await call(base, '/v1/platform/audit?limit=200', { headers: bearer(adminToken) });
+    const secondActions = new Set(((auditSecond.body as Array<Record<string, unknown>>) ?? []).map(row => row.action));
+    assert(secondActions.has('LIST_PLATFORM_AUDIT'), 'audit consultation is itself recorded');
     assert(auditRows.some(row => row.outcome === 'DENIED'), 'denied platform attempts are audited');
     assert(auditRows.some(row => typeof row.actorUserId === 'string' && row.actorUserId === admin.userId), 'audit rows identify the acting administrator');
 

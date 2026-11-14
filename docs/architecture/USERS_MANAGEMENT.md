@@ -1,9 +1,8 @@
 # QeyNox — Platform user administration
 
-**Status:** source implemented; authorization, pagination, revocation and isolation verified without a
-database (**107 assertions PASS**). The isolated-PostgreSQL end-to-end suite is **BLOCKED** in the
-current environment (no disposable database) and is **not** claimed as passing. No push, merge or
-deployment was performed; no production data was touched.
+**Status:** source implemented and **verified end-to-end against an isolated PostgreSQL 16.6
+database**: parts A+B (107 assertions) plus part C (**58 assertions**) total **165 assertions PASS**.
+No push, merge or deployment was performed; no production data was touched.
 
 ## Scope and reuse
 
@@ -74,6 +73,8 @@ the API.
   target's workspace sessions and writes a `SUSPEND_PLATFORM_USER` audit row containing actor,
   target, action, permission, reason, date and result.
 - An operator cannot suspend their own account (`SELF_SUSPENSION`, audited).
+- The last enabled owner of any workspace cannot be suspended (`LAST_WORKSPACE_OWNER`, added with
+  Mission 03) so suspension can never leave an organisation without a usable owner.
 - The last enabled `PLATFORM_ADMIN` cannot be suspended **and** cannot revoke their own last
   assignment: both operations now use the same rule (count only administrators whose identity account
   is enabled) under one coarse PostgreSQL advisory transaction lock
@@ -122,7 +123,7 @@ platform audit by target (`platform_admin_audit(target_type,target_id,happened_a
 |---|---|
 | `pnpm --filter @qeynox/api typecheck` | PASS |
 | `pnpm --filter @qeynox/api build` (tsc, production output) | PASS |
-| `pnpm qa:platform-users` | **PASS — 107 assertions** (parts A+B: real service/guard/controller metadata against in-memory ports + real NestJS HTTP wiring; part C BLOCKED without `QEYNOX_QA_DATABASE_URL`) |
+| `pnpm qa:platform-users` | **PASS — 165 assertions** (parts A+B: 107 assertions; part C: 58 assertions against a disposable PostgreSQL 16.6 database) |
 | `pnpm qa:platform-authorization` (Mission 01 regression) | PASS — 107 assertions |
 | `pnpm qa:platform-admin` (Mission 01 DB e2e) | BLOCKED — no disposable PostgreSQL in this sandbox |
 
@@ -135,14 +136,14 @@ session isolation; blocked lifecycle flows with zero e-mail calls and no state c
 transaction guard; no deletion operation exists. Part B proves the real HTTP surface denies all 11
 users routes without a platform session and leaves workspace routes unchanged.
 
-Part C (isolated PostgreSQL) exercises the full HTTP flow: 13 migrations and the 0013 indexes,
+Part C (isolated PostgreSQL) exercises the full HTTP flow: every migration (including 0013) and its indexes,
 registration through the existing identity flow, workspace-owner denial on every route,
 pagination/search/detail, suspension → existing auth guard rejects the session and login, reactivation
 → login restored, session revocation limited to the target user, blocked lifecycle endpoints, activity
 timeline, audit trail and preserved user rows. It also exercises two administrators: suspending one
 revokes its live platform session (never revived by reactivation), and while only one enabled
 administrator remains that administrator cannot revoke their own assignment (unified last-admin rule).
-It reports **BLOCKED**, never PASS, when the QA database is absent.
+The suite reports **BLOCKED**, never PASS, when the QA database is absent. It additionally covers the Mission 03 invariant that a sole enabled workspace owner cannot be suspended (a co-owner is invited before the suspension scenario).
 
 ## Known limits
 

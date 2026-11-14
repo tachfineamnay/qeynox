@@ -11,6 +11,7 @@ import { hashPassword, hashSessionToken, verifyPassword } from './password';
 const signupSchema=z.object({email:z.email(),password:z.string().min(12).max(256),workspaceName:z.string().trim().min(2).max(120),locale:z.string().min(2).max(12).default('en')});
 const loginSchema=z.object({email:z.email(),password:z.string().min(1).max(256)});
 export type IdentitySession = {userId:ID;token:string;expiresAt:string;workspaceId:ID};
+export type WorkspaceSummary = {workspaceId:ID;name:string;role:string};
 const sessionTTL=24*60*60*1000;
 
 @Injectable()
@@ -81,6 +82,29 @@ export class AuthService {
     const member=requestedWorkspace?members.find(m=>m.workspaceId===requestedWorkspace):members.length===1?members[0]:undefined;
     if(!member)throw new DomainError('DENIED','Select an authorized workspace');
     return {userId:session.userId as ID,workspaceId:member.workspaceId as ID,roles:[member.role]};
+  }
+  /** Active workspace memberships for the authenticated identity (switchable contexts). */
+  async listWorkspaces(userId:ID):Promise<readonly WorkspaceSummary[]>{
+    const rows=await this.db.select({workspaceId:identityWorkspaces.id,name:identityWorkspaces.name,role:identityMemberships.role})
+      .from(identityMemberships)
+      .innerJoin(identityWorkspaces,eq(identityWorkspaces.id,identityMemberships.workspaceId))
+      .where(and(eq(identityMemberships.userId,userId),eq(identityMemberships.status,'ACTIVE')))
+      .orderBy(identityWorkspaces.name);
+    return rows.map(row=>({workspaceId:row.workspaceId as ID,name:row.name,role:row.role}));
+  }
+  /**
+   * Explicit workspace switch for a member of several workspaces: validates the target membership,
+   * revokes the presented session and issues a fresh one, so a token captured before the switch
+   * cannot keep acting in the previous context.
+   */
+  async switchWorkspace(userId:ID,workspaceId:ID,rawToken:string):Promise<{session:IdentitySession;workspaces:readonly WorkspaceSummary[]}>{
+    const [membership]=await this.db.select().from(identityMemberships)
+      .where(and(eq(identityMemberships.userId,userId),eq(identityMemberships.workspaceId,workspaceId),eq(identityMemberships.status,'ACTIVE')))
+      .limit(1);
+    if(!membership)throw new DomainError('DENIED','No active membership in the requested workspace');
+    await this.logout(rawToken);
+    const session=await this.issueSession(userId,workspaceId);
+    return {session,workspaces:await this.listWorkspaces(userId)};
   }
   async logout(token:string):Promise<void>{
     const hashed=hashSessionToken(token);

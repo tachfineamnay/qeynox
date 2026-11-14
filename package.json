@@ -22,6 +22,7 @@
     "qa:platform-authorization": "pnpm --filter @qeynox/api qa:platform-authorization",
     "qa:platform-admin": "pnpm --filter @qeynox/api qa:platform-admin",
     "qa:platform-users": "pnpm --filter @qeynox/api qa:platform-users",
+    "qa:platform-organizations": "pnpm --filter @qeynox/api qa:platform-organizations",
     "admin:bootstrap": "pnpm --filter @qeynox/api admin:bootstrap"
   },
   "devDependencies": {

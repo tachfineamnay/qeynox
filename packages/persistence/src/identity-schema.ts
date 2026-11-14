@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { pgTable, text, integer, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const identityUsers = pgTable('identity_users', {
@@ -22,7 +23,10 @@ export const identityMemberships=pgTable('identity_memberships',{
   id:text('id').primaryKey(),userId:text('user_id').notNull().references(()=>identityUsers.id),
   workspaceId:text('workspace_id').notNull().references(()=>identityWorkspaces.id),
   role:text('role').notNull(),status:text('status').notNull().default('ACTIVE'),
-},t=>[uniqueIndex('identity_member_unique').on(t.userId,t.workspaceId),index('identity_workspace_member_idx').on(t.workspaceId)]);
+  invitedBy:text('invited_by'),invitedAt:timestamp('invited_at',{withTimezone:true}),
+  joinedAt:timestamp('joined_at',{withTimezone:true}),updatedAt:timestamp('updated_at',{withTimezone:true}),
+  invitationTokenHash:text('invitation_token_hash'),invitationExpiresAt:timestamp('invitation_expires_at',{withTimezone:true}),
+},t=>[uniqueIndex('identity_member_unique').on(t.userId,t.workspaceId),index('identity_workspace_member_idx').on(t.workspaceId),index('identity_membership_workspace_status_idx').on(t.workspaceId,t.status),index('identity_membership_user_status_idx').on(t.userId,t.status),uniqueIndex('identity_membership_invitation_token_unique').on(t.invitationTokenHash).where(sql`${t.invitationTokenHash} IS NOT NULL`)]);
 export const identitySessions=pgTable('identity_sessions',{
   id:text('id').primaryKey(),userId:text('user_id').notNull().references(()=>identityUsers.id),
   tokenHash:text('token_hash').notNull().unique(),

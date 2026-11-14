@@ -120,3 +120,22 @@ advisory transaction lock (no lockout path), both session namespaces are revoked
 suspension/session revocation, platform sessions and roles are disclosed only to ADMINISTRATION, the
 account timeline is restricted to lifecycle actions, and workspace counts only ACTIVE memberships. No push, merge or
 deployment; no production data touched.
+
+## 2026-11-14 — Workspaces & organisations (Mission 03)
+
+Extended the existing identity_workspaces/identity_memberships into a full organisation API: paginated
+organisation/member consultation with roles and lifecycle dates, invitation of existing identity
+accounts without any fake e-mail delivery (single-use hashed acceptance token, delivery explicitly
+BLOCKED), role changes, access revocation, explicit multi-workspace switching with session rotation,
+last-enabled-owner protection (including refusal to suspend the last enabled workspace owner), and
+session revocation when a member loses their last active membership. Migrations 0014 (lifecycle
+columns/indexes) and 0015 (invitation tokens) are additive; 0001–0013 untouched. No second
+organisation entity, no deletion.
+
+Verification on a disposable PostgreSQL 16.6 instance: qa:platform-organizations PASS (87 assertions:
+two organisations, cross-tenant refusal, invitations/decline/reissue/token acceptance, last-owner
+guards, workspace switching and invalidated sessions, audit, preserved rows). Regressions re-run on the
+same isolated database: qa:platform-admin PASS (70), qa:platform-users PASS (165). Sandbox note: the
+harness cannot complete DROP DATABASE (checkpoint signal denied), so teardown logged a warning and the
+disposable server was stopped and deleted manually; assertions ran against the real database.
+No push, merge or deployment.
