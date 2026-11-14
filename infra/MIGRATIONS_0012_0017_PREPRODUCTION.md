@@ -1,14 +1,6 @@
 # Additive migrations 0012–0017 on an already-populated QeyNox database
 
-**BLOCKED — do not execute the procedure below.** The SQL example depends on server-side file
-paths and `digest` support and has not been rehearsed as written. The local isolated rehearsal in
-`apps/api/scripts/qa-migration-rehearsal.ts` verifies the migration runner, checksums and a
-dump/restore, but does not certify this operator procedure. A replacement must validate the
-existing ledger and backup and be independently rehearsed before preproduction use.
-
-**Never executed by this mission.** This is the operator procedure for the preproduction database
-(already populated by the 0001–0011 foundation). Do **not** run the QA/empty-database migrator or
-`runMigrations` against a populated database: this procedure applies each additive file explicitly.
+This operator procedure upgrades an existing 0001–0011 database. It generates SQL from the exact committed Git blobs, verifies the entire existing ledger and applies 0012–0017 in one transaction under the migration advisory lock. It does not reset or delete existing data. A successful isolated PostgreSQL rehearsal is required before use.
 
 ## Scope
 
@@ -36,28 +28,16 @@ No file drops, renames or rewrites an existing column; migrations 0001–0011 ar
 - Freeze application writes during the operation (stop qeynox-api/qeynox-worker or enable maintenance).
 - Files are copied from the candidate commit, not edited locally; LF line endings preserved.
 
-## Procedure (one transaction per file)
+## Procedure (single transaction)
+
+From the clean repository at the intended release commit, after the required backup and restore test:
 
 ```sh
-# 0. Backup (required)
-pg_dump --format=custom --file=qeynox-pre-0012-$(date +%Y%m%d%H%M).dump "$DATABASE_URL"
-
-# 1. Acquisition: one migration at a time, fail closed on error
-for f in 0012_platform_administration.sql 0013_identity_user_management_indexes.sql \
-         0014_workspace_membership_lifecycle.sql 0015_invitation_acceptance_tokens.sql \
-         0016_soul_onboarding.sql 0017_support_chatwoot_links.sql; do
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 <<SQL
-    SELECT pg_advisory_xact_lock(hashtext('qeynox.schema_migrations'));
-    \i packages/persistence/migrations/$f
-    INSERT INTO schema_migrations (name, checksum)
-    VALUES ('$f', encode(digest(pg_read_file('packages/persistence/migrations/$f'), 'sha256'), 'hex'));
-SQL
-done
+python3 infra/scripts/generate-upgrade-0012-0017.py > /tmp/qeynox-upgrade-0012-0017.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /tmp/qeynox-upgrade-0012-0017.sql
 ```
 
-Notes: `pg_read_file` requires a server-side path; when psql runs locally, compute the checksum with
-`sha256sum packages/persistence/migrations/<file>` and bind it as a psql variable instead. The
-checksum must match the runner's SHA-256 (LF file bytes) or a later runner invocation will fail closed.
+The generator reads committed Git blobs, checks that exactly 0001–0017 exist and computes their SHA-256 values locally. The SQL verifies `current_database() = 'qeynox'` and that the ledger contains exactly the expected 0001–0011 names and checksums before applying any file. It rejects a mismatch or repeat invocation and rolls back the transaction on failure. The generated SQL contains no credentials. Do not change the target database to make the guard pass.
 
 ## Verification
 
@@ -89,7 +69,7 @@ be handled with the same restore strategy, not by ad-hoc edits.
 
 ## Prohibited
 
-- Running the QA migrator / empty-database `runMigrations` against this populated database.
+- Running the empty-database migrator against this populated database.
 - Rerunning 0001–0011, editing their files or resetting `schema_migrations`.
 - Applying migrations without a backup or while writes are active.
 - Executing anything automatically from the application container at startup.
