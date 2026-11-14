@@ -102,14 +102,12 @@ export function SoulOnboarding({ lang, view, facts, consents, failure }: {
     stepBody = (
       <>
         <p>{c.firstObjective}</p>
-        {!view.consent.granted ? <><Feedback title={c.consentRequired} error /><form action={consentOnboarding}>{formHidden}<input type="hidden" name="granted" value="true" /><button>{c.accept}</button></form></> : (
           <form action={createMissionFromOnboarding}>
             {formHidden}
             <label htmlFor="objective">{c.answer}</label>
             <textarea id="objective" name="objective" minLength={5} maxLength={500} rows={3} required />
             <div className="form-bottom"><button>{c.createMission}</button></div>
           </form>
-        )}
         {skipPause}
       </>
     );

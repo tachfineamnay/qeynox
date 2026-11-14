@@ -1,7 +1,6 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createOperationSchema } from '@qeynox/contracts';
 import { api, ApiError, operationSchema } from './api';
 import { locale, type Locale } from './copy';
 
@@ -72,10 +71,7 @@ export async function createMissionFromOnboarding(form: FormData): Promise<void>
   const objective = String(form.get('objective') ?? '').trim();
   let destination: string;
   try {
-    await api('/v1/soul/onboarding/complete', 'POST', { objective });
-    const input = createOperationSchema.safeParse({ goal: objective, title: objective.slice(0, 200), constraints: [] });
-    if (!input.success) back(lang, 'INVALID_INPUT');
-    const operation = operationSchema.parse(await api('/v1/operations', 'POST', input.data));
+    const operation = operationSchema.parse(await api('/v1/soul/onboarding/mission', 'POST', { objective }));
     destination = '/' + lang + '/missions/' + encodeURIComponent(operation.id);
   } catch (error) { return back(lang, errorCode(error)); }
   revalidatePath('/' + lang + '/soul');

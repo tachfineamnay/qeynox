@@ -49,7 +49,7 @@ export default async function HealthPage({ params }: { params: Promise<{ lang: s
                   {resourcesResult.value.resources.map(resource => (
                     <tr key={resource.type + '-' + resource.id}>
                       <td>{resource.name}</td><td>{resource.type}</td>
-                      <td><Badge tone={resource.status === 'running' || resource.status === 'healthy' ? 'success' : 'warning'}>{resource.status}</Badge></td>
+                      <td><Badge tone={resource.status === 'running:healthy' || resource.status === 'healthy' ? 'success' : 'warning'}>{resource.status}</Badge></td>
                       <td>{t.operationsReadOnly}</td>
                     </tr>
                   ))}

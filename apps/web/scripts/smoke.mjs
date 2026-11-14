@@ -71,7 +71,17 @@ try {
     await new Promise(resolve => process.once('SIGINT', resolve));
     process.exitCode = 0;
   } else {
-  assert.match(await page('/en'), /Your next business objective/); assertions++;
+  const home = await page('/en');
+  assert.match(home, /A useful business result, not agent theatre/); assertions++;
+  assert.match(home, /rel="canonical"/); assertions++;
+  assert.match(home, /name="description"/); assertions++;
+  for (const path of ['/en/how-it-works','/en/manifesto','/en/contact','/en/legal/notice','/en/legal/privacy','/en/legal/terms','/en/legal/cookies','/fr/how-it-works']) await page(path);
+  const sitemap = await (await fetch(`http://127.0.0.1:${port}/sitemap.xml`)).text();
+  assert.match(sitemap, /\/en\/how-it-works/); assertions++;
+  assert.match(sitemap, /\/fr\/how-it-works/); assertions++;
+  assert.doesNotMatch(sitemap, /\/mydash|\/missions|\/admin/); assertions++;
+  const robots = await (await fetch(`http://127.0.0.1:${port}/robots.txt`)).text();
+  assert.match(robots, /Disallow: \/admin/); assertions++;
   assert.match(await page('/fr'), /<html lang="fr"/); assertions++;
   assert.match(await page('/en/mydash'), /Sign in to view or save/); assertions++;
   assert.match(await page('/en/capabilities'), /Availability cannot be confirmed/); assertions++;

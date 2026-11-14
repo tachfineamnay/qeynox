@@ -103,7 +103,7 @@ export class SupportService {
     if (!link) throw new DomainError('NOT_FOUND', 'Support conversation not found');
     const detail = await this.port.getConversation(chatwootConversationId);
     if (!detail) throw new DomainError('NOT_FOUND', 'Support conversation not found');
-    return detail;
+    return { ...detail, messages: detail.messages.filter(message => message.private === false) };
   }
 
   async reply(actor: Principal, chatwootConversationId: string, content: string): Promise<SupportConversationDetail> {

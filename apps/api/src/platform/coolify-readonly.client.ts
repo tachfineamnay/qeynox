@@ -1,22 +1,27 @@
 import { DomainError } from '@qeynox/domain';
 import type { ResourceInventoryCapability, ResourceInventoryItem, ResourceInventoryPort } from '@qeynox/application';
 
-interface CoolifyConfig { readonly baseUrl: string; readonly token: string }
+interface CoolifyConfig { readonly baseUrl: string; readonly token: string; readonly project: string; readonly environment: string }
 interface CoolifyResource { readonly id: string; readonly type: 'SERVER' | 'APPLICATION' | 'SERVICE'; readonly name: string; readonly status: string; readonly fqdn: string | null }
 
 function readConfig(env: NodeJS.ProcessEnv): { readonly config: CoolifyConfig | null; readonly missing: readonly string[] } {
   const base = (env.QEYNOX_COOLIFY_BASE_URL ?? '').trim();
   const token = (env.QEYNOX_COOLIFY_API_TOKEN ?? '').trim();
+  const project = (env.QEYNOX_COOLIFY_PROJECT_UUID ?? '').trim();
+  const environment = (env.QEYNOX_COOLIFY_ENVIRONMENT ?? '').trim();
   const missing: string[] = [];
   if (!base) missing.push('QEYNOX_COOLIFY_BASE_URL');
   if (!token) missing.push('QEYNOX_COOLIFY_API_TOKEN');
+  if (!project) missing.push('QEYNOX_COOLIFY_PROJECT_UUID');
+  if (!environment) missing.push('QEYNOX_COOLIFY_ENVIRONMENT');
   if (missing.length) return { config: null, missing };
   let url: URL;
   try { url = new URL(base); } catch { return { config: null, missing: ['QEYNOX_COOLIFY_BASE_URL_INVALID'] }; }
   const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
   if (!(url.protocol === 'https:' || (url.protocol === 'http:' && loopback))) return { config: null, missing: ['QEYNOX_COOLIFY_BASE_URL_INSECURE'] };
   if (url.username || url.password || url.search || url.hash) return { config: null, missing: ['QEYNOX_COOLIFY_BASE_URL_INVALID'] };
-  return { config: { baseUrl: base.replace(/\/+$/, ''), token }, missing: [] };
+  if (!/^[A-Za-z0-9_-]+$/.test(project) || !/^[A-Za-z0-9_-]+$/.test(environment)) return { config: null, missing: ['QEYNOX_COOLIFY_SCOPE_INVALID'] };
+  return { config: { baseUrl: base.replace(/\/+$/, ''), token, project, environment }, missing: [] };
 }
 
 function asArray(value: unknown): unknown[] {
@@ -53,6 +58,7 @@ export class CoolifyReadOnlyClient implements ResourceInventoryPort {
     try {
       response = await fetch(this.config.baseUrl + '/api/v1' + path, {
         method: 'GET',
+        redirect: 'error',
         headers: { authorization: 'Bearer ' + this.config.token, accept: 'application/json' },
         signal: AbortSignal.timeout(10_000),
       });
@@ -79,8 +85,13 @@ export class CoolifyReadOnlyClient implements ResourceInventoryPort {
   async list(): Promise<{ readonly capability: ResourceInventoryCapability; readonly resources: readonly ResourceInventoryItem[] }> {
     if (!this.config) return { capability: this.capability('NOT_CONFIGURED', this.missing.join('|')), resources: [] };
     try {
-      const [servers, applications, services] = await Promise.all([this.get('/servers'), this.get('/applications'), this.get('/services')]);
-      const resources = [...this.items(servers, 'SERVER'), ...this.items(applications, 'APPLICATION'), ...this.items(services, 'SERVICE')];
+      const raw = await this.get('/projects/' + encodeURIComponent(this.config.project) + '/' + encodeURIComponent(this.config.environment));
+      if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new DomainError('UNAVAILABLE', 'Coolify environment response invalid');
+      const env = raw as Record<string, unknown>;
+      if ((env.name !== this.config.environment && env.uuid !== this.config.environment) || !Array.isArray(env.applications) || !Array.isArray(env.services)) {
+        throw new DomainError('UNAVAILABLE', 'Coolify environment inventory is not supported by this API');
+      }
+      const resources = [...this.items(env.applications, 'APPLICATION'), ...this.items(env.services, 'SERVICE')];
       return { capability: this.capability('CONFIGURED', null), resources };
     } catch (error) {
       const reason = error instanceof DomainError ? error.message : 'COOLIFY_API_UNAVAILABLE';

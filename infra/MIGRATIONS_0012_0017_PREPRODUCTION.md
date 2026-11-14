@@ -1,5 +1,11 @@
 # Additive migrations 0012–0017 on an already-populated QeyNox database
 
+**BLOCKED — do not execute the procedure below.** The SQL example depends on server-side file
+paths and `digest` support and has not been rehearsed as written. The local isolated rehearsal in
+`apps/api/scripts/qa-migration-rehearsal.ts` verifies the migration runner, checksums and a
+dump/restore, but does not certify this operator procedure. A replacement must validate the
+existing ledger and backup and be independently rehearsed before preproduction use.
+
 **Never executed by this mission.** This is the operator procedure for the preproduction database
 (already populated by the 0001–0011 foundation). Do **not** run the QA/empty-database migrator or
 `runMigrations` against a populated database: this procedure applies each additive file explicitly.

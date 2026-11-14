@@ -73,4 +73,10 @@ export class SoulOnboardingController {
   complete(@Req() request: Request, @Body() body: unknown) {
     return this.onboarding.complete(principal(request), completeSchema.parse(body ?? {}).objective);
   }
+
+  @Post('mission')
+  createMission(@Req() request: Request, @Body() body: unknown) {
+    const input = z.object({ objective: z.string().trim().min(5).max(500) }).parse(body);
+    return this.onboarding.createFirstMission(principal(request), input.objective);
+  }
 }

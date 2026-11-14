@@ -162,3 +162,7 @@ No push, merge or deployment.
 ## Independent release audit (2026-11-14)
 
 **NO-GO**: the candidate is not certified for main. The current evidence and remaining blockers supersede any broader implication of earlier mission status entries; see [FINAL_REPAIR_CERTIFICATION_2026-11-14.md](FINAL_REPAIR_CERTIFICATION_2026-11-14.md).
+
+## Final closeout continuation (2026-11-14)
+
+The latest targeted tests and outstanding release gates are recorded in [FINAL_CLOSEOUT_2026-11-14.md](FINAL_CLOSEOUT_2026-11-14.md). MAIN and PREPRODUCTION remain **NO-GO**; Chatwoot is intentionally NOT_CONFIGURED pending safe reconciliation.

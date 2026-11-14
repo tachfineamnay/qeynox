@@ -45,7 +45,7 @@ function asIso(value: unknown): string | null {
 function payloadOf(body: unknown): unknown {
   const root = asRecord(body);
   const data = asRecord(root.data);
-  return data.payload ?? root.payload ?? data;
+  return data.payload ?? root.payload ?? (root.data ?? body);
 }
 function normalizeMessage(raw: unknown): SupportMessage {
   const value = asRecord(raw);
@@ -54,7 +54,7 @@ function normalizeMessage(raw: unknown): SupportMessage {
     id: asText(value.id) ?? randomUUID(),
     content: asText(value.content) ?? '',
     messageType: asText(value.message_type) ?? 'unknown',
-    private: value.private === true,
+    private: value.private !== false,
     createdAt: asIso(value.created_at) ?? new Date(0).toISOString(),
     sender: { id: asText(sender.id), name: asText(sender.name), type: asText(sender.type) },
   };
@@ -101,9 +101,8 @@ export class ChatwootClient implements ChatwootPort {
   constructor(env: NodeJS.ProcessEnv = process.env) {
     const config = readConfig(env);
     this.config = config.config;
-    this.capability = config.config === null
-      ? { status: 'NOT_CONFIGURED', reason: config.missing.join('|'), inboxConfigured: false, webhooksRequired: false }
-      : { status: 'CONFIGURED', reason: null, inboxConfigured: true, webhooksRequired: false };
+    // A configured token alone cannot guarantee recovery from ambiguous remote writes.
+    this.capability = { status: 'NOT_CONFIGURED', reason: config.config === null ? config.missing.join('|') : 'CHATWOOT_RECONCILIATION_UNVERIFIED', inboxConfigured: config.config !== null, webhooksRequired: false };
   }
 
   private requireConfig(): ChatwootConfig {
@@ -120,10 +119,12 @@ export class ChatwootClient implements ChatwootPort {
         ...init,
         headers: {
           'content-type': 'application/json',
+          authorization: 'Bearer ' + config.token,
           api_access_token: config.token,
           ...(init.headers ?? {}),
         },
         signal: AbortSignal.timeout(10_000),
+        redirect: 'error',
       });
     } catch { throw new DomainError('UNAVAILABLE', 'Chatwoot API is unreachable'); }
     const raw = await response.text();
@@ -169,14 +170,8 @@ export class ChatwootClient implements ChatwootPort {
       const conversationResponse = await this.request('/conversations/' + encodeURIComponent(chatwootConversationId));
       const rawConversation = payloadOf(conversationResponse.body);
       const conversation = normalizeConversation(rawConversation);
-      let messages: readonly SupportMessage[] = [];
-      try {
-        const messagesResponse = await this.request('/conversations/' + encodeURIComponent(chatwootConversationId) + '/messages');
-        const rawMessages = payloadOf(messagesResponse.body);
-        messages = asArray(rawMessages).map(normalizeMessage);
-      } catch {
-        messages = asArray(asRecord(rawConversation).messages).map(normalizeMessage);
-      }
+      const messagesResponse = await this.request('/conversations/' + encodeURIComponent(chatwootConversationId) + '/messages');
+      const messages = asArray(payloadOf(messagesResponse.body)).map(normalizeMessage);
       return { conversation, messages };
     } catch (error) {
       if (error instanceof DomainError && error.message.includes('(404)')) return null;

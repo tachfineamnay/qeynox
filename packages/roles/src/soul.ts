@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
 import {
   DomainError, contextSubset, newId,
   SOUL_FIRST_OBJECTIVE_FACT_KEY, SOUL_ONBOARDING_CONTENT_STEPS, SOUL_ONBOARDING_FACT_KEYS,
@@ -6,12 +7,14 @@ import {
   type Consent, type ID, type Principal, type SoulOnboardingContentStep, type SoulOnboardingDisplayStatus,
   type SoulOnboardingRecord, type SoulOnboardingStep, type UserContext,
 } from '@qeynox/domain';
-import { QeyNoxStore, consents } from '@qeynox/persistence';
+import { QeyNoxStore, consents, soulOnboarding, commandIds, type QeyNoxDatabase } from '@qeynox/persistence';
 import type { EnginePort, EngineOutcome } from '@qeynox/engine';
 import { AgentProfileStore } from './profiles';
 
 export class SoulService {
   constructor(private readonly store:QeyNoxStore,private readonly profiles:AgentProfileStore,private readonly engine:EnginePort) {}
+
+  withStore(store: QeyNoxStore): SoulService { return new SoulService(store, this.profiles, this.engine); }
 
   async grantConsent(actor:Principal,purpose:string,scopes:readonly string[],expiresAt?:string):Promise<Consent> {
     if(!scopes.length||!purpose.trim())throw new DomainError('INVALID_INPUT','Consent must name purpose and scopes');
@@ -115,7 +118,7 @@ function onboardQuestion(step: SoulOnboardingStep): SoulOnboardingQuestionView |
   return {
     step, key: onboardingQuestionKeys[step],
     allowSkip: step !== 'CONSENT',
-    requiresConsent: (SOUL_ONBOARDING_CONTENT_STEPS as readonly string[]).includes(step) || step === 'FIRST_OBJECTIVE',
+    requiresConsent: (SOUL_ONBOARDING_CONTENT_STEPS as readonly string[]).includes(step),
     multiple: step === 'OBJECTIVES' || step === 'PREFERENCES',
   };
 }
@@ -185,12 +188,19 @@ export class SoulOnboardingService {
 
   async grantOnboardingConsent(actor: Principal, granted: boolean): Promise<SoulOnboardingView> {
     const record = await this.requireMutable(actor);
-    if (!granted) return this.pause(actor);
+    if (!granted) {
+      if (record.step !== 'CONSENT') return this.pause(actor);
+      const next: SoulOnboardingRecord = { ...record, step: 'FIRST_OBJECTIVE', skippedSteps: [...new Set([...record.skippedSteps, ...SOUL_ONBOARDING_CONTENT_STEPS])], updatedAt: new Date().toISOString() };
+      await this.store.putOnboarding(next);
+      return this.viewOf(actor, next);
+    }
     const consent = await this.soul.grantConsent(actor, onboardingPurpose, [...onboardingScopes]);
     const now = new Date().toISOString();
     const withConsent: SoulOnboardingRecord = { ...record, consentId: consent.id, updatedAt: now };
     // Restoring a revoked consent while answering a later question keeps the current question.
-    return record.step === 'CONSENT' ? this.advance(actor, withConsent, now) : this.viewOf(actor, withConsent);
+    if (record.step === 'CONSENT') return this.advance(actor, withConsent, now);
+    await this.store.putOnboarding(withConsent);
+    return this.viewOf(actor, withConsent);
   }
 
   async pause(actor: Principal): Promise<SoulOnboardingView> {
@@ -232,14 +242,36 @@ export class SoulOnboardingService {
     if (trimmed.length > 0) {
       if (trimmed.length < 5 || trimmed.length > 500) throw new DomainError('INVALID_INPUT', 'First objective must be 5–500 characters');
       const consent = await this.activeConsent(actor, record);
-      if (!consent) throw new DomainError('DENIED', 'Explicit consent is required before the objective is memorised');
-      await this.soul.saveFact(actor, SOUL_FIRST_OBJECTIVE_FACT_KEY, trimmed, consent.id);
+      if (consent) await this.soul.saveFact(actor, SOUL_FIRST_OBJECTIVE_FACT_KEY, trimmed, consent.id);
       saved = trimmed;
     }
     const now = new Date().toISOString();
     const next: SoulOnboardingRecord = { ...record, status: 'COMPLETED', step: 'DONE', completedAt: now, updatedAt: now };
     await this.store.putOnboarding(next);
     return { view: await this.viewOf(actor, next), objective: saved };
+  }
+
+  async createFirstMission(actor: Principal, objective: string) {
+    const text = objective.trim();
+    if (text.length < 5 || text.length > 500) throw new DomainError('INVALID_INPUT', 'First objective must be 5–500 characters');
+    const digest = createHash('sha256').update(text).digest('hex');
+    return this.store.db.transaction(async tx => {
+      const [row] = await tx.select().from(soulOnboarding)
+        .where(and(eq(soulOnboarding.workspaceId, actor.workspaceId), eq(soulOnboarding.userId, actor.userId))).for('update').limit(1);
+      if (!row) throw new DomainError('NOT_FOUND', 'Onboarding has not started');
+      const key = 'soul:first-mission:' + row.id;
+      const [prior] = await tx.select().from(commandIds).where(and(eq(commandIds.workspaceId, actor.workspaceId), eq(commandIds.commandKey, key))).limit(1);
+      const scoped = new QeyNoxStore(tx as unknown as QeyNoxDatabase);
+      if (prior) {
+        if (prior.outcome.objectiveDigest !== digest) throw new DomainError('CONFLICT', 'First mission already created with a different objective');
+        return scoped.getOperation(actor, prior.operationId as ID);
+      }
+      if (row.status !== 'IN_PROGRESS' || row.step !== 'FIRST_OBJECTIVE') throw new DomainError('INVALID_STATE', 'Onboarding must be ready for the first mission');
+      const operation = await scoped.createOperation(actor, text.slice(0, 200), text, []);
+      await new SoulOnboardingService(scoped, this.soul.withStore(scoped)).complete(actor, text);
+      await tx.insert(commandIds).values({ id: newId(), workspaceId: actor.workspaceId, operationId: operation.id, commandKey: key, outcome: { objectiveDigest: digest }, createdAt: new Date().toISOString() });
+      return operation;
+    });
   }
 
   async adminSummaries(userId: ID): Promise<readonly SoulOnboardingAdminSummary[]> {
