@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import '../../globals.css';
+import '../globals.css';
 
 export const metadata: Metadata = {
   title: 'QeyNox Control',

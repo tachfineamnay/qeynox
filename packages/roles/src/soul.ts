@@ -242,7 +242,7 @@ export class SoulOnboardingService {
     return { view: await this.viewOf(actor, next), objective: saved };
   }
 
-  async adminSummaries(userId: string): Promise<readonly SoulOnboardingAdminSummary[]> {
+  async adminSummaries(userId: ID): Promise<readonly SoulOnboardingAdminSummary[]> {
     const records = await this.store.listOnboardingForUser(userId);
     return records.map(record => ({
       workspaceId: record.workspaceId, status: record.status, step: record.step,

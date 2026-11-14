@@ -57,6 +57,7 @@ export const platformAdminAudit = pgTable('platform_admin_audit', {
   index('platform_audit_time_idx').on(t.happenedAt),
   index('platform_audit_actor_idx').on(t.actorUserId, t.happenedAt),
   index('platform_audit_action_idx').on(t.action, t.happenedAt),
+  index('platform_audit_target_idx').on(t.targetType, t.targetId, t.happenedAt),
   check('platform_audit_outcome_range', sql`${t.outcome} IN ('SUCCESS', 'DENIED', 'ERROR')`),
   check('platform_audit_action_present', sql`length(${t.action}) > 0`),
 ]);

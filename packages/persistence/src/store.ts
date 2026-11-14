@@ -167,10 +167,10 @@ export class QeyNoxStore {
 
 function onboardingFromRow(row: typeof soulOnboarding.$inferSelect): SoulOnboardingRecord {
   return {
-    id: row.id, userId: row.userId, workspaceId: row.workspaceId,
+    id: row.id as ID, userId: row.userId as ID, workspaceId: row.workspaceId as ID,
     status: row.status as SoulOnboardingStatus, step: row.step as SoulOnboardingStep,
     locale: row.locale === 'fr' ? 'fr' : 'en',
-    consentId: row.consentId ?? undefined,
+    consentId: row.consentId === null ? undefined : row.consentId as ID,
     skippedSteps: (row.skippedSteps ?? []) as SoulOnboardingStep[],
     startedAt: row.startedAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
     completedAt: row.completedAt?.toISOString(), dismissedAt: row.dismissedAt?.toISOString(),

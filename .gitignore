@@ -13,3 +13,6 @@ coverage/
 .tmp/
 .cache/
 pnpm-debug.log
+
+# Local pnpm content-addressable store (never committed)
+.pnpm-store/

@@ -118,7 +118,6 @@ export class ChatwootClient implements ChatwootPort {
     try {
       response = await fetch(url, {
         ...init,
-        cache: 'no-store',
         headers: {
           'content-type': 'application/json',
           api_access_token: config.token,

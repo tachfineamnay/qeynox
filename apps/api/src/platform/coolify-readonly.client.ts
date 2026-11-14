@@ -53,7 +53,6 @@ export class CoolifyReadOnlyClient implements ResourceInventoryPort {
     try {
       response = await fetch(this.config.baseUrl + '/api/v1' + path, {
         method: 'GET',
-        cache: 'no-store',
         headers: { authorization: 'Bearer ' + this.config.token, accept: 'application/json' },
         signal: AbortSignal.timeout(10_000),
       });

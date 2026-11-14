@@ -5,13 +5,13 @@ import { identityMemberships, identityUsers, identityWorkspaces } from './identi
 import { supportChatwootLinks } from './support-schema';
 
 export interface SupportLinkRow {
-  readonly id: string;
-  readonly userId: string;
-  readonly workspaceId: string;
+  readonly id: ID;
+  readonly userId: ID;
+  readonly workspaceId: ID;
   readonly chatwootContactId: string;
   readonly chatwootConversationId: string;
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
+  readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
 export interface SupportActorProfileRow {
@@ -22,9 +22,9 @@ export interface SupportActorProfileRow {
 
 function toRow(row: typeof supportChatwootLinks.$inferSelect): SupportLinkRow {
   return {
-    id: row.id, userId: row.userId, workspaceId: row.workspaceId,
+    id: row.id as ID, userId: row.userId as ID, workspaceId: row.workspaceId as ID,
     chatwootContactId: row.chatwootContactId, chatwootConversationId: row.chatwootConversationId,
-    createdAt: row.createdAt, updatedAt: row.updatedAt,
+    createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
   };
 }
 

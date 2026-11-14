@@ -63,7 +63,7 @@ export class PlatformOperationsService {
     private readonly runtime: PlatformOperationRuntimeReader,
     private readonly platform: PlatformAdminService,
     private readonly deployment: DeploymentInfoPort,
-    private readonly resources: ResourceInventoryPort,
+    private readonly inventory: ResourceInventoryPort,
     private readonly now: () => Date = () => new Date(),
   ) {}
 
@@ -109,7 +109,7 @@ export class PlatformOperationsService {
   async releases(principal: PlatformPrincipal): Promise<{ readonly version: DeploymentInfoView; readonly lastCheck: string | null; readonly migrations: PlatformHealthFacts['migrations'] | null; readonly anomalies: PlatformAnomalyFacts | null; readonly resources: ResourceInventoryCapability }> {
     await this.platform.requirePermission(principal, 'OPERATIONS', { ...operationsRead, action: 'READ_PLATFORM_RELEASES' });
     const version = this.deployment.info();
-    const inventory = await this.resources.list();
+    const inventory = await this.inventory.list();
     let migrations: PlatformHealthFacts['migrations'] | null = null;
     let anomalies: PlatformAnomalyFacts | null = null;
     try { migrations = (await this.store.healthFacts()).migrations; } catch { migrations = null; }
@@ -119,6 +119,6 @@ export class PlatformOperationsService {
 
   async resources(principal: PlatformPrincipal): Promise<{ readonly capability: ResourceInventoryCapability; readonly resources: readonly ResourceInventoryItem[] }> {
     await this.platform.requirePermission(principal, 'OPERATIONS', { ...operationsRead, action: 'READ_PLATFORM_RESOURCES' });
-    return this.resources.list();
+    return this.inventory.list();
   }
 }

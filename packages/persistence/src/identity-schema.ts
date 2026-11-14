@@ -6,7 +6,7 @@ export const identityUsers = pgTable('identity_users', {
   locale: text('locale').notNull().default('en'),
   createdAt: timestamp('created_at', { withTimezone:true }).notNull().defaultNow(),
   disabledAt: timestamp('disabled_at', {withTimezone:true}),
-});
+},t=>[index('identity_user_created_idx').on(t.createdAt,t.id)]);
 export const identityCredentials = pgTable('identity_credentials',{
   userId:text('user_id').primaryKey().references(()=>identityUsers.id),
   salt:text('salt').notNull(), passwordHash:text('password_hash').notNull(),
@@ -34,9 +34,9 @@ export const identitySessions=pgTable('identity_sessions',{
   revokedAt:timestamp('revoked_at',{withTimezone:true}),
   createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
   lastUsedAt:timestamp('last_used_at',{withTimezone:true}),
-},t=>[index('identity_session_expiry_idx').on(t.expiresAt)]);
+},t=>[index('identity_session_expiry_idx').on(t.expiresAt),index('identity_session_user_idx').on(t.userId)]);
 export const identityAudit=pgTable('identity_audit',{
   id:text('id').primaryKey(),userId:text('user_id'),workspaceId:text('workspace_id'),
   action:text('action').notNull(),outcome:text('outcome').notNull(),
   happenedAt:timestamp('happened_at',{withTimezone:true}).notNull().defaultNow(),
-});
+},t=>[index('identity_audit_user_idx').on(t.userId,t.happenedAt)]);

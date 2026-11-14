@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { PlatformAdminService, PlatformOrganizationsService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
+import { PlatformAdminService, PlatformOperationsService, PlatformOrganizationsService, PlatformSupportService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
 import { PlatformAdminStore, PlatformOperationsStore, PlatformUserStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection } from '@qeynox/persistence';
 import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';

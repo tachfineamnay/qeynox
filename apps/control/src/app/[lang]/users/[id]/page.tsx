@@ -55,14 +55,14 @@ export default async function UserDetailPage({ params, searchParams }: { params:
               <h2>{t.workspaces}</h2>
               {detailResult.value.workspaces.length === 0 ? <Empty>{t.noResults}</Empty> : (
                 <div className="table-wrap"><table>
-                  <thead><tr><th>{t.workspace}</th><th>{t.role}</th><th>{t.membershipStatus}</th><th>{t.joinedAt}</th></tr></thead>
+                  <thead><tr><th>{t.workspace}</th><th>{t.role}</th><th>{t.membershipStatus}</th><th>{t.createdAt}</th></tr></thead>
                   <tbody>
                     {detailResult.value.workspaces.map(workspace => (
                       <tr key={workspace.workspaceId}>
                         <td><Link href={'/' + lang + '/organizations/' + encodeURIComponent(workspace.workspaceId)}>{workspace.name}</Link></td>
                         <td>{workspace.role}</td>
                         <td>{workspace.membershipStatus}</td>
-                        <td>{workspace.joinedAt ? new Date(workspace.joinedAt).toLocaleDateString(lang) : '—'}</td>
+                        <td>{workspace.workspaceCreatedAt ? new Date(workspace.workspaceCreatedAt).toLocaleDateString(lang) : '—'}</td>
                       </tr>
                     ))}
                   </tbody>

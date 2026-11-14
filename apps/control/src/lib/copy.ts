@@ -186,7 +186,7 @@ const en = {
   onboardingStep: "Step",
   onboardingStarted: "Started",
   onboardingCompleted: "Completed",
-} as const;
+};
 
 const fr: typeof en = {
   brand: "QeyNox Control",
