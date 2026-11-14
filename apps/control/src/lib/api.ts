@@ -80,14 +80,14 @@ export async function requirePlatformMe(lang: string): Promise<PlatformMeView> {
     return await platformMe();
   } catch (error) {
     if (error instanceof ApiError && (error.status === 403 || error.code === 'SESSION_REQUIRED' || error.code === 'DENIED')) {
-      redirect('/admin/' + lang + '/account?expired=1');
+      redirect('/' + lang + '/account?expired=1');
     }
     throw error;
   }
 }
 
 export function controlPath(lang: string, suffix = ''): string {
-  return '/admin/' + lang + (suffix.length ? suffix : '');
+  return '/' + lang + (suffix.length ? suffix : '');
 }
 
 export type ApiResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly code: string };

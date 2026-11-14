@@ -23,6 +23,11 @@ function withDone(lang: 'en' | 'fr', suffix: string): never {
   redirect(localePath(lang, suffix) + separator + 'done=1');
 }
 function errorCode(error: unknown): string { return error instanceof ApiError ? error.code : 'UNKNOWN_OUTCOME'; }
+function revalidate(lang: 'en' | 'fr', suffix: string): void {
+  // Revalidate both the App Router path and the public (basePath-prefixed) cache key.
+  revalidatePath(controlPath(lang, suffix));
+  revalidatePath('/admin' + controlPath(lang, suffix));
+}
 
 export async function loginAction(form: FormData): Promise<void> {
   const lang = langOf(form);
@@ -60,7 +65,7 @@ export async function suspendUserAction(form: FormData): Promise<void> {
   if (!reason.success) withError(lang, '/users/' + encodeURIComponent(userId), 'INVALID_INPUT');
   try { await api('/v1/platform/users/' + encodeURIComponent(userId) + '/suspend', 'POST', { reason: reason.data }); }
   catch (error) { withError(lang, '/users/' + encodeURIComponent(userId), errorCode(error)); }
-  revalidatePath(localePath(lang, '/users/' + userId));
+  revalidate(lang, '/users/' + userId);
   withDone(lang, '/users/' + encodeURIComponent(userId));
 }
 
@@ -71,7 +76,7 @@ export async function reactivateUserAction(form: FormData): Promise<void> {
   if (!reason.success) withError(lang, '/users/' + encodeURIComponent(userId), 'INVALID_INPUT');
   try { await api('/v1/platform/users/' + encodeURIComponent(userId) + '/reactivate', 'POST', { reason: reason.data }); }
   catch (error) { withError(lang, '/users/' + encodeURIComponent(userId), errorCode(error)); }
-  revalidatePath(localePath(lang, '/users/' + userId));
+  revalidate(lang, '/users/' + userId);
   withDone(lang, '/users/' + encodeURIComponent(userId));
 }
 
@@ -82,7 +87,7 @@ export async function revokeUserSessionsAction(form: FormData): Promise<void> {
   if (!reason.success) withError(lang, '/users/' + encodeURIComponent(userId), 'INVALID_INPUT');
   try { await api('/v1/platform/users/' + encodeURIComponent(userId) + '/sessions/revoke', 'POST', { reason: reason.data }); }
   catch (error) { withError(lang, '/users/' + encodeURIComponent(userId), errorCode(error)); }
-  revalidatePath(localePath(lang, '/users/' + userId));
+  revalidate(lang, '/users/' + userId);
   withDone(lang, '/users/' + encodeURIComponent(userId));
 }
 
@@ -97,7 +102,7 @@ export async function changeRoleAction(form: FormData): Promise<void> {
   try {
     await api('/v1/platform/organizations/' + encodeURIComponent(workspaceId) + '/members/' + encodeURIComponent(membershipId) + '/role', 'POST', { role: role.data, reason: reason.data });
   } catch (error) { withError(lang, suffix, errorCode(error)); }
-  revalidatePath(localePath(lang, suffix));
+  revalidate(lang, suffix);
   withDone(lang, suffix);
 }
 
@@ -111,7 +116,7 @@ export async function revokeMembershipAction(form: FormData): Promise<void> {
   try {
     await api('/v1/platform/organizations/' + encodeURIComponent(workspaceId) + '/members/' + encodeURIComponent(membershipId) + '/revoke', 'POST', { reason: reason.data });
   } catch (error) { withError(lang, suffix, errorCode(error)); }
-  revalidatePath(localePath(lang, suffix));
+  revalidate(lang, suffix);
   withDone(lang, suffix);
 }
 
@@ -128,7 +133,7 @@ export async function inviteMemberAction(previous: InviteState, form: FormData):
       invitationToken?: string; invitationExpiresAt?: string;
       delivery?: { email?: string; reason?: string };
     };
-    revalidatePath(localePath(lang, '/organizations/' + workspaceId));
+    revalidate(lang, '/organizations/' + workspaceId);
     return {
       status: 'ok',
       token: result.invitationToken,

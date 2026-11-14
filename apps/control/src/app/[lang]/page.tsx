@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { requirePlatformMe, tryApi } from '../../../lib/api';
-import { copy, locale } from '../../../lib/copy';
-import { can, CONSULTATION, LIFECYCLE_READ, READ_ORGANIZATIONS, READ_USERS } from '../../../lib/permissions';
-import { Badge, Card, Notice, PageHeader, permissionLabels, Shell } from '../../../components/shell';
-import type { AuditEntryView, CapabilitiesView } from '../../../lib/types';
+import { requirePlatformMe, tryApi } from '../../lib/api';
+import { copy, locale } from '../../lib/copy';
+import { can, CONSULTATION, LIFECYCLE_READ, READ_ORGANIZATIONS, READ_USERS } from '../../lib/permissions';
+import { Badge, Card, Notice, PageHeader, permissionLabels, Shell } from '../../components/shell';
+import type { AuditEntryView, CapabilitiesView } from '../../lib/types';
 
 export default async function DashboardPage({ params }: { params: Promise<{ lang: string }> }) {
   const lang = locale((await params).lang);
@@ -12,9 +12,9 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
   const auditResult = can(me.permissions, CONSULTATION) ? await tryApi<AuditEntryView[]>('/v1/platform/audit?limit=8') : null;
   const capabilitiesResult = can(me.permissions, LIFECYCLE_READ) ? await tryApi<CapabilitiesView>('/v1/platform/users/capabilities') : null;
   const links = [
-    { allowed: can(me.permissions, READ_USERS), href: '/admin/' + lang + '/users', label: t.navUsers, intro: t.usersIntro },
-    { allowed: can(me.permissions, READ_ORGANIZATIONS), href: '/admin/' + lang + '/organizations', label: t.navOrganizations, intro: t.organizationsIntro },
-    { allowed: can(me.permissions, CONSULTATION), href: '/admin/' + lang + '/audit', label: t.navAudit, intro: t.auditIntro },
+    { allowed: can(me.permissions, READ_USERS), href: '/' + lang + '/users', label: t.navUsers, intro: t.usersIntro },
+    { allowed: can(me.permissions, READ_ORGANIZATIONS), href: '/' + lang + '/organizations', label: t.navOrganizations, intro: t.organizationsIntro },
+    { allowed: can(me.permissions, CONSULTATION), href: '/' + lang + '/audit', label: t.navAudit, intro: t.auditIntro },
   ].filter(link => link.allowed);
 
   return (
@@ -86,7 +86,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ lang
               </table></div>
             )
           ) : <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + auditResult.code}</Notice>}
-          <p className="pager"><Link href={'/admin/' + lang + '/audit'}>{t.navAudit}</Link></p>
+          <p className="pager"><Link href={'/' + lang + '/audit'}>{t.navAudit}</Link></p>
         </Card>
       ) : null}
       <p className="muted">{t.destructiveHint}</p>

@@ -1,0 +1,45 @@
+{
+  "$comment": "Prepared, NOT created and NOT deployed. Apply only after an explicit operator instruction and after the candidate branch has been pushed to the same GitHub repository.",
+  "application": {
+    "name": "qeynox-control",
+    "description": "QeyNox Control platform administration desk (Next.js basePath /admin)",
+    "project_uuid": "gm3bynlnlsrkikanyzvxfew7",
+    "environment_name": "preproduction",
+    "environment_uuid": "girv53ul8pmfikflpxf9j2re",
+    "server_uuid": "l7k1ng0ir694dr1ftyipqnby",
+    "destination_uuid": "vim4ypxtuvsidpfanzu6qfqa",
+    "git_repository": "tachfineamnay/qeynox",
+    "git_branch": "feat/workspaces-organizations",
+    "build_pack": "dockerfile",
+    "dockerfile_location": "/infra/Dockerfile.control",
+    "base_directory": "/",
+    "ports_exposes": "3001",
+    "domains": ["https://qeynox.io/admin"],
+    "health_check_enabled": true,
+    "health_check_path": "/admin/en",
+    "health_check_port": "3001",
+    "health_check_method": "GET",
+    "health_check_scheme": "http",
+    "health_check_return_code": 200,
+    "instant_deploy": false,
+    "custom_network_aliases": ["qeynox-control"],
+    "env_keys": [
+      { "key": "NODE_ENV", "is_runtime": true, "is_buildtime": false },
+      { "key": "QEYNOX_DEPLOYMENT_ENV", "is_runtime": true, "is_buildtime": false },
+      { "key": "QEYNOX_PLATFORM_API_URL", "is_runtime": true, "is_buildtime": false },
+      { "key": "QEYNOX_PUBLIC_URL", "is_runtime": true, "is_buildtime": false }
+    ],
+    "env_values_to_set_in_coolify": {
+      "NODE_ENV": "production",
+      "QEYNOX_DEPLOYMENT_ENV": "preproduction",
+      "QEYNOX_PLATFORM_API_URL": "https://qeynox.io",
+      "QEYNOX_PUBLIC_URL": "https://qeynox.io"
+    },
+    "blockers": [
+      "The candidate branch feat/workspaces-organizations on origin currently points to 7190819 and does not contain apps/control (local commits 938df0b..d2be292 and the release commit are not pushed).",
+      "Creating this resource before the branch is pushed would build a commit without infra/Dockerfile.control and fail.",
+      "Coolify path-domain support for https://qeynox.io/admin must be verified; otherwise add the documented Traefik PathPrefix router on the same host without touching the existing qeynox-web router.",
+      "No deployment, no instant_deploy, no restart and no production change is authorized by this file."
+    ]
+  }
+}

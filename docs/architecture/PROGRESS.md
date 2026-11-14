@@ -222,3 +222,24 @@ qeynox.io routing (next.config redirects) were not changed.
 
 NOT VERIFIED (FAST MODE): no build, crawl, Lighthouse audit, typecheck or visual certification was
 executed. No push, merge or deployment.
+
+## 2026-11-14 — Release preparation: Control Docker, /admin routing, migrations (Mission 09)
+
+Prepared the 01–08 candidate for integration without deploying. Inspected the real qeynox-web Coolify
+resource read-only (project Qeynox, environment preproduction, branch main/commit 541a60d, Dockerfile
+/infra/Dockerfile.web, port 3000, https://qeynox.io, health /en) and prepared a declarative
+qeynox-control application payload (same GitHub repository, /infra/Dockerfile.control, port 3001,
+domain https://qeynox.io/admin, health /admin/en, instant_deploy false, env keys only) plus manual
+build/deploy/rollback documentation. QeyNox Control now uses Next.js basePath "/admin" with its route
+tree at /[lang] so pages, server actions and /_next assets all live under /admin; the reverse proxy
+only needs Host(qeynox.io) && PathPrefix(/admin) -> qeynox-control:3001, leaving web, private API and
+signed S3 download routes untouched. Added infra/Dockerfile.control with the same pinned Node/pnpm
+toolchain and added the apps/control importer to the pnpm lockfile for frozen installs. No PostgreSQL,
+Redis, Hatchet, Hermes, storage, API or existing preproduction service is created or modified; no
+Coolify resource/deployment, proxy change or migration was executed. Prepared the additive
+migration procedure for populated databases (0012–0017 explicitly, backup/ledger/verification/
+rollback; empty-database QA migrator prohibited). Static checks over 91 changed/untracked TypeScript
+files: syntax OK, relative imports resolve. Candidate commits 01–03 are preserved.
+
+NOT VERIFIED: no Docker build, candidate typecheck/build, migration execution, proxy validation or
+deployment. The candidate branch is not pushed; origin lacks apps/control. No push/merge/deployment.

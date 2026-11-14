@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { requirePlatformMe, tryApi } from '../../../../../lib/api';
-import { copy, locale } from '../../../../../lib/copy';
-import { can, OPERATIONS } from '../../../../../lib/permissions';
-import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../../components/shell';
-import type { OperationDetailView } from '../../../../../lib/types';
+import { requirePlatformMe, tryApi } from '../../../../lib/api';
+import { copy, locale } from '../../../../lib/copy';
+import { can, OPERATIONS } from '../../../../lib/permissions';
+import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
+import type { OperationDetailView } from '../../../../lib/types';
 
 export default async function OperationDetailPage({ params }: { params: Promise<{ lang: string; id: string }> }) {
   const resolved = await params;
@@ -14,7 +14,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const result = allowed ? await tryApi<OperationDetailView>('/v1/platform/operations/' + encodeURIComponent(resolved.id)) : null;
   return (
     <Shell lang={lang} path="/operations" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
-      <p className="pager"><Link href={'/admin/' + lang + '/operations'}>{t.operationsBack}</Link></p>
+      <p className="pager"><Link href={'/' + lang + '/operations'}>{t.operationsBack}</Link></p>
       {!allowed ? <PermissionDenied lang={lang} /> : null}
       {result && !result.ok ? <Notice tone="warning" title={t.operationsUnavailable}>{t.apiCode + ': ' + result.code}</Notice> : null}
       {result && result.ok ? (

@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { requirePlatformMe, tryApi } from '../../../../lib/api';
-import { copy, locale } from '../../../../lib/copy';
-import { can, READ_USERS } from '../../../../lib/permissions';
-import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
-import type { UserPageView } from '../../../../lib/types';
+import { requirePlatformMe, tryApi } from '../../../lib/api';
+import { copy, locale } from '../../../lib/copy';
+import { can, READ_USERS } from '../../../lib/permissions';
+import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
+import type { UserPageView } from '../../../lib/types';
 
 function first(value: string | string[] | undefined): string { return typeof value === 'string' ? value : ''; }
 
@@ -41,14 +41,14 @@ export default async function UsersPage({ params, searchParams }: { params: Prom
                 <td><Badge tone={user.status === 'ACTIVE' ? 'success' : 'warning'}>{user.status === 'ACTIVE' ? t.active : t.suspended}</Badge></td>
                 <td>{new Date(user.createdAt).toLocaleDateString(lang)}</td>
                 <td>{user.workspaceCount}</td>
-                <td><Link href={'/admin/' + lang + '/users/' + encodeURIComponent(user.userId)}>{t.open}</Link></td>
+                <td><Link href={'/' + lang + '/users/' + encodeURIComponent(user.userId)}>{t.open}</Link></td>
               </tr>
             ))}
           </tbody>
         </table></div>
         <p className="pager">
-          {result.value.nextCursor ? <Link className="button secondary" href={'/admin/' + lang + '/users?' + nextParams.toString()}>{t.next}</Link> : null}
-          {(search.length || status.length || cursor.length) ? <Link href={'/admin/' + lang + '/users'}>{t.all}</Link> : null}
+          {result.value.nextCursor ? <Link className="button secondary" href={'/' + lang + '/users?' + nextParams.toString()}>{t.next}</Link> : null}
+          {(search.length || status.length || cursor.length) ? <Link href={'/' + lang + '/users'}>{t.all}</Link> : null}
         </p>
       </Card>
     );

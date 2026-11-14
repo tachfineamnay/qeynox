@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { requirePlatformMe, tryApi } from '../../../../lib/api';
-import { copy, locale } from '../../../../lib/copy';
-import { can, READ_ORGANIZATIONS } from '../../../../lib/permissions';
-import { Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
-import type { OrganizationPageView } from '../../../../lib/types';
+import { requirePlatformMe, tryApi } from '../../../lib/api';
+import { copy, locale } from '../../../lib/copy';
+import { can, READ_ORGANIZATIONS } from '../../../lib/permissions';
+import { Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
+import type { OrganizationPageView } from '../../../lib/types';
 
 function first(value: string | string[] | undefined): string { return typeof value === 'string' ? value : ''; }
 
@@ -40,14 +40,14 @@ export default async function OrganizationsPage({ params, searchParams }: { para
                 <td>{organization.owners}</td>
                 <td>{organization.invited}</td>
                 <td>{new Date(organization.createdAt).toLocaleDateString(lang)}</td>
-                <td><Link href={'/admin/' + lang + '/organizations/' + encodeURIComponent(organization.workspaceId)}>{t.open}</Link></td>
+                <td><Link href={'/' + lang + '/organizations/' + encodeURIComponent(organization.workspaceId)}>{t.open}</Link></td>
               </tr>
             ))}
           </tbody>
         </table></div>
         <p className="pager">
-          {result.value.nextCursor ? <Link className="button secondary" href={'/admin/' + lang + '/organizations?' + nextParams.toString()}>{t.next}</Link> : null}
-          {(search.length || cursor.length) ? <Link href={'/admin/' + lang + '/organizations'}>{t.all}</Link> : null}
+          {result.value.nextCursor ? <Link className="button secondary" href={'/' + lang + '/organizations?' + nextParams.toString()}>{t.next}</Link> : null}
+          {(search.length || cursor.length) ? <Link href={'/' + lang + '/organizations'}>{t.all}</Link> : null}
         </p>
       </Card>
     );

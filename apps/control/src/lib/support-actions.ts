@@ -5,8 +5,12 @@ import { api, ApiError } from './api';
 import { locale, type Locale } from './copy';
 
 function langOf(form: FormData): Locale { return locale(String(form.get('lang') ?? 'en')); }
-function detailPath(lang: Locale, id: string): string { return '/admin/' + lang + '/support/' + encodeURIComponent(id); }
+function detailPath(lang: Locale, id: string): string { return '/' + lang + '/support/' + encodeURIComponent(id); }
 function codeOf(error: unknown): string { return error instanceof ApiError ? error.code : 'UNKNOWN_OUTCOME'; }
+function revalidateDetail(lang: Locale, id: string): void {
+  revalidatePath(detailPath(lang, id));
+  revalidatePath('/admin' + detailPath(lang, id));
+}
 
 export async function replySupportAction(form: FormData): Promise<void> {
   const lang = langOf(form);
@@ -17,7 +21,7 @@ export async function replySupportAction(form: FormData): Promise<void> {
     await api('/v1/platform/support/conversations/' + encodeURIComponent(id) + '/messages', 'POST', { content });
   } catch (error) { code = codeOf(error); }
   if (code) redirect(detailPath(lang, id) + '?error=' + encodeURIComponent(code));
-  revalidatePath(detailPath(lang, id));
+  revalidateDetail(lang, id);
   redirect(detailPath(lang, id) + '?done=1');
 }
 
@@ -30,6 +34,6 @@ export async function updateSupportStatusAction(form: FormData): Promise<void> {
     await api('/v1/platform/support/conversations/' + encodeURIComponent(id) + '/status', 'POST', { status });
   } catch (error) { code = codeOf(error); }
   if (code) redirect(detailPath(lang, id) + '?error=' + encodeURIComponent(code));
-  revalidatePath(detailPath(lang, id));
+  revalidateDetail(lang, id);
   redirect(detailPath(lang, id) + '?done=1');
 }

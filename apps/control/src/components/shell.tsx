@@ -47,13 +47,13 @@ export function Shell({ lang, path, permissions, userId, sessionExpiresAt, child
   const t = copy[lang];
   const other: Locale = lang === 'en' ? 'fr' : 'en';
   const items: NavItem[] = [
-    { href: '/admin/' + lang, label: t.navOverview, match: '', allowed: true },
-    { href: '/admin/' + lang + '/users', label: t.navUsers, match: 'users', allowed: can(permissions, READ_USERS) },
-    { href: '/admin/' + lang + '/organizations', label: t.navOrganizations, match: 'organizations', allowed: can(permissions, READ_ORGANIZATIONS) },
-    { href: '/admin/' + lang + '/support', label: t.navSupport, match: 'support', allowed: can(permissions, SUPPORT) },
-    { href: '/admin/' + lang + '/operations', label: t.navOperations, match: 'operations', allowed: can(permissions, OPERATIONS) },
-    { href: '/admin/' + lang + '/audit', label: t.navAudit, match: 'audit', allowed: can(permissions, CONSULTATION) },
-    { href: '/admin/' + lang + '/account', label: t.navAccount, match: 'account', allowed: true },
+    { href: '/' + lang, label: t.navOverview, match: '', allowed: true },
+    { href: '/' + lang + '/users', label: t.navUsers, match: 'users', allowed: can(permissions, READ_USERS) },
+    { href: '/' + lang + '/organizations', label: t.navOrganizations, match: 'organizations', allowed: can(permissions, READ_ORGANIZATIONS) },
+    { href: '/' + lang + '/support', label: t.navSupport, match: 'support', allowed: can(permissions, SUPPORT) },
+    { href: '/' + lang + '/operations', label: t.navOperations, match: 'operations', allowed: can(permissions, OPERATIONS) },
+    { href: '/' + lang + '/audit', label: t.navAudit, match: 'audit', allowed: can(permissions, CONSULTATION) },
+    { href: '/' + lang + '/account', label: t.navAccount, match: 'account', allowed: true },
   ];
   const activeKey = path.split('/').filter(Boolean)[0] ?? '';
   const nav = (
@@ -63,13 +63,13 @@ export function Shell({ lang, path, permissions, userId, sessionExpiresAt, child
       ))}
     </nav>
   );
-  const localeHref = '/admin/' + other + path;
+  const localeHref = '/' + other + path;
   return (
     <>
       <a className="skip" href="#content">{t.skip}</a>
       <div className="shell">
         <aside className="sidebar">
-          <Link className="brand" href={'/admin/' + lang}><span className="mark">Q</span><span className="brand-text">{t.brand}<small>{t.brandCaption}</small></span></Link>
+          <Link className="brand" href={'/' + lang}><span className="mark">Q</span><span className="brand-text">{t.brand}<small>{t.brandCaption}</small></span></Link>
           <div className="desktop-nav">{nav}</div>
           <details className="mobile-nav"><summary>{t.menu}</summary>{nav}</details>
           <div className="sidebar-foot">
@@ -90,5 +90,5 @@ export function Shell({ lang, path, permissions, userId, sessionExpiresAt, child
 }
 
 export function PermissionDenied({ lang }: { lang: Locale }) {
-  return <Notice tone="warning" title={copy[lang].permissionDenied}>{copy[lang].backToDashboard + ': '}<Link href={'/admin/' + lang}>{copy[lang].navOverview}</Link></Notice>;
+  return <Notice tone="warning" title={copy[lang].permissionDenied}>{copy[lang].backToDashboard + ': '}<Link href={'/' + lang}>{copy[lang].navOverview}</Link></Notice>;
 }

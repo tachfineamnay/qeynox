@@ -1,11 +1,11 @@
 import Link from 'next/link';
-import { requirePlatformMe, tryApi } from '../../../../../lib/api';
-import { changeRoleAction, revokeMembershipAction } from '../../../../../lib/actions';
-import { InviteForm } from '../../../../../components/invite-form';
-import { copy, locale } from '../../../../../lib/copy';
-import { ADMINISTRATION, can, READ_ORGANIZATIONS } from '../../../../../lib/permissions';
-import { Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../../components/shell';
-import type { MemberPageView, MemberView, OrganizationDetailView } from '../../../../../lib/types';
+import { requirePlatformMe, tryApi } from '../../../../lib/api';
+import { changeRoleAction, revokeMembershipAction } from '../../../../lib/actions';
+import { InviteForm } from '../../../../components/invite-form';
+import { copy, locale } from '../../../../lib/copy';
+import { ADMINISTRATION, can, READ_ORGANIZATIONS } from '../../../../lib/permissions';
+import { Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
+import type { MemberPageView, MemberView, OrganizationDetailView } from '../../../../lib/types';
 
 function first(value: string | string[] | undefined): string { return typeof value === 'string' ? value : ''; }
 
@@ -31,7 +31,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: {
 
   return (
     <Shell lang={lang} path="/organizations" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
-      <p className="pager"><Link href={'/admin/' + lang + '/organizations'}>{t.previous}</Link></p>
+      <p className="pager"><Link href={'/' + lang + '/organizations'}>{t.previous}</Link></p>
       {!allowed ? <PermissionDenied lang={lang} /> : null}
       <OutcomeNotice lang={lang} done={done} error={error} />
       {detailResult && !detailResult.ok ? <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + detailResult.code}</Notice> : null}

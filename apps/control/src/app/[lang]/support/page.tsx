@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { requirePlatformMe, tryApi } from '../../../../lib/api';
-import { copy, locale } from '../../../../lib/copy';
-import { can, SUPPORT } from '../../../../lib/permissions';
-import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
-import type { PlatformSupportConversationView, SupportCapabilityView } from '../../../../lib/types';
+import { requirePlatformMe, tryApi } from '../../../lib/api';
+import { copy, locale } from '../../../lib/copy';
+import { can, SUPPORT } from '../../../lib/permissions';
+import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
+import type { PlatformSupportConversationView, SupportCapabilityView } from '../../../lib/types';
 
 function first(value: string | string[] | undefined): string { return typeof value === 'string' ? value : ''; }
 const statuses = ['open', 'pending', 'resolved', 'snoozed', 'all'] as const;
@@ -42,7 +42,7 @@ export default async function SupportPage({ params, searchParams }: { params: Pr
                 <td>{view.conversation.priority ? <Badge tone="warning">{view.conversation.priority}</Badge> : '—'}</td>
                 <td>{view.qeynox ? <code>{view.qeynox.userId}</code> : '—'}</td>
                 <td>{view.conversation.lastMessageAt ? new Date(view.conversation.lastMessageAt).toLocaleString(lang) : '—'}</td>
-                <td><Link href={'/admin/' + lang + '/support/' + encodeURIComponent(view.conversation.id)}>{t.supportOpen}</Link></td>
+                <td><Link href={'/' + lang + '/support/' + encodeURIComponent(view.conversation.id)}>{t.supportOpen}</Link></td>
               </tr>
             ))}
           </tbody>

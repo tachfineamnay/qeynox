@@ -1,10 +1,10 @@
 import Link from 'next/link';
-import { requirePlatformMe, tryApi } from '../../../../../lib/api';
-import { reactivateUserAction, revokeUserSessionsAction, suspendUserAction } from '../../../../../lib/actions';
-import { copy, locale } from '../../../../../lib/copy';
-import { ADMINISTRATION, can, READ_ACTIVITY, READ_USERS } from '../../../../../lib/permissions';
-import { Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../../components/shell';
-import type { ActivityPageView, UserDetailView, UserSessionsView } from '../../../../../lib/types';
+import { requirePlatformMe, tryApi } from '../../../../lib/api';
+import { reactivateUserAction, revokeUserSessionsAction, suspendUserAction } from '../../../../lib/actions';
+import { copy, locale } from '../../../../lib/copy';
+import { ADMINISTRATION, can, READ_ACTIVITY, READ_USERS } from '../../../../lib/permissions';
+import { Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
+import type { ActivityPageView, UserDetailView, UserSessionsView } from '../../../../lib/types';
 
 export default async function UserDetailPage({ params, searchParams }: { params: Promise<{ lang: string; id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const resolved = await params;
@@ -21,11 +21,11 @@ export default async function UserDetailPage({ params, searchParams }: { params:
   const activityResult = canReadActivity ? await tryApi<ActivityPageView>('/v1/platform/users/' + encodeURIComponent(userId) + '/activity?limit=20') : null;
   const done = typeof query.done === 'string' ? query.done : undefined;
   const error = typeof query.error === 'string' ? query.error : undefined;
-  const base = '/admin/' + lang + '/users/' + encodeURIComponent(userId);
+  const base = '/' + lang + '/users/' + encodeURIComponent(userId);
 
   return (
     <Shell lang={lang} path="/users" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
-      <p className="pager"><Link href={'/admin/' + lang + '/users'}>{t.previous}</Link></p>
+      <p className="pager"><Link href={'/' + lang + '/users'}>{t.previous}</Link></p>
       {!allowed ? <PermissionDenied lang={lang} /> : null}
       <OutcomeNotice lang={lang} done={done} error={error} />
       {detailResult && !detailResult.ok ? <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + detailResult.code}</Notice> : null}
@@ -59,7 +59,7 @@ export default async function UserDetailPage({ params, searchParams }: { params:
                   <tbody>
                     {detailResult.value.workspaces.map(workspace => (
                       <tr key={workspace.workspaceId}>
-                        <td><Link href={'/admin/' + lang + '/organizations/' + encodeURIComponent(workspace.workspaceId)}>{workspace.name}</Link></td>
+                        <td><Link href={'/' + lang + '/organizations/' + encodeURIComponent(workspace.workspaceId)}>{workspace.name}</Link></td>
                         <td>{workspace.role}</td>
                         <td>{workspace.membershipStatus}</td>
                         <td>{workspace.joinedAt ? new Date(workspace.joinedAt).toLocaleDateString(lang) : '—'}</td>

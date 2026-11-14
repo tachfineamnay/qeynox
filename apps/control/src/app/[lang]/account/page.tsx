@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { loginAction } from '../../../../lib/actions';
-import { readSession, tryApi } from '../../../../lib/api';
-import { copy, locale } from '../../../../lib/copy';
-import { Card, Notice, OutcomeNotice, PageHeader, Shell } from '../../../../components/shell';
-import type { PlatformMeView } from '../../../../lib/types';
+import { loginAction } from '../../../lib/actions';
+import { readSession, tryApi } from '../../../lib/api';
+import { copy, locale } from '../../../lib/copy';
+import { Card, Notice, OutcomeNotice, PageHeader, Shell } from '../../../components/shell';
+import type { PlatformMeView } from '../../../lib/types';
 
 export default async function AccountPage({ params, searchParams }: { params: Promise<{ lang: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const lang = locale((await params).lang);
@@ -26,7 +26,7 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
             <dt>{t.permissions}</dt><dd>{me.permissions.join(' · ')}</dd>
             <dt>{t.sessionExpires}</dt><dd>{new Date(me.sessionExpiresAt).toLocaleString(lang)}</dd>
           </dl>
-          <p className="row-actions"><Link className="button secondary" href={'/admin/' + lang}>{t.backToDashboard}</Link></p>
+          <p className="row-actions"><Link className="button secondary" href={'/' + lang}>{t.backToDashboard}</Link></p>
         </Card>
         <Notice tone="info" title={t.navAccount}>{t.signInIntro}</Notice>
       </Shell>

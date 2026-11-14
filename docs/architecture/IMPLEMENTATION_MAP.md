@@ -147,3 +147,14 @@ semantic HTML. No client-side marketing JavaScript, no fabricated proof, prices 
 Legal data to complete is flagged in docs/product/PUBLIC_LEGAL_CHECKLIST.md and on the pages. MyDash
 and qeynox.io routing unchanged. NOT VERIFIED: no build, typecheck, crawl or visual audit was run.
 No push, merge or deployment.
+
+## Release preparation — Control /admin (Mission 09, code-only)
+
+infra/Dockerfile.control (pinned Node/pnpm, filtered Control build, port 3001, health /admin/en),
+declarative infra/coolify/qeynox-control.application.json (prepared, not created), release and
+reverse-proxy documentation (infra/CONTROL_RELEASE.md), populated-database additive migration
+procedure 0012–0017 (infra/MIGRATIONS_0012_0017_PREPRODUCTION.md), Control basePath /admin
+consolidation (routes under /[lang]; one PathPrefix proxy rule; assets under /admin/_next), lockfile
+apps/control importer, static import/syntax checks across modules 04–09. BLOCKED before deployment:
+candidate branch not pushed, no Docker/typecheck/build, no Coolify/proxy/migration execution.
+No push, merge or deployment.

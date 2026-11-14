@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { requirePlatformMe, tryApi } from '../../../../lib/api';
-import { copy, locale } from '../../../../lib/copy';
-import { can, OPERATIONS } from '../../../../lib/permissions';
-import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
-import type { OperationsListView, RecoveryIncidentView } from '../../../../lib/types';
+import { requirePlatformMe, tryApi } from '../../../lib/api';
+import { copy, locale } from '../../../lib/copy';
+import { can, OPERATIONS } from '../../../lib/permissions';
+import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
+import type { OperationsListView, RecoveryIncidentView } from '../../../lib/types';
 
 function first(value: string | string[] | undefined): string { return typeof value === 'string' ? value : ''; }
 
@@ -36,7 +36,7 @@ export default async function OperationsPage({ params, searchParams }: { params:
                 <td>{item.completedSteps + ' / ' + item.stepCount}</td>
                 <td>{item.pendingApprovals}</td>
                 <td>{new Date(item.lastActivityAt).toLocaleString(lang)}</td>
-                <td><Link href={'/admin/' + lang + '/operations/' + encodeURIComponent(item.operationId)}>{t.operationsOpen}</Link></td>
+                <td><Link href={'/' + lang + '/operations/' + encodeURIComponent(item.operationId)}>{t.operationsOpen}</Link></td>
               </tr>
             ))}
           </tbody>
@@ -52,9 +52,9 @@ export default async function OperationsPage({ params, searchParams }: { params:
           <h2>{t.operationsStatusCounts}</h2>
           {counts ? (
             <div className="row-actions">
-              <Link className="button secondary" href={'/admin/' + lang + '/operations'}>{t.operationsAllStatuses + ' · ' + counts.total}</Link>
+              <Link className="button secondary" href={'/' + lang + '/operations'}>{t.operationsAllStatuses + ' · ' + counts.total}</Link>
               {counts.statuses.map(entry => (
-                <Link key={entry.status} className="button secondary" href={'/admin/' + lang + '/operations?status=' + encodeURIComponent(entry.status)}>{entry.status + ' · ' + entry.count}</Link>
+                <Link key={entry.status} className="button secondary" href={'/' + lang + '/operations?status=' + encodeURIComponent(entry.status)}>{entry.status + ' · ' + entry.count}</Link>
               ))}
             </div>
           ) : <p className="muted">{t.operationsUnavailable}</p>}

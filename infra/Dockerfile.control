@@ -1,0 +1,23 @@
+# QeyNox Control (platform administration desk) — served under https://qeynox.io/admin.
+# Same pinned Node/pnpm toolchain and the same repository context as infra/Dockerfile.web.
+# The image deliberately contains no database, queue or storage service: it only serves the Next.js app.
+FROM node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS build
+WORKDIR /workspace
+ENV COREPACK_HOME=/opt/corepack
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm fetch --frozen-lockfile
+COPY . .
+RUN pnpm install --offline --frozen-lockfile
+RUN pnpm --filter @qeynox/control typecheck && pnpm --filter @qeynox/control build
+FROM node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
+ENV NODE_ENV=production
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+WORKDIR /workspace
+ENV COREPACK_HOME=/opt/corepack
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+COPY --from=build --chown=node:node /workspace /workspace
+USER node
+EXPOSE 3001
+HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:3001/admin/en').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["pnpm", "--filter", "@qeynox/control", "start"]

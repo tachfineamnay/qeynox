@@ -1,8 +1,8 @@
-import { requirePlatformMe, tryApi } from '../../../../../lib/api';
-import { copy, locale } from '../../../../../lib/copy';
-import { can, OPERATIONS } from '../../../../../lib/permissions';
-import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../../components/shell';
-import type { HealthView, ResourcesView } from '../../../../../lib/types';
+import { requirePlatformMe, tryApi } from '../../../../lib/api';
+import { copy, locale } from '../../../../lib/copy';
+import { can, OPERATIONS } from '../../../../lib/permissions';
+import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
+import type { HealthView, ResourcesView } from '../../../../lib/types';
 
 export default async function HealthPage({ params }: { params: Promise<{ lang: string }> }) {
   const lang = locale((await params).lang);

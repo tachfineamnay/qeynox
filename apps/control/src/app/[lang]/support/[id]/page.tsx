@@ -1,11 +1,11 @@
 import Link from 'next/link';
-import { requirePlatformMe } from '../../../../../lib/api';
-import { tryApi } from '../../../../../lib/api';
-import { copy, locale } from '../../../../../lib/copy';
-import { can, SUPPORT } from '../../../../../lib/permissions';
-import { replySupportAction, updateSupportStatusAction } from '../../../../../lib/support-actions';
-import { Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../../components/shell';
-import type { PlatformSupportConversationDetailView } from '../../../../../lib/types';
+import { requirePlatformMe } from '../../../../lib/api';
+import { tryApi } from '../../../../lib/api';
+import { copy, locale } from '../../../../lib/copy';
+import { can, SUPPORT } from '../../../../lib/permissions';
+import { replySupportAction, updateSupportStatusAction } from '../../../../lib/support-actions';
+import { Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
+import type { PlatformSupportConversationDetailView } from '../../../../lib/types';
 
 export default async function SupportDetailPage({ params, searchParams }: { params: Promise<{ lang: string; id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const resolved = await params;
@@ -19,7 +19,7 @@ export default async function SupportDetailPage({ params, searchParams }: { para
   const error = typeof query.error === 'string' ? query.error : undefined;
   return (
     <Shell lang={lang} path="/support" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
-      <p className="pager"><Link href={'/admin/' + lang + '/support'}>{t.supportBack}</Link></p>
+      <p className="pager"><Link href={'/' + lang + '/support'}>{t.supportBack}</Link></p>
       {!allowed ? <PermissionDenied lang={lang} /> : null}
       <OutcomeNotice lang={lang} done={done} error={error} />
       {result && !result.ok ? <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + result.code}</Notice> : null}
