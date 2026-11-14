@@ -137,3 +137,13 @@ optional read-only Coolify inventory), `/operations/releases` (version/commit/da
 last check, migrations, 24 h anomalies). Missing/inaccessible data is UNAVAILABLE; no metrics are
 invented. No mutation, redeploy or Docker command exists. NOT VERIFIED: no tests, build, migration
 execution or provisioning was run. No Coolify resource created; no push/merge/deployment.
+
+## Public website & SEO (Mission 08, code-only)
+
+Implemented in apps/web (Next.js kept; no Astro): marketing home, how-it-works, manifesto, contact and
+legal/notice, legal/privacy, legal/terms, legal/cookies in EN/FR, with Professional Blue styling,
+server-side rendering, unique metadata, canonical/hreflang, Open Graph, sitemap.xml, robots.txt and
+semantic HTML. No client-side marketing JavaScript, no fabricated proof, prices or legal identity.
+Legal data to complete is flagged in docs/product/PUBLIC_LEGAL_CHECKLIST.md and on the pages. MyDash
+and qeynox.io routing unchanged. NOT VERIFIED: no build, typecheck, crawl or visual audit was run.
+No push, merge or deployment.

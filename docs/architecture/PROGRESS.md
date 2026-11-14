@@ -202,3 +202,23 @@ redelivery, and no Coolify resource created or started.
 
 NOT VERIFIED (FAST MODE): no typecheck, build, migration run, Coolify provisioning or certification
 was executed. No push, merge or deployment.
+
+## 2026-11-14 — Public website & SEO (Mission 08, code-only)
+
+The public Home in apps/web was rebuilt as a Professional Blue showcase and complemented by
+bilingual public pages: home, how-it-works, manifesto (from docs/product/MANIFESTO.md), contact,
+legal notice, privacy, terms and cookies. Public pages use a new server-only PublicShell (no client
+JavaScript; native details/mobile menu), semantic HTML and real product/limits content: no prices,
+testimonials, invented legal identity or unverified promises. Legal identity, hosting, jurisdiction,
+retention, DPO and public contact fields are visibly flagged as to be completed before publication
+(docs/product/PUBLIC_LEGAL_CHECKLIST.md). Cookie page documents the actual cookies: public pages set
+none, qx-session for the workspace app, qx-control-session for Control; no analytics configured.
+
+SEO: server-rendered content, unique titles/descriptions per page, canonical URLs plus EN/FR/x-default
+hreflang, Open Graph and Twitter metadata, data-driven sitemap.xml with language alternates,
+robots.txt excluding authenticated/application routes, metadataBase, semantic headings and no raster
+images or third-party fonts (system stack/inline SVG mark). MyDash behaviour and the existing
+qeynox.io routing (next.config redirects) were not changed.
+
+NOT VERIFIED (FAST MODE): no build, crawl, Lighthouse audit, typecheck or visual certification was
+executed. No push, merge or deployment.
