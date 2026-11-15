@@ -19,7 +19,7 @@ import {
 } from '@qeynox/persistence';
 import * as persistence from '@qeynox/persistence';
 import type { ApplyConfigurationInput, ConfigurationEntry } from '@qeynox/contracts';
-import { BudgetService, CommerceService, ConfigurationService, OperationExecutionService, PlanningService } from '@qeynox/application';
+import { BudgetService, ClaimsService, CommerceService, ConfigurationService, OperationExecutionService, PlanningService } from '@qeynox/application';
 import { DomainError, newId, type ID, type Principal } from '@qeynox/domain';
 import { createIsolatedQaDatabase } from './qa-isolated-database';
 
@@ -410,6 +410,18 @@ async function main(): Promise<void> {
     assert(accepted.state === 'AUTHORIZED', 'explicitly free offer authorizes fulfilment');
     const started = await execution.start(owner, operation.id, readyOperation.version, 'qa-start-0001') as { attemptId: ID };
     assert(typeof started.attemptId === 'string', 'execution start creates a step attempt');
+    // A structurally valid source link does not prove an agent's interpretation is true.
+    const sourceId = randomUUID() as ID, evidenceId = randomUUID() as ID, digest = 'a'.repeat(64);
+    await store.recordSource({ id: sourceId, workspaceId: owner.workspaceId, operationId: operation.id, provider: 'qa-provider', title: 'QA fixture', uri: 'https://example.invalid/qa', retrievedAt: new Date().toISOString(), fingerprint: digest });
+    await store.recordEvidence({ id: evidenceId, operationId: operation.id, stepAttemptId: started.attemptId, sourceId, statement: 'QA fixture observation', observedAt: new Date().toISOString(), status: 'UNVERIFIED', limitations: [] });
+    await pool.query("INSERT INTO verification_policies(id,capability_id,version,minimum_sources,max_age_days,approved_providers,human_review_required,valid_from,status) VALUES ($1,$2,1,1,30,'[\"qa-provider\"]','false',$3,'ACTIVE')", [randomUUID(), capabilityIdV2, new Date(0).toISOString()]);
+    const claimsService = new ClaimsService(store);
+    const agentClaim = await claimsService.register(owner, { operationId: operation.id, attemptId: started.attemptId, statement: 'QA agent interpretation', kind: 'AGENT_FINDING' });
+    await claimsService.attach(owner, agentClaim.id, sourceId, 'SUPPORTS', evidenceId, digest);
+    const assessed = await claimsService.assess(owner, { claimId: agentClaim.id, capabilityId: capabilityIdV2 as ID, policyVersion: 1, reason: 'QA structural assessment' });
+    assert(assessed.status === 'NEEDS_HUMAN_REVIEW', 'agent interpretation requires human review even when the policy permits automatic support');
+    const reviewed = await claimsService.assess(owner, { claimId: agentClaim.id, capabilityId: capabilityIdV2 as ID, policyVersion: 1, reason: 'QA reviewer checked the fixture', reviewerDecision: 'SUPPORTED' });
+    assert(reviewed.status === 'SUPPORTED' && reviewed.method === 'HUMAN_REVIEW', 'authorized human can review the linked agent claim');
     const outboxRows = await pool.query<{ count: string }>('SELECT count(*)::text AS count FROM outbox WHERE operation_id=$1', [operation.id]);
     assert(outboxRows.rows[0]?.count === '1', 'execution start records exactly one outbox intent');
     const reserve = await budgets.reserve(owner, operation.id, started.attemptId, 'ENGINE', 'hermes', 'qa-reservation-1');

@@ -1,5 +1,9 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-15 — Mission 10 targeted repair
+
+Structural source linkage alone previously allowed an `AGENT_FINDING` to become SUPPORTED when a policy did not require human review. Agent findings now require an authorized human decision even under such a policy; this does not establish semantic support automatically. Disposable local PostgreSQL QA: frozen install, typecheck, build, task02 (3297 assertions), backend (28), and agent-runtime (62, fixtures) PASS. The added task02 checks exercise the agent finding and authorized review with a deterministic QA-only source. Live World Bank, real Hermes and mission delivery were not exercised in this pass. Coolify reported Hermes restarting/unhealthy; Hatchet was healthy, but no new real dispatch was tested. Mission 10 end-to-end, capability 1 configuration and the existing source-to-claim semantic attribution remain unverified. No push, deployment, preproduction database change or production certification.
+
 One commit per prompt was requested and created on feat/qeynox-2027-foundations. Main remains outside the execution scope. Rows 10–20 record the original source wave; later TASK and consolidation entries record the isolated-QA evidence now available and supersede their runtime-status wording where verified.
 
 | Prompt | Source result | Runtime status |

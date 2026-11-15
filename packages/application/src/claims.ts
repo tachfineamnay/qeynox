@@ -129,7 +129,7 @@ export class ClaimsService {
   const relatedSources=sourceById.size;
   let status:ClaimStatus='UNVERIFIED';
   if(qualifyingContradictions.length)status='CONFLICTING';
-  else if(enoughSources)status=policy.humanReviewRequired==='true'?'NEEDS_HUMAN_REVIEW':'SUPPORTED';
+  else if(enoughSources)status=policy.humanReviewRequired==='true'||claim.kind==='AGENT_FINDING'?'NEEDS_HUMAN_REVIEW':'SUPPORTED';
   else if(relatedSources>0&&links.length>0&&supports.every(link=>link.stale)&&contradictions.every(link=>link.stale))status='STALE';
   const privileged=actor.roles.some(role=>['OWNER','ADMIN','REVIEWER'].includes(role));
   if(input.reviewerDecision){
