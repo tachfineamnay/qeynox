@@ -21,7 +21,19 @@ services:
       coolify:
         aliases: [qeynox-hermes]
     security_opt: ['no-new-privileges:true']
+    # The image starts as root and its s6-overlay bootstrap needs exactly these
+    # four capabilities; every other capability stays dropped and privileged is
+    # never used. Reproduced on the pinned image (local container, same compose
+    # settings):
+    #   SETGID / SETUID   s6-applyuidgid + s6-setuidgid drop root to hermes
+    #                     (without SETGID: "unable to set supplementary group list")
+    #   CHOWN             stage2 chowns the data volume and the supervise trees
+    #   DAC_OVERRIDE      /opt/data is 0700 hermes:hermes and /run/service is
+    #                     hermes-owned, so a root that lost this capability can
+    #                     neither enter the volume ("cd: can't cd to /opt/data")
+    #                     nor create supervise locks ("unable to control /run/service")
     cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE]
     healthcheck:
       test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health',timeout=5)"]
       interval: 30s
