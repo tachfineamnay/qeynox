@@ -19,8 +19,8 @@ export function Icon({ name }: { name: string }) {
   );
 }
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`card ${className}`}>{children}</section>;
+export function Card({ children, className = '', id }: { children: ReactNode; className?: string; id?: string }) {
+  return <section id={id} className={`card ${className}`}>{children}</section>;
 }
 
 export function Feedback({ title, children, error = false }: { title: string; children?: ReactNode; error?: boolean }) {
