@@ -1,0 +1,92 @@
+# FAST LIVE 2.0 — profil opérationnel QeyNox
+# Toutes les valeurs ci-dessous ont été lues sur l'infrastructure réelle le 2026-11-16
+# (Coolify MCP 4.7.5 + dépôt local). Aucun secret n'est stocké dans ce fichier.
+fast_live:
+  version: 2
+  project: "QeyNox"
+  repository: "tachfineamnay/qeynox"
+  default_branch: "main"
+  deployment_environment: "preproduction"
+  public_url: "https://qeynox.io"
+
+  coolify:
+    instance_version: "4.7.5"
+    project: "gm3bynlnlsrkikanyzvxfew7"          # projet Qeynox
+    environment: "girv53ul8pmfikflpxf9j2re"      # environnement preproduction
+    server: "l7k1ng0ir694dr1ftyipqnby"           # localhost (héberge tout le projet)
+    services:
+      web: "gu5pde4uim045cfyhbzvatyn"            # qeynox-web | /infra/Dockerfile.web | :3000 | https://qeynox.io | health /en
+      api: "d8owo32umum050d4w7k2wvzp"            # qeynox-api | /infra/Dockerfile.api | :4000 privé | health /health
+      worker: "urabqgudjsqnycnicygon1vv"         # qeynox-worker | /infra/Dockerfile.worker | :4001 privé | pas de health Coolify
+      control: "ukamfkkxb9xmgyb4awzi6fe9"        # qeynox-control | /infra/Dockerfile.control | :3001 | https://qeynox.io/admin | health /admin/en/account
+    stacks:
+      hatchet: "povviyiod3fxzrbhe4hzhmn1"        # qeynox-hatchet (polls :8081)
+      hermes: "i57klnidhv6rqawzvqf5a7tz"         # qeynox-hermes | nousresearch/hermes-agent:v2026.8.3 | expose 8642 | health /health
+      storage: "4uufasc903is4vb504v3bw9e"        # qeynox-storage (S3)
+      anythingllm: "qzgtwub6hxm3lvqomwwttbey"    # qeynox-anythingllm — exited (désactivé, ne pas démarrer sans décision)
+    databases:
+      postgres: "cris5cemg9ja3g3ur5tyiypg"       # qeynox-postgres (vérité métier)
+      redis: "lnclv7rbyekp5ks5iokxbxvj"          # qeynox-redis
+      hatchet_db: "9zbn2burfbghxjz25cpb45xv"     # qeynox-hatchet-db
+    deploy_trigger: "mcp_manual"
+    deploy_evidence: >-
+      Tous les déploiements historiques portent is_mcp=true et is_webhook=false.
+      Le commit 5bb66db (main, 2026-11-15) n'a jamais été déployé : un push sur main
+      ne déclenche donc rien. Un seul déploiement MCP après intégration, jamais de double.
+    deploy_owner: "single_writer"
+    cancel_previous: "queued"
+    watch_paths: "unsupported"                   # watch_paths=null : Coolify reconstruit l'image de l'app déployée seulement
+
+  local:
+    package_manager: "pnpm 9.15.9 (corepack)"
+    install: "pnpm install --frozen-lockfile"
+    typecheck: "pnpm typecheck"
+    build: "pnpm build (turbo ; en production Coolify exécute typecheck+build dans le Dockerfile)"
+    targeted_tests: "QEYNOX_QA_DATABASE_URL=<postgres jetable> pnpm qa:agent-runtime | pnpm qa:connectors | pnpm qa:backend | pnpm qa:task02"
+    qa_database: "base PostgreSQL jetable locale (conteneur qeynox-qa-pg) ; jamais la préproduction"
+
+  build:
+    cache: "reuse_if_supported"                  # BuildKit/Coolify cache conservé ; pas de force/no-cache sans diagnostic
+    image_revision: "git_sha_tag"                # chaque image porte le SHA ; source de vérité du rollback
+    avoid_duplicate_build: true
+
+  # Cartographie fichier -> ressources à reconstruire (monorepo sans watch_paths).
+  rebuild_map:
+    "apps/web/**": ["web"]
+    "apps/control/**": ["control"]
+    "apps/api/**": ["api"]
+    "apps/worker/**": ["worker"]
+    "packages/domain/**": ["api", "worker"]
+    "packages/persistence/**": ["api", "worker"]
+    "packages/application/**": ["api", "worker"]
+    "packages/orchestration/**": ["api", "worker"]
+    "packages/engine/**": ["worker"]
+    "packages/roles/**": ["api", "worker"]
+    "packages/tools/**": ["worker"]
+    "packages/contracts/**": ["web", "control", "api"]
+    "infra/Dockerfile.web": ["web"]
+    "infra/Dockerfile.control": ["control"]
+    "infra/Dockerfile.api": ["api"]
+    "infra/Dockerfile.worker": ["worker"]
+
+  smoke:
+    public_page: "https://qeynox.io/en"
+    workspace_page: "https://qeynox.io/fr/mydash"
+    admin_page: "https://qeynox.io/admin"
+    api_health: "interne au réseau Coolify : http://qeynox-api:4000/health (aucune exposition publique)"
+    business_journey: >-
+      Depuis /fr/mydash : créer une mission de recherche économique (marché Maroc),
+      la retrouver dans la liste, vérifier la préparation d'exécution (plan + readiness),
+      puis suivre l'exécution via Hatchet/Hermes jusqu'à la revue humaine (AWAITING_REVIEW)
+      avec preuves World Bank enregistrées comme observations UNVERIFIED.
+
+  persistent_data:
+    databases: ["qeynox-postgres", "qeynox-redis", "qeynox-hatchet-db"]
+    volumes: ["hermes-home (service qeynox-hermes)", "volumes des services hatchet/storage/postgres"]
+    backup_restore_procedure: "AUCUNE sauvegarde planifiée configurée sur qeynox-postgres (liste de backups vide) — toute migration destructrice exige une sauvegarde créée et vérifiée avant déploiement."
+
+  rollback:
+    method: "REDEPLOYER_SHA_PRECEDENT (image déjà présente localement, tag = SHA)"
+    last_known_good_sha: "99068195bc60bb7342eb121816b56a288fc28505"
+    previous_image_available: "vérifié : tags 9906819… présents pour api, web, worker"
+    note: "Une image précédente ne restaure pas la base. Aucune migration n'est prévue par ce cycle."
