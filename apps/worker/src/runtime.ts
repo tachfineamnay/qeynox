@@ -1,6 +1,6 @@
 import { and,eq } from 'drizzle-orm';
-import { DomainError,newId,type ID,type Evidence,type StepAttempt } from '@qeynox/domain';
-import { connectDatabase,QeyNoxStore,attempts,operations } from '@qeynox/persistence';
+import { DomainError,newId,transitionOperation,type ID,type Evidence,type StepAttempt } from '@qeynox/domain';
+import { connectDatabase,QeyNoxStore,attempts,operations,events } from '@qeynox/persistence';
 import { HermesAdapter,hermesCapabilities } from '@qeynox/engine';
 import { AgentProfileStore,CapabilityRegistry } from '@qeynox/roles';
 import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection } from '@qeynox/application';
@@ -61,9 +61,26 @@ export async function createWorkerDependencies(){
     if(state==='AWAITING_REVIEW')await documents.assemble(owner,request.operationId,request.planRevisionId,row.payload.title,[],[]);
     return {outcome:'COMPLETED' as const,detail:state};
    }catch(error:unknown){
-    const failed:StepAttempt={...start,state:'FAILED',finishedAt:new Date().toISOString(),version:start.version+1,errorCode:error instanceof DomainError?error.code:'ENGINE_OR_TOOL_ERROR'};
-    await conn.db.update(attempts).set({state:'FAILED',payload:failed}).where(and(eq(attempts.id,attempt.id),eq(attempts.state,'RUNNING')));
-    await store.writeEvent({workspaceId:row.workspaceId as ID,operationId:row.id as ID,kind:'STEP_FAILED',data:{attemptId:attempt.id,errorCode:failed.errorCode},occurredAt:new Date().toISOString()});
+    const now=new Date().toISOString();
+    const failed:StepAttempt={...start,state:'FAILED',finishedAt:now,version:start.version+1,errorCode:error instanceof DomainError?error.code:'ENGINE_OR_TOOL_ERROR'};
+    const attemptFailed=await conn.db.transaction(async tx=>{
+      const [currentAttempt]=await tx.select().from(attempts).where(eq(attempts.id,attempt.id)).for('update').limit(1);
+      // A post-step failure (for example result assembly) must not turn a COMPLETED
+      // attempt into FAILED or overwrite an operation already waiting for review.
+      if(!currentAttempt||currentAttempt.state!=='RUNNING')return false;
+      await tx.update(attempts).set({state:'FAILED',payload:failed}).where(and(eq(attempts.id,attempt.id),eq(attempts.state,'RUNNING')));
+      const [currentOp]=await tx.select().from(operations).where(and(eq(operations.id,row.id),eq(operations.workspaceId,row.workspaceId))).for('update').limit(1);
+      if(currentOp?.status==='RUNNING'&&currentOp.payload.currentRevisionId===request.planRevisionId){
+        const next=transitionOperation(currentOp.payload,'FAILED',now,currentOp.version);
+        await tx.update(operations).set({status:'FAILED',version:next.version,payload:{...next,lastErrorCode:failed.errorCode},lastActivityAt:now}).where(and(eq(operations.id,row.id),eq(operations.version,currentOp.version)));
+      }
+      const event={id:newId(),workspaceId:row.workspaceId as ID,operationId:row.id as ID,kind:'STEP_FAILED',data:{attemptId:attempt.id,errorCode:failed.errorCode},occurredAt:now,eventVersion:1};
+      await tx.insert(events).values({id:event.id,workspaceId:event.workspaceId,operationId:event.operationId,kind:event.kind,occurredAt:now,payload:event});
+      return true;
+    });
+    if(!attemptFailed){
+      await store.writeEvent({workspaceId:row.workspaceId as ID,operationId:row.id as ID,kind:'POST_STEP_FAILURE',data:{attemptId:attempt.id,errorCode:failed.errorCode},occurredAt:now});
+    }
     throw error;
    }
   },

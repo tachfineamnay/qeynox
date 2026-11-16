@@ -18,6 +18,11 @@ export class OperatorController{
   if(!req.principal)throw new DomainError('DENIED','Session required');
   return this.recovery.reconcileDispatchUnknown(req.principal,requireId(id));
  }
+ @Get('operations/:id/runs/:runId')
+ inspectRun(@Req()req:Request,@Param('id')id:string,@Param('runId')runId:string){
+  if(!req.principal)throw new DomainError('DENIED','Session required');
+  return this.recovery.inspectRun(req.principal,requireId(id),runId);
+ }
  @Post('operations/:id/expire-approvals')
  expire(@Req()req:Request,@Param('id')id:string){
   if(!req.principal)throw new DomainError('DENIED','Session required');

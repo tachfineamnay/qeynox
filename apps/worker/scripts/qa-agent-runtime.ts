@@ -317,6 +317,20 @@ async function main(): Promise<void> {
     const secondIncidents = await recovery.reconcileDispatchUnknown(owner, operation.id);
     await expectDomainError('UNKNOWN_OUTCOME', () => recovery.action(owner, secondIncidents[0]!.id as ID, 'RETRY_SAFE_READ', 'QA: must not replay ambiguous dispatch'), 'ambiguous dispatch is never retried blindly');
 
+    // An interrupted DISPATCHING lease becomes an incident, never an automatic second enqueue.
+    const staleId = 'qa-stale-dispatch-' + randomUUID();
+    const staleAt = new Date(Date.now() - 20 * 60_000).toISOString();
+    await pg.query(
+      "INSERT INTO outbox(id,workspace_id,operation_id,idempotency_key,topic,payload,state,attempts,next_attempt_at,created_at) VALUES($1,$2,$3,$4,'EXECUTE_STEP',$5,'DISPATCHING',1,$6,$6)",
+      [staleId, workspaceId, operation.id, 'qa-stale-dispatch-key-' + randomUUID(), JSON.stringify({}), staleAt],
+    );
+    const beforeRecoveryDispatches = dispatchedRunIds.length;
+    await dispatcher.dispatchOnce();
+    const [staleRow] = (await pg.query<{state:string;last_error:string}>('SELECT state,last_error FROM outbox WHERE id=$1',[staleId])).rows;
+    assert(staleRow?.state === 'UNKNOWN' && staleRow.last_error === 'DISPATCH_LEASE_EXPIRED', 'expired claim becomes UNKNOWN');
+    assert(dispatchedRunIds.length === beforeRecoveryDispatches, 'expired claim is not replayed');
+    assert(await count('recovery_incidents', 'outbox_id=$1 AND status=$2', [staleId, 'OPEN']) === 1, 'expired claim creates durable recovery incident');
+
     // --- Soul and Pilot are wired to versioned profiles and the replaceable Hermes port. ---
     const profiles = new AgentProfileStore(db);
     const engine = new HermesAdapter({ baseUrl: okBaseUrl, apiKey: hermesApiKey, model: 'qa-hermes-model', timeoutMs: 5000, nativeToolsIsolated: true, egressAttested: true });
