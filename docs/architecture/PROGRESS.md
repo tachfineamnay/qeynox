@@ -1,5 +1,42 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-16 — FAST LIVE 2.0 adoption and preproduction delivery (main 21ec11d)
+
+FAST LIVE 2.0 is now the permanent delivery method for this repository: the canonical method
+file sits at the root and FAST_LIVE_QEYNOX.yaml records only values read from the live Coolify
+instance (project/environment/resource UUIDs, Dockerfiles, ports, health paths, shared stacks,
+databases) plus the real deploy trigger. Every historical deployment is is_mcp=true and
+is_webhook=false, and the commit 5bb66db reached main without any deployment: pushing to main
+does not deploy, so one MCP deployment is used per impacted resource.
+
+The DevOps lots A/B repair branch (PR #12) was integrated as f9e220f after one defect was proven
+and corrected: its worker Dockerfile assumed a Hatchet worker healthcheck server that
+@hatchet-dev/typescript-sdk 1.46.1 does not ship (no WORKER_HEALTHCHECK, livez or readyz in the
+pinned dist), so the added probe would have reported a healthy worker as unhealthy; the proven
+liveness probe was restored in 93b76a9. The retained changes are: dispatch-lease expiry becomes
+UNKNOWN with a durable recovery incident instead of a silent replay, a crash after claiming is
+never auto-replayed, a post-step failure can no longer turn a COMPLETED attempt into FAILED or
+overwrite an operation awaiting review, and the worker reloads the operator provider configuration
+per attempt instead of using its startup snapshot.
+
+Targeted QA in a disposable PostgreSQL only (never production): typecheck PASS over the 12
+workspace packages, agent-runtime PASS with 65 assertions, connectors PASS with 49 assertions.
+One earlier connector run failed with an aborted provider request while two live-network suites
+ran concurrently; origin/main passed at 48 assertions and the serial rerun of the branch passed
+at 49, so the failure was parallelism, not the change.
+
+Delivery: single MCP trigger, preproduction only, api + worker built at
+21ec11d26ad59ffe5e3493b464b47a01b5417aa4 (web and control unchanged since 9906819). Verified
+live: /v1/operator/operations/:id/runs/:runId is mapped by the running api, the worker reports
+"listening for actions" and established its Hatchet listener with LISTEN_STRATEGY_V2, and
+https://qeynox.io, /en, /fr/mydash and /admin answer 200 with the MyDash workbench rendered.
+
+BLOCKED, not verified: qeynox-hermes reports restarting:unknown and Coolify exposes no logs for
+a non-running container, so live mission execution through Hermes is NOT_RUN; no authenticated
+session is available in this environment for the customer journey either. No Hermes, ToolBroker,
+authentication or budget protection was disabled.
+
+
 ## 2026-11-15 — Mission 10 targeted repair
 
 Structural source linkage alone previously allowed an `AGENT_FINDING` to become SUPPORTED when a policy did not require human review. Agent findings now require an authorized human decision even under such a policy; this does not establish semantic support automatically. Disposable local PostgreSQL QA: frozen install, typecheck, build, task02 (3297 assertions), backend (28), and agent-runtime (62, fixtures) PASS. The added task02 checks exercise the agent finding and authorized review with a deterministic QA-only source. Live World Bank, real Hermes and mission delivery were not exercised in this pass. Coolify reported Hermes restarting/unhealthy; Hatchet was healthy, but no new real dispatch was tested. Mission 10 end-to-end, capability 1 configuration and the existing source-to-claim semantic attribution remain unverified. No push, deployment, preproduction database change or production certification.
