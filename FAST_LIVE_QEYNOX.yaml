@@ -28,6 +28,9 @@ fast_live:
       #   minimax|huggingface|nvidia|xiaomi|arcee|ollama-cloud|deepinfra|kilocode|ai-gateway|azure-foundry|lmstudio|custom
       #   -> aucun provider "vertex" natif: Vertex exigerait un endpoint OpenAI-compatible (provider custom) + OAuth2.
       #   État 2026-11-16: model.provider=auto, default=anthropic/claude-opus-4.6, aucun credential Google => inférence BLOCKED.
+      #   Web UI: dashboard natif sur 9119 (HERMES_DASHBOARD=1), publié via labels Traefik sur
+      #   https://yassir.qeynox.io (login mot de passe, env HERMES_DASHBOARD_USER/PASSWORD), et
+      #   l'API agentique 8642 reste non routée (probe public -> 302/HTML dashboard, jamais /v1 JSON).
       storage: "4uufasc903is4vb504v3bw9e"        # qeynox-storage (S3)
       anythingllm: "qzgtwub6hxm3lvqomwwttbey"    # qeynox-anythingllm — exited (désactivé, ne pas démarrer sans décision)
     databases:
