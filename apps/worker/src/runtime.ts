@@ -11,8 +11,9 @@ export async function createWorkerDependencies(){
  const conn=connectDatabase(process.env.DATABASE_URL),store=new QeyNoxStore(conn.db);
  const profiles=new AgentProfileStore(conn.db),progression=new StepProgression(store);
  const engine=new HermesAdapter({baseUrl:process.env.HERMES_API_BASE_URL,privateOrigin:process.env.HERMES_PRIVATE_ORIGIN,apiKey:process.env.HERMES_API_KEY,model:process.env.HERMES_MODEL??'hermes-agent',timeoutMs:Number(process.env.HERMES_REQUEST_TIMEOUT_MS??60000),nativeToolsIsolated:process.env.HERMES_NATIVE_TOOLS_ISOLATED==='true',egressAttested:process.env.QEYNOX_NETWORK_POLICY_ATTESTED==='true'});
- const tools=await createConfiguredToolRegistry(conn.db); // No provider is registered unless operator-configured.
- const executor=new BrokeredAgentExecutor(store,engine,tools);
+ // Startup snapshot for inspection/QA. Mission execution must reload the actual
+ // operator configuration: an ACTIVE capability can change while the worker is running.
+ const tools=await createConfiguredToolRegistry(conn.db);
  const registry=new EngineRegistry();
  registry.register({id:'hermes',version:'hermes-api-unverified',runtime:engine,capabilities:hermesCapabilities});
  const selections=new ExecutionEngineSelection(store,registry);
@@ -35,6 +36,10 @@ export async function createWorkerDependencies(){
     const prior=await progression.priorOutputs(request.operationId,request.planRevisionId,step.id);
     const owner={userId:row.payload.createdBy,workspaceId:row.payload.workspaceId,roles:['system:worker']};
     await selections.select(owner,request.operationId,request.planRevisionId,attempt.id,profile,'hermes');
+    // Reload active providers per attempt; never execute with a stale, startup-only ToolRegistry.
+    // Unknown or disallowed provider configurations fail closed inside this attempt.
+    const currentTools=await createConfiguredToolRegistry(conn.db);
+    const executor=new BrokeredAgentExecutor(store,engine,currentTools);
     const run=await executor.run({
       workspaceId:row.workspaceId as ID,operationId:row.id as ID,stepAttemptId:attempt.id,
       profile,userMessage:step.description,context:{operationTitle:row.payload.title,stepTitle:step.title,capabilityPurpose:cap.purpose,priorOutputs:prior},
@@ -90,7 +95,8 @@ export async function createWorkerDependencies(){
     await deliver();setInterval(()=>{void deliver();},5000);
   },
   close:async()=>{await conn.close();},
-  toolRegistry:tools,
+  toolRegistry:tools, // startup snapshot retained for existing QA callers
+  loadToolRegistry:()=>createConfiguredToolRegistry(conn.db),
  };
 }
 

@@ -315,6 +315,8 @@ async function main(): Promise<void> {
     } as never);
     const disabledRegistry = await createConfiguredToolRegistry(db, { worldBankEnabled: true, egress: policy });
     assert(disabledRegistry.available().length === 0, 'disabled provider configuration is not registered');
+    const refreshedWorkerRegistry = await workerDeps.loadToolRegistry();
+    assert(refreshedWorkerRegistry.available().length === 0, 'running worker reloads the disabled provider configuration without restart');
 
     console.log('Connector QA PASSED:', assertions, 'assertions');
   } finally {
