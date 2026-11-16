@@ -12,7 +12,8 @@
     "qa:connectors": "tsx scripts/qa-connectors.ts",
     "qa:raas-deliverable": "tsx scripts/qa-raas-deliverable.ts",
     "qa:storage": "tsx scripts/qa-object-storage.ts",
-    "qa:egress": "tsx scripts/qa-egress.ts"
+    "qa:egress": "tsx scripts/qa-egress.ts",
+    "qa:hermes-live": "tsx scripts/qa-hermes-live.ts"
   },
   "dependencies": {
     "@qeynox/application": "workspace:*",

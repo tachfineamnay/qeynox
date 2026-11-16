@@ -10,6 +10,9 @@ interface CompletionResponse {
   id?: string; choices?: Array<{message?:{content?:string|null;tool_calls?:unknown[];function_call?:unknown};finish_reason?:string|null}>;
   usage?: {prompt_tokens?:number;completion_tokens?:number;total_tokens?:number};
 }
+// Observed on hermes-agent 0.20.0: HTTP 200, finish_reason "stop", zero usage, and the
+// provider error only in the assistant text. Keep the match narrow to known messages.
+const PROVIDER_FAILURE=/provider authentication failed|no inference provider configured/i;
 export class HermesAdapter implements EnginePort {
   constructor(private readonly config:HermesConfig) {}
   async invoke(request:EngineRequest, options?:{signal?:AbortSignal}):Promise<EngineOutcome> {
@@ -54,6 +57,10 @@ export class HermesAdapter implements EnginePort {
         throw new DomainError('DENIED','Hermes returned a native tool call; QeyNox requires ToolBroker mediation');
       }
       if (typeof choice.message?.content!=='string') throw new DomainError('INVALID_STATE','Hermes returned no text content');
+      // Hermes answers 200 with the provider failure rendered as assistant text when it
+      // has no usable inference provider. Recording that as agent output would fabricate
+      // a result, so the attempt must fail closed instead.
+      if (PROVIDER_FAILURE.test(choice.message.content)) throw new DomainError('INVALID_STATE','Hermes has no usable inference provider');
       const {content,proposedTools}=parseProposals(choice.message.content);
       const reason=choice.finish_reason??undefined;
       return {

@@ -1,0 +1,13 @@
+# QeyNox preproduction — Hermes API server surface.
+#
+# Proven on nousresearch/hermes-agent:v2026.8.3 (same image, same env): with
+# platform_toolsets.api_server empty, GET /v1/toolsets reports no enabled toolset,
+# so the agent cannot reach terminal, file, browser, web, code_execution, delegation,
+# memory or cronjob. ToolBroker therefore stays the only tool path for a QeyNox mission.
+#
+# Apply by mounting this file read-only at /etc/hermes/config.yaml and setting
+# HERMES_CONFIG=/etc/hermes/config.yaml (see the commented lines in hermes.yml).
+# Not applied yet: the file must exist on the Coolify host before the bind mount is
+# rendered, and Coolify file storages did not attach to this compose service.
+platform_toolsets:
+  api_server: []
