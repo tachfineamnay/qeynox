@@ -21,7 +21,13 @@ fast_live:
       control: "ukamfkkxb9xmgyb4awzi6fe9"        # qeynox-control | /infra/Dockerfile.control | :3001 | https://qeynox.io/admin | health /admin/en/account
     stacks:
       hatchet: "povviyiod3fxzrbhe4hzhmn1"        # qeynox-hatchet (polls :8081)
-      hermes: "i57klnidhv6rqawzvqf5a7tz"         # qeynox-hermes | nousresearch/hermes-agent:v2026.8.3 | expose 8642 | health /health
+      hermes: "i57klnidhv6rqawzvqf5a7tz"         # qeynox-hermes | nousresearch/hermes-agent:v2026.8.3 (app 0.20.0) | expose 8642, aucun port publié | health /health
+      # Hermes: config active = /opt/data/config.yaml (volume), platform_toolsets.api_server = []
+      #   preuve: curl -H "Authorization: Bearer $HERMES_API_KEY" http://qeynox-hermes:8642/v1/toolsets -> enabled: []
+      #   providers supportés par 0.20.0: auto|openrouter|nous|anthropic|openai-codex|copilot|gemini|zai|kimi|
+      #   minimax|huggingface|nvidia|xiaomi|arcee|ollama-cloud|deepinfra|kilocode|ai-gateway|azure-foundry|lmstudio|custom
+      #   -> aucun provider "vertex" natif: Vertex exigerait un endpoint OpenAI-compatible (provider custom) + OAuth2.
+      #   État 2026-11-16: model.provider=auto, default=anthropic/claude-opus-4.6, aucun credential Google => inférence BLOCKED.
       storage: "4uufasc903is4vb504v3bw9e"        # qeynox-storage (S3)
       anythingllm: "qzgtwub6hxm3lvqomwwttbey"    # qeynox-anythingllm — exited (désactivé, ne pas démarrer sans décision)
     databases:
