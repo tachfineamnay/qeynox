@@ -1,5 +1,7 @@
 # QeyNox 2027 — source implementation map
 
+**2026-11-17 Flow final integration:** local browser QA now uses the real worker's polling, not a manual projection call; evidence and remaining external gates are recorded in [PROGRESS.md](PROGRESS.md).
+
 **2026-11-17 Flow SSE client:** local QA verifies authenticated mission updates, eventless reconciliation, replay, fallback, workspace switching and form preservation using a disposable database and browser. Real external agent/approval execution and production rollout remain unverified; details are in [PROGRESS.md](PROGRESS.md).
 
 **2026-11-17 AG-UI projection:** Local implementation adds transactional projection work, per-operation event ordering and read-only activity/summary/recent. Worker catch-up runs independently of Hatchet availability. Isolated PostgreSQL/HTTP tests and limitations are recorded in [PROGRESS.md](PROGRESS.md); production migration, backfill and independent certification remain separate gates.

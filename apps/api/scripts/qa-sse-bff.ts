@@ -5,25 +5,29 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { NestFactory } from '@nestjs/core';
 import { connectDatabase,QeyNoxStore,runMigrations } from '@qeynox/persistence';
-import { projectOnce } from '../../worker/src/runtime';
 import { AppModule } from '../src/app.module';
 import { DomainExceptionFilter } from '../src/transport/domain-exception.filter';
 import { createIsolatedQaDatabase } from './qa-isolated-database';
 
-const qa=await createIsolatedQaDatabase();const conn=connectDatabase(qa.url);let child:ChildProcess|undefined;
+const qa=await createIsolatedQaDatabase();const conn=connectDatabase(qa.url);let child:ChildProcess|undefined,worker:ChildProcess|undefined;
 let app:Awaited<ReturnType<typeof NestFactory.create>>|undefined;
 try {
  await runMigrations(qa.url);process.env.DATABASE_URL=qa.url;process.env.QEYNOX_ALLOW_REGISTRATION='true';
+ if(!process.env.QEYNOX_QA_PLAYWRIGHT_PATH||!process.env.QEYNOX_QA_BROWSER)throw new Error('Chrome Playwright is required');
+ const workerEnv:NodeJS.ProcessEnv={...process.env,DATABASE_URL:qa.url};delete workerEnv.HATCHET_CLIENT_TOKEN;
+ worker=spawn(process.execPath,['--import','tsx',fileURLToPath(new URL('../../worker/src/main.ts',import.meta.url))],{cwd:fileURLToPath(new URL('../../worker/',import.meta.url)),env:workerEnv,stdio:'ignore'});
+ const waitProjection=async(operationId:string)=>{for(let i=0;i<120;i++){if(worker?.exitCode!==null)throw new Error('QA worker exited');const r=await conn.pool.query('SELECT dirty FROM projection_work WHERE operation_id=$1',[operationId]);if(r.rows.length&&!r.rows[0].dirty)return;await new Promise(resolve=>setTimeout(resolve,500));}throw new Error('QA worker projection timed out');};
  app=await NestFactory.create(AppModule,{logger:false});app.useGlobalFilters(new DomainExceptionFilter());await app.listen(0,'127.0.0.1');
  const base='http://127.0.0.1:'+(app.getHttpServer().address() as {port:number}).port;
  const post=async(path:string,body:unknown,token?:string)=>{const r=await fetch(base+path,{method:'POST',headers:{'content-type':'application/json',...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});return {status:r.status,body:await r.json() as any};};
- const one=await post('/v1/auth/register',{email:'sse-one@example.invalid',password:'qa-passphrase-for-testing',workspaceName:'SSE QA'});
+ const registered=await post('/v1/auth/register',{email:'sse-one@example.invalid',password:'qa-passphrase-for-testing',workspaceName:'SSE QA'});
  const two=await post('/v1/auth/register',{email:'sse-two@example.invalid',password:'qa-passphrase-for-testing',workspaceName:'SSE Other'});
- assert.equal(one.status,201);assert.equal(two.status,201);
+ assert.equal(registered.status,201);assert.equal(two.status,201);
+ const one=await post('/v1/auth/login',{email:'sse-one@example.invalid',password:'qa-passphrase-for-testing'});assert.equal(one.status,201);
  const op=await post('/v1/operations',{title:'SSE QA',goal:'Test projected event stream',constraints:[]},one.body.token);assert.equal(op.status,201);
  const capability={id:'qa_capability',slot:1,version:1,status:'ACTIVE',name:'QA capability',purpose:'QA only',scope:[],allowedTools:[],inputSchemaVersion:1,outputSchemaVersion:1,maximumSteps:5,maximumToolCalls:1,privacyScopes:[]};
  await conn.pool.query("INSERT INTO capabilities(id,slot,version,status,payload) VALUES($1,1,1,'ACTIVE',$2)",[capability.id,capability]);
- assert.equal(await projectOnce(conn.db),op.body.id);
+ await waitProjection(op.body.id);
  const webDir=fileURLToPath(new URL('../../web/',import.meta.url));
  child=spawn(process.execPath,[fileURLToPath(new URL('../../web/node_modules/next/dist/bin/next',import.meta.url)),'start','-p','3340'],{cwd:webDir,env:{...process.env,QEYNOX_API_URL:base},stdio:'inherit'});
  const url='http://127.0.0.1:3340/api/flow/operations/'+op.body.id+'/stream';
@@ -39,7 +43,7 @@ try {
  const first=await nextEvent();assert(first.includes('id: 1'));assert(!first.includes(one.body.token));
  const firstData=JSON.parse(first.split('\n').find(x=>x.startsWith('data: '))!.slice(6));assert.equal(firstData.type,'CUSTOM');assert.equal(firstData.name,'qeynox.flow.event.v1');assert.deepEqual(Object.keys(firstData.value.event).sort(),['eventId','id','kind','occurredAt','sequence']);
  await new QeyNoxStore(conn.db).writeEvent({workspaceId:one.body.workspaceId,operationId:op.body.id,kind:'QA_SSE_NEXT',data:{secret:'hidden'},occurredAt:new Date().toISOString()});
- assert.equal(await projectOnce(conn.db),op.body.id);
+ await waitProjection(op.body.id);
  const second=await nextEvent();assert(second.includes('id: 2'));assert(!second.includes('hidden'));assert(!second.includes(one.body.token));
  let latest=2;
  if(process.env.QEYNOX_QA_PLAYWRIGHT_PATH&&process.env.QEYNOX_QA_BROWSER){
@@ -52,7 +56,7 @@ try {
    await page.getByText('SSE QA',{exact:true}).first().waitFor();
    await page.waitForTimeout(6500);
    await new QeyNoxStore(conn.db).writeEvent({workspaceId:one.body.workspaceId,operationId:op.body.id,kind:'QA_BROWSER_EVENT',data:{},occurredAt:new Date().toISOString()});
-   assert.equal(await projectOnce(conn.db),op.body.id);
+   await waitProjection(op.body.id);
    latest=3;
    await page.getByText('QA_BROWSER_EVENT',{exact:true}).first().waitFor({timeout:30000});
    const selected=page.locator('.qx-timeline li').filter({hasText:'QA_BROWSER_EVENT'}).locator('button');await selected.click();
@@ -64,7 +68,7 @@ try {
    await conn.pool.query("UPDATE operations SET payload=jsonb_set(payload,'{title}',to_jsonb($2::text)) WHERE id=$1",[op.body.id,'SSE QA updated']);
    const document={id:'qa_result_document',workspaceId:one.body.workspaceId,operationId:op.body.id,revisionId:'qa_revision',version:1,title:'QA result draft',objective:'QA objective',status:'DRAFT',scope:[],findings:[],nextActions:[],limitations:[],unresolved:[],citations:[],createdAt:new Date().toISOString()};
    await conn.pool.query("INSERT INTO result_documents(id,workspace_id,operation_id,revision_id,version,state,document,created_at) VALUES($1,$2,$3,$4,1,'DRAFT',$5,$6)",[document.id,document.workspaceId,document.operationId,document.revisionId,document,document.createdAt]);
-   assert.equal(await projectOnce(conn.db),op.body.id);
+   await waitProjection(op.body.id);
    await page.waitForTimeout(65000);assert.equal(await draft.inputValue(),'Unsaved QA draft');assert.equal(await draft.evaluate((el:{matches:(selector:string)=>boolean})=>el.matches(':focus')),true);
    await draft.evaluate((el:{blur:()=>void})=>el.blur());
    await page.getByText('SSE QA updated',{exact:true}).first().waitFor({timeout:80000});
@@ -74,26 +78,32 @@ try {
    assert.equal(await selected.getAttribute('aria-pressed'),'true');
    assert.equal(await page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),true);
    assert.equal(await page.evaluate("window.matchMedia('(prefers-reduced-motion: reduce)').matches"),true);
+   assert.equal(await page.evaluate("(() => { const row=document.querySelector('.qx-timeline li'); row.classList.add('is-new'); const name=getComputedStyle(row.querySelector('.qx-event-row')).animationName; row.classList.remove('is-new'); return name; })()"),'none');
    await page.emulateMedia({reducedMotion:'no-preference'});
    await page.evaluate("window.__qaAnimations=0; document.addEventListener('animationstart',e=>{if(e.animationName==='qx-event-signal')window.__qaAnimations++;})");
    const blockStream=(route:any)=>route.abort();
    await page.route('**/api/flow/operations/**/stream*',blockStream);
    await page.waitForTimeout(35000);
    await new QeyNoxStore(conn.db).writeEvent({workspaceId:one.body.workspaceId,operationId:op.body.id,kind:'QA_FALLBACK_EVENT',data:{},occurredAt:new Date().toISOString()});
-   assert.equal(await projectOnce(conn.db),op.body.id);
+   await waitProjection(op.body.id);
    await page.getByText('QA_FALLBACK_EVENT',{exact:true}).first().waitFor({timeout:30000});latest=4;
    await page.unroute('**/api/flow/operations/**/stream*',blockStream);
    await page.waitForResponse((r:any)=>r.url().includes('/stream?after=')&&r.status()===200,{timeout:35000});
    await page.waitForTimeout(7000);
    assert.equal(await page.evaluate('window.__qaAnimations'),0,'replay must not animate');
    await new QeyNoxStore(conn.db).writeEvent({workspaceId:one.body.workspaceId,operationId:op.body.id,kind:'QA_RESUMED_EVENT',data:{},occurredAt:new Date().toISOString()});
-   assert.equal(await projectOnce(conn.db),op.body.id);latest=5;
+   await waitProjection(op.body.id);latest=5;
    await page.getByText('QA_RESUMED_EVENT',{exact:true}).first().waitFor({timeout:30000});
    assert.equal(await page.locator('.qx-timeline li').filter({hasText:'QA_RESUMED_EVENT'}).count(),1);
    await page.waitForTimeout(500);assert.equal(await page.evaluate('window.__qaAnimations'),1,'new event animates once');
    await page.goto('http://127.0.0.1:3340/fr/missions/'+op.body.id,{waitUntil:'domcontentloaded'});
    await page.getByText('SSE QA updated',{exact:true}).first().waitFor();
    assert(!(await page.content()).includes(one.body.token));
+   const desktop=await browser.newContext({viewport:{width:1440,height:900}});
+   await desktop.addCookies([{name:'qx-session',value:encodeURIComponent(JSON.stringify({token:one.body.token,workspaceId:one.body.workspaceId,expiresAt:one.body.expiresAt})),url:'http://127.0.0.1:3340',httpOnly:true,sameSite:'Lax'}]);
+   const desktopPage=await desktop.newPage();
+   for(const lang of ['en','fr']){await desktopPage.goto('http://127.0.0.1:3340/'+lang+'/missions/'+op.body.id,{waitUntil:'domcontentloaded'});await desktopPage.getByText('SSE QA updated',{exact:true}).first().waitFor();assert.equal(await desktopPage.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),true);assert(!(await desktopPage.content()).includes(one.body.token));}
+   await desktop.close();
    await context.addCookies([{name:'qx-session',value:encodeURIComponent(JSON.stringify({token:two.body.token,workspaceId:two.body.workspaceId,expiresAt:two.body.expiresAt})),url:'http://127.0.0.1:3340',httpOnly:true,sameSite:'Lax'}]);
    await page.waitForFunction("!document.body.innerText.includes('SSE QA updated')",undefined,{timeout:50000});
    await context.close();console.log('Flow browser QA PASSED: mission, eventless update, fallback/reconnect, EN/FR, mobile and reduced motion');
@@ -109,4 +119,4 @@ try {
  assert(control.includes('SESSION_ENDED'));assert(!control.includes(one.body.token));revocationController.abort();await liveReader.cancel().catch(()=>{});
  assert.equal((await fetch(url,{headers:{cookie:cookie(one.body)}})).status,403);
  console.log('SSE HTTP QA PASSED: auth, workspace, real projection, replay and secret exclusion');
-} finally {child?.kill();await app?.close();await conn.close();await qa.drop();}
+} finally {child?.kill();if(worker&&worker.exitCode===null){const done=new Promise<void>(resolve=>worker!.once('exit',()=>resolve()));worker.kill();await done;}await app?.close();await conn.close();await qa.drop();}

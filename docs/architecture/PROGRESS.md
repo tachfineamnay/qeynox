@@ -1,5 +1,9 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-17 — Flow intégration locale avec worker autonome
+
+PASS : parcours Chrome authentifié, API NestJS, worker de projection réel et Next production sur PostgreSQL 16 jetable, sans appel manuel au projecteur dans le test principal. Preuves expurgées, commandes et limites : [FINAL_INTEGRATION_2026-11-17.md](../flow/evidence/FINAL_INTEGRATION_2026-11-17.md). Les runtimes externes et la migration d'une base distante restent non vérifiés.
+
 ## 2026-11-17 — Flow SSE client, local QA
 
 Flow consumes the authenticated BFF stream from the server watermark, validates and deduplicates events, refreshes authoritative reads, and uses a bounded fallback/reconciliation timer. The BFF emits a caught-up snapshot so replay does not animate; a 30-second reconnect rechecks the current session and workspace. The latest page is shown by default with a separate history link.
