@@ -1,14 +1,14 @@
 # Flow 2.0 — contrat d'intégration AG-UI
 
-Statut : conception, rien n'est implémenté ni déployé. Baseline `652b154fec68e918c852c079f187047c720987da` ; parcours Flow authentifié live : NOT_RUN. Hatchet orchestre, Hermes exécute, PostgreSQL fait foi ; l'API autorise et isole, Flow présente. Aucun nouveau moteur ni streaming simulé.
+Statut : SSE en conception, non implémenté ni déployé ; projection read-only implémentée localement. Parcours Flow authentifié live : NOT_RUN. Hatchet orchestre, Hermes exécute, PostgreSQL fait foi ; l'API autorise et isole, Flow présente. Aucun nouveau moteur ni streaming simulé.
 
 ## Réalité et compatibilité
 
-- `OperationReadModels.activity` matérialise les événements persistés, puis renvoie `events`, `nextCursor` et `transport: POLLING` ; séquence croissante par opération, page de 1 à 100. L'ordre est celui de projection, pas une garantie d'ordre chronologique métier.
+- `OperationReadModels.activity` lit les événements déjà projetés et renvoie `events`, `nextCursor` et `transport: POLLING` ; séquence croissante par opération, page de 1 à 100. L'ordre est celui de projection, pas une garantie d'ordre chronologique métier.
 - `sync` et les lectures mission sont distincts ; les vues ne forment pas aujourd'hui un snapshot atomique. `eventId` source diffère de l'`id` d'enveloppe. `FlowEvent` actuel contient ces deux identifiants, `sequence`, `kind`, `occurredAt`.
-- AG-UI définit notamment `CUSTOM` avec `type`, `name`, `value`, ainsi que des événements de cycle de vie, état et messages ; son architecture accepte plusieurs transports. Sources officielles : [événements](https://github.com/ag-ui-protocol/ag-ui/blob/main/docs/concepts/events.mdx), [architecture](https://github.com/ag-ui-protocol/ag-ui/blob/main/docs/concepts/architecture.mdx), [types SDK JS](https://github.com/ag-ui-protocol/ag-ui/blob/main/docs/sdk/js/core/events.mdx).
-- Une passerelle TypeScript/Next/Nest SSE est conceptuellement compatible avec ces enveloppes ; la version SDK, sa licence, le registre, le proxy et l'interopérabilité restent à vérifier. Aucun SDK AG-UI installé ou fonctionnement complet certifié n'est supposé.
-- Ce lot futur est un flux de lecture d'événements `CUSTOM` conformes à leur forme, **pas** un endpoint `RunAgent` AG-UI complet. Aucun `RUN_STARTED`, `RUN_FINISHED`, `STEP_*`, message ou delta n'est inventé pour une connexion ou un polling. L'exécution et les actions restent sur leurs contrats autorisés.
+- AG-UI 1.0 est stable avec schéma JSON : CUSTOM exige type, name, value. Sources officielles : [spécification 1.0](https://docs.ag-ui.com/spec/1.0), [schéma 1.0](https://github.com/ag-ui-protocol/ag-ui/blob/main/spec/1.0/schema.json), [transports](https://docs.ag-ui.com/spec/1.0/basic/transports). La forme proposée correspond au schéma ; validation et interopérabilité restent NOT_RUN.
+- Une passerelle TypeScript/Next/Nest SSE est envisageable : les [Route Handlers Next](https://nextjs.org/docs/app/guides/backend-for-frontend) permettent un BFF et les réponses en streaming. Proxy, interruption, timeouts et déploiement restent à tester ; aucun SDK ni conformité de bout en bout ne sont certifiés.
+- Ce flux de lecture d’événements métier CUSTOM a la forme AG-UI 1.0, mais n’est pas un endpoint RunAgent conforme complet : la spécification impose aussi entrée, cycle de vie, ordre et comportement. Aucun RUN_STARTED, RUN_FINISHED, STEP_*, texte ou delta inventé ; ce flux est distinct du streaming des tokens Hermes.
 
 ## Mapping, source et sémantique
 
@@ -47,20 +47,23 @@ type FlowWireV1 =
 
 ## Transport, sécurité et reprise
 
-- Précondition bloquante : `qx-session` actuel contient le bearer dans un cookie HTTP-only (`apps/web/src/lib/api.ts`, `actions.ts`). Pour respecter « aucun token au navigateur », remplacer ce stockage par une session opaque aléatoire, `HttpOnly`, `Secure`, `SameSite`, avec bearer conservé uniquement côté serveur dans un magasin partagé, protégé et à durée limitée ; migration et révocation sûres à concevoir et tester. Ne pas activer le flux tant que ce prérequis n'est pas satisfait.
-- Navigateur → BFF Next même origine : `GET /api/flow/operations/:operationId/stream`, cookie opaque ; BFF → API privée : bearer et workspace uniquement côté serveur. Pas de token dans URL, JS, réponse, stockage navigateur ou logs. Autoriser la mission par le principal vérifié, l'appartenance active et les permissions effectives à chaque connexion et revalidation ; jamais de workspace choisi par le client sans contrôle.
+- **Décision : aucune migration de session obligatoire pour un SSE BFF sécurisé sous le modèle HttpOnly actuel.** actions.ts écrit qx-session contenant le bearer et le workspace avec HttpOnly, SameSite=Lax, expiration et Secure en production seulement. HttpOnly empêche la lecture JavaScript ordinaire mais le navigateur stocke et transmet le bearer : ce n’est pas zéro jeton dans le navigateur au sens littéral. Interdire sa valeur au code client, URL, réponses, événements et logs ; si absence physique du bearer dans le navigateur est exigée, un cookie opaque et un stockage serveur restent nécessaires.
+- Navigateur → BFF Next même origine : GET /api/flow/operations/:operationId/stream avec cookie existant ; BFF → API : bearer et workspace par Authorization et x-qeynox-workspace côté serveur, origine autorisée par api-origin.ts. Ne pas transmettre le cookie à l’API ni refléter ses en-têtes. TLS externe obligatoire ; vérifier l’isolation et la protection de toute liaison HTTP privée autorisée.
+- Le GET SSE est en lecture seule : SameSite=Lax ne suffit pas contre tous contextes cross-site/same-site. Contrôler Origin quand présent et Sec-Fetch-Site suivant une politique explicite, refuser les origines non autorisées, ne pas ouvrir CORS aux tiers, limiter les connexions ; tester les en-têtes absents, qui ne constituent pas une authentification.
 - SSE unidirectionnel : `text/event-stream`, `Cache-Control: no-store, no-transform`, désactivation du buffering proxy, commentaires heartbeat sans identifiant ni donnée ; limites de connexions/taille, délai d'inactivité, gestion de backpressure et annulation au départ du client. Vérifier concrètement le support streaming de Next et du proxy de déploiement.
-- Session, permissions et appartenance sont revalidées côté API au plus tard toutes les 30 secondes et avant chaque émission ; fermeture à expiration, révocation, déconnexion ou changement de workspace détecté. Une révocation externe n'est donc pas instantanée : délai maximal de 30 s à tester ; invalider immédiatement lors d'une déconnexion/changement détecté localement.
+- session() vérifie seulement forme et expiration locale ; AuthenticationGuard et verifyBearer vérifient hash, expiration, révocation, utilisateur actif et appartenance active à chaque requête API. activity appelle getOperation et filtre workspace/opération ; aucun contrôle de rôle fin supplémentaire n’est démontré ici. Revalider via l’API avant chaque émission et au moins toutes les 30 s, fermer sur refus, erreur ou expiration ; révocation externe sans émission détectée sous 30 s au maximum, borne à tester.
+- Déconnexion : logout demande la révocation API puis efface le cookie même en cas d’échec ; cet échec ne prouve pas la révocation du bearer. Fermer le flux client, notifier les autres onglets sans secret, conserver l’avertissement existant ; pas de promesse de fermeture serveur immédiate si la révocation échoue.
 - Chaque SSE `id` est la séquence confirmée ; `Last-Event-ID` prime sur `after` initial, tous deux validés comme entiers sûrs et bornés. Le serveur reprend `sequence > cursor` pour la même opération autorisée. Un checkpoint sans métadonnée métier permet d'avancer après filtrage ; l'ID n'est jamais avancé avant traitement des éléments précédents.
 - Le client déduplique par `(operationId,eventId)` et ignore les séquences déjà acquittées ; un trou numérique seul ne prouve pas une perte si une politique filtre des événements. Aucune animation pour historique, replay ou chargement initial ; seul un événement confirmé après synchronisation peut déclencher le signal existant, sous reduced-motion.
 - Amorçage sans trou : obtenir un watermark H autorisé, charger les lectures existantes puis rejouer strictement après H ; les événements rejoués ne font qu'invalider/relire, même si la lecture reflète déjà des données plus récentes. Ne jamais prétendre que ces lectures sont atomiques : détecter incompatibilités de version/révision, signaler `stale` et relire ; si cohérence requise, ajouter une lecture transactionnelle dédiée avant certification.
 - Reconnexion bornée avec backoff/jitter, contrôle des droits et replay depuis le dernier curseur traité ; si curseur invalide, futur ou hors rétention, envoyer `RESNAPSHOT`, fermer le client puis reprendre un amorçage. Ne pas supposer qu'une rétention existe : définir et tester son plancher avant purge. Détecter et éviter les boucles de reconnexion `EventSource` ; un contrôle SSE explicite ou une prévalidation JSON est nécessaire car `EventSource` ne fournit pas les statuts HTTP détaillés.
+- À chaque reconnexion, relire le cookie courant et revalider via API sans réutiliser un principal capturé ; refuser les curseurs associés à un autre workspace ou opération. Tester révocation pendant attente, perte du réseau et flux ouvert lors du changement de workspace.
 - Si flux indisponible, fermer SSE et utiliser le polling existant de 10 s sous ses conditions de visibilité/formulaire, sans seconde boucle concurrente ; reprendre et dédupliquer avant retour SSE. Afficher une vue périmée si les lectures échouent, pas un succès. Réseau/erreurs temporaires : `UNAVAILABLE` ; droits/session perdus : `SESSION_ENDED`, effacer données en mémoire et ne pas réessayer automatiquement ; aucune erreur sensible en sortie.
 - La passerelle peut interroger les projections persistées à intervalle borné : cela améliore le transport mais ne promet ni instantanéité ni nouveaux événements. Mesurer charge, latence et limites avant activation ; aucune écriture métier ni ordonnanceur.
 
 ## Fichiers et lots pour DeepSeek Flash 4.1
 
-1. **Session opaque, prérequis** : `apps/web/src/lib/api.ts`, `apps/web/src/lib/actions.ts` et nouveau stockage serveur partagé à préciser ; conserver le contrat d'authentification, les contrôles API et les actions. Tests de connexion, rotation, révocation et isolation avant tout flux.
+1. **Authentification existante** : conserver apps/web/src/lib/actions.ts, api.ts, api-origin.ts et apps/api/src/auth/auth.guard.ts, auth.service.ts ; session() exclusivement côté serveur. Aucun nouveau magasin ni changement auth obligatoire. Migration optionnelle vers cookie opaque et magasin partagé protégé si l’absence physique du bearer dans le navigateur est imposée.
 2. **Projection et accès** : `packages/application/src/read-models.ts`, `apps/api/src/activity/activity.controller.ts`, `activity.module.ts` ; ajouter validation des curseurs, contrôle explicite de visibilité, reprise et lecture cohérente si nécessaire. Garder PostgreSQL source de vérité, pas de modification Hermes/Hatchet.
 3. **Passerelle et schémas** : nouvelle route `apps/web/src/app/api/flow/operations/[operationId]/stream/route.ts`, nouveaux `apps/web/src/lib/flow-stream-contract.ts` et `flow-stream.ts` ; schémas versionnés, SSE, contrôle de session, nettoyage et limites. Aucun `api()` JSON existant utilisé tel quel pour un flux.
 4. **Client et continuité** : `apps/web/src/lib/flow-model.ts`, `apps/web/src/components/flow/types.ts`, `event-timeline.tsx`, `apps/web/src/components/mission-controls.tsx` et route mission si nécessaire ; intégrer déduplication, relectures, fallback et signal visuel existant, préserver actions, focus, FR/EN et accessibilité.
@@ -70,5 +73,72 @@ type FlowWireV1 =
 
 - Base PostgreSQL QA jetable `QEYNOX_QA_DATABASE_URL`, workspace et mission QA autorisés, deux utilisateurs/workspaces isolés ; session fournie par un opérateur autorisé, jamais de mot de passe, cookie, bearer ou contenu sensible dans les journaux/captures. Pas de session de production ni modification de données réelles.
 - Vérifier connexion Flow, RUNNING réel, approbation réelle si disponible et document/preuves réels si disponibles ; sinon NOT_RUN pour chaque cas absent. Observer un événement persisté, vérifier `eventId`/séquence, relecture et une seule animation ; aucun faux événement ni exécution déclenchée pour remplir le test.
-- Couvrir replay, pagination, doublons, filtrage et checkpoint, panne/reconnexion, curseur invalide, polling sans concurrence, reduced-motion ; arrêt et non-fuite après révocation, changement workspace et accès croisé refusé. Vérifier limites, absence de secrets et charge de connexions.
+- Couvrir cookie HttpOnly/Secure en production/SameSite/expiration, accès JS impossible et absence du bearer dans réponses, URL, événements et logs ; session expirée/révoquée, logout confirmé ou non, changement workspace, membre retiré, accès croisé, erreurs et reconnexion. Tester contrôles Origin/Fetch Metadata, CORS, GET sans effet métier, connexions cross-site/same-site et limites.
+- Tester aussi replay, pagination, doublons, filtrage, panne, curseur invalide, fallback sans concurrence, reduced-motion et absence de fuite après révocation ; mesurer la charge et conserver des preuves expurgées.
 - Exécuter les contrôles applicables d'AGENTS.md avec leurs prérequis ; consigner PASS/FAIL/NOT_RUN séparément, preuves expurgées et limites de déploiement. Aucun PASS métier ou protocolaire complet sans exécution effective.
+
+## Annexe — brief présent localement avant cette mise à jour
+
+#
+QEYNOX — FLOW 2.0 / AG-UI CONTRACT
+MODE : FAST LIVE V2
+THINKING : HIGH
+
+CONTEXTE
+Flow 2.0 est déployé sur main, SHA 652b154.
+PASS technique live, parcours métier authentifié NOT_RUN.
+
+OBJECTIF
+Concevoir le raccordement des événements réels
+QeyNox à Flow via AG-UI, sans recréer de moteur
+d'orchestration.
+
+RÔLES EXISTANTS
+- Hatchet : orchestration durable
+- Hermes : exécution agentique
+- PostgreSQL : vérité métier
+- Flow : interface utilisateur
+- API QeyNox : autorisations et isolation tenant
+
+MISSION
+1. Lis FLOW2_CONTRACT.md, FLOW2_STATUS.md et
+   les seuls contrats réels d'activité, d'événements,
+   de sessions et de read models.
+
+2. Vérifie le protocole AG-UI officiel et sa
+   compatibilité avec notre stack.
+
+3. Définis le mapping :
+   événement métier → FlowEvent → événement AG-UI
+   sans inventer de statut ni diffuser de données privées.
+
+4. Spécifie :
+   - Transport authentifié
+   - SSE ou alternative justifiée
+   - Curseur, replay et déduplication
+   - Reconnexion et fallback polling
+   - États de tâches et capacités
+   - Evidence et provenance
+   - Contrôle des permissions workspace
+   - Gestion des erreurs
+
+5. Prépare les contrats TypeScript et les fichiers
+   à modifier pour DeepSeek Flash 4.1.
+
+6. Prévois un test métier Flow authentifié
+   avec une session QA autorisée, sans identifiants
+   ni cookies dans les logs.
+
+LIVRABLE
+docs/flow/AGUI_IMPLEMENTATION_CONTRACT.md
+Maximum 180 lignes.
+
+INTERDIT
+- Refaire le dashboard
+- Modifier Hermes ou Hatchet inutilement
+- Faux streaming ou faux agents
+- Exposer un token au navigateur
+- Déployer ou modifier la production
+
+Pas de refonte, pas d'audit global.
+Rapport final : 8 lignes maximum.

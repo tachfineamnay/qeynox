@@ -69,10 +69,16 @@ export function createHatchetInspector(): HatchetRunInspector|undefined {
   if(!process.env.HATCHET_CLIENT_TOKEN)return undefined;
   try {return new HatchetRunInspector(HatchetClient.init());} catch {return undefined;}
 }
-export async function startQeyNoxWorker(deps:{handler:StepHandler;startDispatcher:(orchestrator:OrchestratorPort)=>Promise<void>}) {
+export async function startQeyNoxWorker(deps:{handler:StepHandler;startDispatcher:(orchestrator:OrchestratorPort)=>Promise<void>},signal?:AbortSignal) {
+  if(signal?.aborted)return;
   const runtime=createHatchetRuntime(deps.handler);
-  const worker=await runtime.client.worker(WORKER_NAME,{workflows:[runtime.task],slots:10});
+  const worker=await runtime.client.worker(WORKER_NAME,{workflows:[runtime.task],slots:10,handleKill:false});
+  if(signal?.aborted){await worker.stop();return;}
   // The dispatcher must poll committed outbox intent while the worker is long-running.
   await deps.startDispatcher(new HatchetAdapter(runtime));
-  await worker.start();
+  if(signal?.aborted){await worker.stop();return;}
+  let stopping:Promise<void>|undefined;
+  const stop=()=>{stopping??=worker.stop();};
+  signal?.addEventListener('abort',stop,{once:true});
+  try {await worker.start();} finally {signal?.removeEventListener('abort',stop);if(stopping)await stopping;}
 }

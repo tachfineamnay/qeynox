@@ -1,5 +1,9 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-17 — AG-UI closeout, worker shutdown
+
+The worker shutdown path now stops dispatch, requests Hatchet worker drain, then closes projection and database connections. An offline adapter test verifies that stop waits for an in-flight task; typecheck, build and the isolated PostgreSQL projection/restart suite passed. The installed SDK's actual server-side run recovery, task execution after SIGTERM, prevention of duplicate external effects, and shutdown with a live Hatchet/Hermes stack remain NOT_RUN and block an operational readiness claim. The migration rehearsal and rollback gates are documented in `docs/flow/AGUI_PROJECTION_0018_RUNBOOK.md`.
+
 ## 2026-11-17 — AG-UI projection delivery, local QA
 
 PostgreSQL migration 0018 stores transactional dirty work and per-operation event sequences, validates historical cursors and preserves existing envelopes. The worker projects under row locks independently of Hatchet startup; activity, summary and recent no longer materialize views during GET. Missing summary/activity projections explicitly return 503. No SSE or frontend implementation was added.

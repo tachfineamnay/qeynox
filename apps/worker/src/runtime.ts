@@ -39,6 +39,7 @@ export function startProjectionPolling(db:QeyNoxDatabase,intervalMs=5000){
 export async function createWorkerDependencies(){
  const conn=connectDatabase(process.env.DATABASE_URL),store=new QeyNoxStore(conn.db);
  let dispatcherTimer:ReturnType<typeof setInterval>|undefined;
+ let dispatchInFlight:Promise<void>|undefined;
  const profiles=new AgentProfileStore(conn.db),progression=new StepProgression(store);
  const engine=new HermesAdapter({baseUrl:process.env.HERMES_API_BASE_URL,privateOrigin:process.env.HERMES_PRIVATE_ORIGIN,apiKey:process.env.HERMES_API_KEY,model:process.env.HERMES_MODEL??'hermes-agent',timeoutMs:Number(process.env.HERMES_REQUEST_TIMEOUT_MS??60000),nativeToolsIsolated:process.env.HERMES_NATIVE_TOOLS_ISOLATED==='true',egressAttested:process.env.QEYNOX_NETWORK_POLICY_ATTESTED==='true'});
  // Startup snapshot for inspection/QA. Mission execution must reload the actual
@@ -121,10 +122,11 @@ export async function createWorkerDependencies(){
   },
   startDispatcher:async(orchestrator:OrchestratorPort)=>{
     const dispatcher=new PgOutboxDispatcher(conn.pool,orchestrator);
-    const deliver=async()=>{try{await dispatcher.dispatchOnce();}catch(error:unknown){console.error('Outbox dispatch error:',error instanceof Error?error.message:'unknown');}};
+    const deliver=()=>{if(!dispatchInFlight)dispatchInFlight=(async()=>{try{await dispatcher.dispatchOnce();}catch(error:unknown){console.error('Outbox dispatch error:',error instanceof Error?error.message:'unknown');}})().finally(()=>{dispatchInFlight=undefined;});return dispatchInFlight;};
     await deliver();dispatcherTimer=setInterval(()=>{void deliver();},5000);
   },
-  close:async()=>{if(dispatcherTimer)clearInterval(dispatcherTimer);await conn.close();},
+  stopDispatcher:async()=>{if(dispatcherTimer)clearInterval(dispatcherTimer);await dispatchInFlight;},
+  close:async()=>{if(dispatcherTimer)clearInterval(dispatcherTimer);await dispatchInFlight;await conn.close();},
   toolRegistry:tools, // startup snapshot retained for existing QA callers
   loadToolRegistry:()=>createConfiguredToolRegistry(conn.db),
  };
