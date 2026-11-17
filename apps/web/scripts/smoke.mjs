@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createServer as createPortProbe } from 'node:net';
 
 let mode = 'empty';
+let capabilityReads = 0;
 const token = 'q'.repeat(64);
 const backend = createServer((req, res) => {
   res.setHeader('content-type', 'application/json');
@@ -17,12 +18,26 @@ const backend = createServer((req, res) => {
   const citation = { sourceId: 'source_qa', provider: 'QA source', uri: mode === 'unsafe-source' ? 'javascript:alert(1)' : 'https://example.org/evidence', retrievedAt: operation.lastActivityAt };
   const doc = { id: 'document_qa', operationId: operation.id, revisionId: 'revision_qa', version: 1, title: 'QA evidence document', objective: 'QA objective', status: 'PARTIAL', scope: [], nextActions: ['Review missing evidence'], limitations: ['QA limitation'], unresolved: ['claim_qa'], createdAt: operation.lastActivityAt, citations: [citation], findings: [{ claimId: 'claim_qa', statement: 'QA finding', status: 'UNVERIFIED', sourceIds: ['source_qa'], attemptId: 'attempt_qa', limitations: ['Needs review'], citations: [citation] }] };
   let payload;
+  if (req.url === '/v1/capabilities') {
+    capabilityReads++;
+    if (mode === 'capabilities-denied') { res.statusCode = 403; res.end(JSON.stringify({ error: { code: 'DENIED' } })); return; }
+    if (mode === 'capabilities-malformed') { res.end(JSON.stringify({ slots: 'invalid' })); return; }
+    payload = { total: 8, active: 1, available: 1, slots: Array.from({ length: 8 }, (_, index) => index === 0
+      ? { slot: 1, status: 'ACTIVE', available: true, capability: { id: 'capability_qa', version: 1, name: 'QA evidence research', purpose: 'QA fixture', scope: [], maximumSteps: 3, maximumToolCalls: 2, externalActions: false, providerReady: true, missingProviders: [], profileReady: true } }
+      : { slot: index + 1, status: 'UNCONFIGURED', available: false, capability: null }) };
+  }
   if (req.url === '/v1/operations/operation_qa') payload = operation;
   if (req.url === '/v1/mydash/operations/operation_qa/summary') payload = { operationId: operation.id, status: 'RUNNING', stepCount: 3, completedSteps: 1, pendingApprovals: 0, lastSequence: 1 };
   if (req.url === '/v1/operations/operation_qa/timeline') payload = [{ id: 'event_qa', kind: 'EXECUTION_REQUESTED', occurredAt: operation.lastActivityAt }];
   if (req.url?.startsWith('/v1/mydash/operations/operation_qa/activity?')) payload = { events: [{ id: 'envelope_qa', eventId: 'event_qa', sequence: 1, kind: 'EXECUTION_REQUESTED', occurredAt: operation.lastActivityAt }], nextCursor: 1, transport: 'POLLING' };
   if (req.url === '/v1/pilot/operations/operation_qa/next-action') payload = { operationId: operation.id, status: 'RUNNING', action: 'WAIT', reason: 'Based on recorded operation state only' };
   if (req.url === '/v1/pilot/overview') payload = [operation];
+  if (req.url === '/v1/soul/onboarding') payload = { status: 'COMPLETED' };
+  if (req.url === '/v1/soul/consents') payload = [{ id: 'consent_qa', scope: ['context:read'], grantedAt: operation.lastActivityAt }];
+  if (req.url === '/v1/operations/operation_qa/claims') payload = [];
+  if (['/v1/operations/operation_qa/plan', '/v1/operations/operation_qa/readiness', '/v1/operations/operation_qa/commercial'].includes(req.url)) {
+    res.statusCode = 503; res.end(JSON.stringify({ error: { code: 'NOT_CONFIGURED' } })); return;
+  }
   if (req.url === '/v1/operations/operation_qa/documents') payload = [doc];
   if (req.url === '/v1/operations/operation_qa/documents/document_qa') payload = doc;
   if (req.url === '/v1/soul/context') payload = [{ id: 'fact_qa', key: 'QA preference', value: 'French', consentId: 'consent_qa', updatedAt: operation.lastActivityAt }];
@@ -84,7 +99,23 @@ try {
   assert.match(robots, /Disallow: \/admin/); assertions++;
   assert.match(await page('/fr'), /<html lang="fr"/); assertions++;
   assert.match(await page('/en/mydash'), /Sign in to view or save/); assertions++;
-  assert.match(await page('/en/capabilities'), /Availability cannot be confirmed/); assertions++;
+  const anonymousCapabilities = await page('/en/capabilities');
+  assert.match(anonymousCapabilities, /Sign in to view or save your missions/); assertions++;
+  assert.doesNotMatch(anonymousCapabilities, /QA evidence research/); assertions++;
+  assert.equal(capabilityReads, 0, 'anonymous page must not request the catalogue'); assertions++;
+  const authenticatedCapabilities = await page('/en/capabilities', true);
+  assert.match(authenticatedCapabilities, /QA evidence research/); assertions++;
+  assert.match(authenticatedCapabilities, /No capability is configured for this slot/); assertions++;
+  assert.equal(capabilityReads, 1); assertions++;
+  mode = 'capabilities-denied';
+  const deniedCapabilities = await page('/en/capabilities', true);
+  assert.match(deniedCapabilities, /Access was denied/); assertions++;
+  assert.doesNotMatch(deniedCapabilities, /QA evidence research/); assertions++;
+  mode = 'capabilities-malformed';
+  const malformedCapabilities = await page('/en/capabilities', true);
+  assert.match(malformedCapabilities, /request could not be completed/); assertions++;
+  assert.doesNotMatch(malformedCapabilities, /QA evidence research/); assertions++;
+  mode = 'empty';
   assert.match(await page('/en/mydash', true), /No recorded operations were returned/); assertions++;
   mode = 'loaded';
   const loaded = await page('/en/mydash', true);

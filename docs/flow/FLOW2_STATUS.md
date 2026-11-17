@@ -1,5 +1,17 @@
 # Flow 2.0 — statut
 
+## Préparation de livraison Web — 2026-11-17
+
+- **PASS local ciblé** sur la branche Flow issue de `9dac541` : typecheck et build Web, `test:flow2` approbation (35), RUNNING (8), RESULT (6), smoke Web (91 assertions). Aucune dépendance ajoutée au dépôt, aucun backend ni runtime externe sollicité.
+- Animation vérifiée dans Chrome sur fixture QA locale : événement 50 après 49 → un seul `animationstart` de 220 ms ; chargement initial, rafraîchissement identique, pagination vers l'événement 51 et retour arrière → aucune animation supplémentaire ; reduced-motion → aucune animation. Test ponctuel, fixture jamais livrée au client.
+- Smoke capabilities : ancienne attente anonyme remplacée par le message de connexion observé ; cas authentifié, accès refusé et réponse malformée couverts. Les lectures plan, readiness et commerce indisponibles de la fixture sont explicites ; auth applicative inchangée.
+- Neuf captures `mobile-p0-{approval,running,result}-{1440,1024,390}.png` revues ; pas de nouvelle régression P0 constatée. Ce sont des fixtures, et la référence visuelle approuvée reste absente : comparaison **BLOCKED**.
+- Image QA locale **PASS** : contexte Docker excluant magasin pnpm local, scripts Web QA et captures ; retrait des autres scripts QA avant copie vers l'image finale ; absence vérifiée dans un conteneur sans réseau et `/en` répond. Image construite depuis l'arbre de travail avant mise à jour finale de cette documentation, non depuis un SHA déployé.
+- Préparation seulement : le 2026-11-17, `main` local et distant étaient à `fbede41bd9cd0c686f03193b2766b70fe2566c76`, ancêtre de la branche. Neuf anciennes captures `qa-*.png` non suivies sont conservées hors commit.
+- Coolify préproduction : `qeynox-web` (`gu5pde4uim045cfyhbzvatyn`) sain, dernier déploiement observé `99068195bc60bb7342eb121816b56a288fc28505`, image correspondante conservée ; aucun déploiement actif/en attente observé. Historique MCP manuel, à revalider avant action.
+- Après GO explicite seulement : revalider SHA distant, file d'attente, ressource et rollback ; `git switch main`, `git merge --ff-only <SHA_CANDIDAT>`, `git push origin main`, puis un seul appel MCP `deploy` pour `gu5pde4uim045cfyhbzvatyn` sans force rebuild. Contrôler SHA servi, santé et parcours authentifié réel sans données de fixture. Aucune de ces actions n'a été exécutée.
+- Exécution client avec Hermes, licences/fraîcheur, stockage et identité publique restent des gates séparées ; test live métier et certification indépendante de production **NOT_RUN**. Les contrôles locaux ne valent pas une certification de production.
+
 ## Correctif mobile P0 — 2026-11-17
 
 - En-tête mobile compact : informations secondaires, contraintes et navigation conservées dans « Détails de la mission » ; priorité avant le rail.

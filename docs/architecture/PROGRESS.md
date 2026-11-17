@@ -1,5 +1,9 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-17 — Flow 2.0 Web release preparation
+
+On the Flow branch based on `9dac541`, Web typecheck/build, all three Flow fixture variants and the updated Web HTTP smoke passed. A real browser observed one 220 ms signal for a new QA event, no signal for initial/repeated/paginated history, and none with reduced motion. A local Web image built with QA files excluded and served `/en` in a network-isolated container; it was built before the final documentation update, not from a deployed SHA. Full scope, screenshots, proposed Web-only delivery and remaining gates: [FLOW2_STATUS.md](../flow/FLOW2_STATUS.md). No real runtime, customer journey, merge, push, deployment or independent production certification was performed.
+
 ## 2026-11-16 — FAST LIVE 2.0 adoption and preproduction delivery (main 21ec11d)
 
 FAST LIVE 2.0 is now the permanent delivery method for this repository: the canonical method

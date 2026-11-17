@@ -25,8 +25,12 @@ node_modules/
 *.log
 .DS_Store
 .tmp/
+.pnpm-store/
 .cache/
 .codex/
 .agents/
 .aws/
 **/*.tsbuildinfo
+# Local Web QA fixtures and screenshots are not inputs to container builds.
+apps/web/scripts/
+docs/flow/evidence/
