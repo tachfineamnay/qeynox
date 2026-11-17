@@ -513,6 +513,8 @@
   .qx-flow-aside .qx-inspector-shell.is-open{transition:none}
 }
 #flow-approvals,#flow-launch,#flow-plan,#flow-review,#flow-results,#flow-commercial,#flow-execution{scroll-margin-top:24px}
+.qx-flow-mobile-details{display:none}
+@media(max-width:767px){.qx-flow-head .qx-flow-desktop-details{display:none}.qx-flow-head .qx-flow-head-bar.qx-flow-desktop-details{display:flex;justify-content:flex-end}.qx-flow-head-bar .eyebrow{display:none}.qx-flow-mobile-details{display:block;margin:4px 0 0}.qx-flow-mobile-details summary{color:var(--qx-blue-700);font-size:13px;min-height:44px}.qx-flow-mobile-details[open]{padding-top:4px}.qx-flow-mobile-details .qx-flow-head-links{margin-top:8px}}
 
 /* Flow refinement: keep priority work ahead of navigation on compact screens. */
 .qx-flow-shell{grid-template-columns:180px minmax(0,1fr) 300px}

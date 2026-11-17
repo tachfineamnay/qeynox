@@ -1,5 +1,19 @@
 # Flow 2.0 — statut
 
+## Correctif mobile P0 — 2026-11-17
+
+- En-tête mobile compact : informations secondaires, contraintes et navigation conservées dans « Détails de la mission » ; priorité avant le rail.
+- Fixtures QA Playwright : à 390×844 en FR/EN, décision et boutons, tâche active et lien du résultat visibles initialement. Neuf captures EN `mobile-p0-{approval,running,result}-{1440,1024,390}.png` inspectées ; six captures mobiles FR/EN complémentaires `mobile-p0-{approval,running,result}-{fr,en}.png`. Aucune donnée client.
+- Largeur document égale au viewport pour les neuf vues ; focus initial, Échap et retour au déclencheur du tiroir testés sur les trois états mobiles. Reduced-motion : transition du tiroir mesurée à 0 s ; animation d'événement non testée.
+- Build Web PASS ; `test:flow2` PASS pour approbation (35), RUNNING (8) et RESULT (6). Desktop visuellement inchangé sur les fixtures ; comparaison à la référence absente toujours BLOCKED.
+
+## QA visuelle — 2026-11-17
+
+- **FAIL P0** sur `3145ec2` : à 390×844, l'en-tête repousse la décision et le contenu du résultat sous le premier écran. Correction et nouvelle vérification nécessaires.
+- Neuf captures Playwright de fixtures QA : `docs/flow/evidence/qa-{approval,running,result}-{1440,1024,390}.png` ; elles ne représentent pas des données client. Largeur globale mesurée égale au viewport pour les neuf vues.
+- Examen visuel effectué sur approval 390/1024, running 1440 et result 390 ; cinq autres captures produites mais non inspectées. Focus, Échap, animation et reduced-motion : **NOT_RUN** ; aucune certification visuelle globale.
+- Le navigateur Playwright local fonctionne avec les serveurs de fixture hors sandbox ; le timeout antérieur de l'initialisation CUA n'a pas été reproduit ni expliqué par ce test.
+
 ## Raffinement visuel — 2026-11-17
 
 - Ajustements Web : ordre compact, inspecteur modal et retour du focus, capacités actives au centre, décision dédupliquée, résultats et limites enregistrés, signal d'événement de 220 ms.

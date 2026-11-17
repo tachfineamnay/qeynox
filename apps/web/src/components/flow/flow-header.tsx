@@ -21,7 +21,7 @@ export function FlowHeader({ lang, model, refresh }: { lang: Locale; model: Flow
   const staleLabels = model.staleReads.map(id => readLabels[id] ?? id);
   return (
     <header className="qx-flow-head">
-      <div className="qx-flow-head-bar">
+      <div className="qx-flow-head-bar qx-flow-desktop-details">
         <p className="eyebrow">{f.eyebrow}</p>
         <div className="qx-flow-head-tools">{refresh}</div>
       </div>
@@ -31,29 +31,36 @@ export function FlowHeader({ lang, model, refresh }: { lang: Locale; model: Flow
           {objective ? <p className="qx-flow-head-subtitle">{model.operation.title}</p> : null}
           <div className="qx-meta-row">
             <StatusBadge status={model.operation.status} lang={lang} />
-            <span className="muted">{f.version} {model.operation.version}</span>
-            <span className="muted">{f.updated}: {stamp(lang, model.operation.lastActivityAt)}</span>
-            {steps !== null ? <span className="muted">{f.steps}: {steps}</span> : null}
-            {model.pendingApprovals.length > 0 ? <span className="badge warning">{f.pendingApprovals}: {model.pendingApprovals.length}</span> : null}
+            <span className="qx-flow-desktop-details muted">{f.version} {model.operation.version}</span>
+            <span className="qx-flow-desktop-details muted">{f.updated}: {stamp(lang, model.operation.lastActivityAt)}</span>
+            {steps !== null ? <span className="qx-flow-desktop-details muted">{f.steps}: {steps}</span> : null}
+            {model.pendingApprovals.length > 0 ? <span className="qx-flow-desktop-details badge warning">{f.pendingApprovals}: {model.pendingApprovals.length}</span> : null}
           </div>
           {!objective ? <p className="muted qx-flow-head-note">{objectiveMissing}</p> : null}
           {model.operation.lastErrorCode ? (
             <p className="qx-error-code">{f.lastError}: <code>{model.operation.lastErrorCode}</code></p>
           ) : null}
         </div>
-        <nav className="qx-flow-head-links" aria-label={f.eyebrow}>
+        <nav className="qx-flow-head-links qx-flow-desktop-details" aria-label={f.eyebrow}>
           <Link className="button secondary qx-small" href="#flow-plan">{f.openPlan}</Link>
           <Link className="button secondary qx-small" href="#flow-results">{f.openResults}</Link>
         </nav>
       </div>
       {model.objective.constraints.length > 0 ? (
-        <div className="qx-flow-head-constraints">
+        <div className="qx-flow-head-constraints qx-flow-desktop-details">
           <span className="qx-kicker">{f.constraints}</span>
           <ul className="qx-chip-list">
             {model.objective.constraints.map((constraint, position) => <li key={position}>{constraint}</li>)}
           </ul>
         </div>
       ) : null}
+      <details className="qx-flow-mobile-details">
+        <summary>{lang === 'fr' ? 'Détails de la mission' : 'Mission details'}</summary>
+        <p className="muted">{f.version} {model.operation.version} · {f.updated}: {stamp(lang, model.operation.lastActivityAt)}{steps !== null ? ` · ${f.steps}: ${steps}` : ''}</p>
+        {model.pendingApprovals.length > 0 && <p>{f.pendingApprovals}: {model.pendingApprovals.length}</p>}
+        {model.objective.constraints.length > 0 && <p>{f.constraints}: {model.objective.constraints.join(' · ')}</p>}
+        <nav className="qx-flow-head-links" aria-label={f.eyebrow}><Link className="button secondary qx-small" href="#flow-plan">{f.openPlan}</Link><Link className="button secondary qx-small" href="#flow-results">{f.openResults}</Link></nav>
+      </details>
       {model.staleReads.length > 0 ? (
         <div className="qx-flow-stale" role="status">
           <strong>{f.staleTitle}</strong>
