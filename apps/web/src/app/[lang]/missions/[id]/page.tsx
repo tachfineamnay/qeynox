@@ -41,12 +41,13 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   }
   const op = operation.data;
   const pageSize = 50;
-  const after = z.coerce.number().int().nonnegative().safeParse((await searchParams).after ?? 0);
-  const cursor = after.success ? after.data : 0;
-  const [plan, readiness, summary, activity, pilot, commercial, claims, documents, facts, consents] = await Promise.all([
+  const requestedAfter=(await searchParams).after;
+  const summary=await read('/v1/mydash/operations/' + id.data + '/summary', summarySchema);
+  const after = z.coerce.number().int().nonnegative().safeParse(requestedAfter ?? 0);
+  const cursor = requestedAfter===undefined&&summary.data?.operationId===id.data ? Math.max(0,summary.data.lastSequence-pageSize) : after.success ? after.data : 0;
+  const [plan, readiness, activity, pilot, commercial, claims, documents, facts, consents] = await Promise.all([
     read(base + '/plan', planViewSchema),
     read(base + '/readiness', readinessSchema),
-    read('/v1/mydash/operations/' + id.data + '/summary', summarySchema),
     read('/v1/mydash/operations/' + id.data + '/activity?after=' + cursor + '&limit=' + pageSize, activitySchema),
     read('/v1/pilot/operations/' + id.data + '/next-action', guidanceSchema),
     read(base + '/commercial', commercialViewSchema),
@@ -440,8 +441,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   return (
     <AppShell lang={lang} active="missions" path={'missions/' + op.id}>
       <nav className="qx-breadcrumb" aria-label={t.back}><Link href={'/' + lang + '/mydash'}>← {t.back}</Link></nav>
-      <FlowHeader lang={lang} model={model} refresh={<RefreshMission active={running} lang={lang} />} />
-      <FlowWorkspace lang={lang} model={model} decision={approvalsCard ?? undefined}>
+      <FlowHeader lang={lang} model={model} refresh={<RefreshMission lang={lang} />} />
+      <FlowWorkspace lang={lang} model={model} watermark={summaryData?.lastSequence ?? null} historyHref={requestedAfter===undefined&&cursor>0?'/'+lang+'/missions/'+id.data+'?after=0':null} decision={approvalsCard ?? undefined}>
         {cards.map(card => <Fragment key={card.key}>{card.node}</Fragment>)}
       </FlowWorkspace>
     </AppShell>

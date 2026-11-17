@@ -26,6 +26,7 @@ export async function GET(request:Request,{params}:{params:Promise<{operationId:
  } catch(error){return new Response(null,{status:denied(error)?403:503,headers:{'Cache-Control':'no-store'}});}
  active++;
  let closed=false;
+ let caughtUp=false;
  const seen=new Set<string>();
  const encoder=new TextEncoder();
  const close=()=>{if(!closed){closed=true;active--;}};
@@ -49,7 +50,10 @@ export async function GET(request:Request,{params}:{params:Promise<{operationId:
      controller.enqueue(encoder.encode('id: '+cursor+'\ndata: '+JSON.stringify(message)+'\n\n'));
     }else{
      if(page.nextCursor!==cursor){control('RESNAPSHOT');return;}
-     controller.enqueue(encoder.encode(': heartbeat\n\n'));
+     if(!caughtUp){
+      const snapshot=flowWireSchema.parse({type:'CUSTOM',name:'qeynox.flow.snapshot.v1',value:{operationId,watermark:cursor}});
+      controller.enqueue(encoder.encode('data: '+JSON.stringify(snapshot)+'\n\n'));caughtUp=true;
+     }else controller.enqueue(encoder.encode(': heartbeat\n\n'));
      await new Promise<void>(resolve=>{const done=()=>{clearTimeout(timer);request.signal.removeEventListener('abort',done);resolve();};const timer=setTimeout(done,5000);request.signal.addEventListener('abort',done,{once:true});});
     }
    } catch(error){if(!closed)control(denied(error)?'SESSION_ENDED':'UNAVAILABLE');}

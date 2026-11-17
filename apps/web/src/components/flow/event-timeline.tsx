@@ -8,29 +8,28 @@ import { eventKindLabel } from './event-label';
 import type { FlowModel, FlowSelection } from './types';
 
 /** Persisted events ordered by the server sequence; a new recorded event may briefly mark its row. */
-export function EventTimeline({ lang, model, selection, onSelect }: {
+export function EventTimeline({ lang, model, selection, onSelect, liveEventId, historyHref }: {
   lang: Locale;
   model: FlowModel;
   selection: FlowSelection | null;
   onSelect: (selection: FlowSelection) => void;
+  liveEventId: string | null;
+  historyHref: string | null;
 }) {
   const c = flowCopy(lang).timeline;
   const availability = flowCopy(lang).availability;
-  const latestId = model.events.items[0]?.eventId ?? null;
-  const latestSequence = model.events.items[0]?.sequence ?? null;
-  const lastSeen = useRef({ sequence: latestSequence, page: typeof window === 'undefined' ? '' : window.location.search, operation: model.operation.id });
   const [highlight, setHighlight] = useState<string | null>(null);
+  const lastHighlighted=useRef<string|null>(null);
+  const liveVisible=Boolean(liveEventId&&model.events.items.some(event=>event.eventId===liveEventId));
   useEffect(() => {
-    const page = window.location.search;
-    const previous = lastSeen.current;
-    lastSeen.current = { sequence: latestSequence, page, operation: model.operation.id };
-    if (latestId && latestSequence !== null && previous.sequence !== null && latestSequence > previous.sequence && page === previous.page && model.operation.id === previous.operation && !new URLSearchParams(page).has('after')) {
-      setHighlight(latestId);
+    if (liveEventId && liveVisible && lastHighlighted.current!==liveEventId && !new URLSearchParams(window.location.search).has('after')) {
+      lastHighlighted.current=liveEventId;
+      setHighlight(liveEventId);
       const timer = window.setTimeout(() => setHighlight(null), 220);
       return () => window.clearTimeout(timer);
     }
     return undefined;
-  }, [latestId, latestSequence, model.operation.id]);
+  }, [liveEventId, liveVisible]);
   const state = model.events.state;
   return (
     <section className="qx-flow-panel qx-timeline" aria-labelledby="flow-timeline-title">
@@ -77,7 +76,7 @@ export function EventTimeline({ lang, model, selection, onSelect }: {
         </ol>
       )}
       {model.events.duplicates > 0 ? <p className="qx-panel-foot">{model.events.duplicates + ' ' + c.duplicates}</p> : null}
-      {model.events.moreHref ? <Link className="button secondary qx-small qx-timeline-more" href={model.events.moreHref}>{c.more}</Link> : null}
+      {historyHref ? <Link className="button secondary qx-small qx-timeline-more" href={historyHref}>{lang==='fr'?'Historique':'History'}</Link> : model.events.moreHref && model.events.nextCursor !== model.summary?.lastSequence ? <Link className="button secondary qx-small qx-timeline-more" href={model.events.moreHref}>{c.more}</Link> : null}
     </section>
   );
 }

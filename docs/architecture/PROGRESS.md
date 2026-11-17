@@ -1,5 +1,11 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-17 — Flow SSE client, local QA
+
+Flow consumes the authenticated BFF stream from the server watermark, validates and deduplicates events, refreshes authoritative reads, and uses a bounded fallback/reconciliation timer. The BFF emits a caught-up snapshot so replay does not animate; a 30-second reconnect rechecks the current session and workspace. The latest page is shown by default with a separate history link.
+
+PASS on a disposable PostgreSQL/API/Next stack with Chrome: authenticated mission, projected event, eventless change and result phase, unsaved form and selection preservation, SSE outage/fallback/reconnect, replay without animation and new event animation, workspace change, EN/FR, mobile and reduced motion. SSE HTTP QA covers revocation, cross-workspace access and token exclusion. Fixture suites cover the three Flow variants. Live external Hatchet/Hermes execution and live changes to steps, agents and approvals remain NOT_RUN; production rollout, reference screenshot comparison and independent certification remain separate gates.
+
 ## 2026-11-17 — AG-UI closeout, worker shutdown
 
 The worker shutdown path now stops dispatch, requests Hatchet worker drain, then closes projection and database connections. An offline adapter test verifies that stop waits for an in-flight task; typecheck, build and the isolated PostgreSQL projection/restart suite passed. The installed SDK's actual server-side run recovery, task execution after SIGTERM, prevention of duplicate external effects, and shutdown with a live Hatchet/Hermes stack remain NOT_RUN and block an operational readiness claim. The migration rehearsal and rollback gates are documented in `docs/flow/AGUI_PROJECTION_0018_RUNBOOK.md`.

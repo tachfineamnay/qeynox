@@ -8,15 +8,18 @@ import { ContextInspector } from './context-inspector';
 import { EventTimeline } from './event-timeline';
 import { NowCanvas } from './now-canvas';
 import { PhaseRail } from './phase-rail';
+import { FlowLiveRefresh } from './flow-live-refresh';
 import type { FlowModel, FlowSelection } from './types';
 
 /**
  * Client composition boundary: keeps selection state and the compact inspector drawer.
- * All displayed business data is rendered from the server-provided FlowModel; no fetch happens here.
+ * Business data comes from the server-provided FlowModel; the live listener requests revalidation.
  */
-export function FlowWorkspace({ lang, model, decision, children }: {
+export function FlowWorkspace({ lang, model, watermark, historyHref, decision, children }: {
   lang: Locale;
   model: FlowModel;
+  watermark: number | null;
+  historyHref: string | null;
   decision?: ReactNode;
   children: ReactNode;
 }) {
@@ -24,9 +27,12 @@ export function FlowWorkspace({ lang, model, decision, children }: {
   const [selection, setSelection] = useState<FlowSelection | null>(null);
   const [compact, setCompact] = useState(false);
   const [open, setOpen] = useState(false);
+  const [liveEventId,setLiveEventId]=useState<string|null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
   const inspectorShell = useRef<HTMLDivElement>(null);
+
+  useEffect(()=>{setSelection(null);setOpen(false);setLiveEventId(null);},[model.operation.id]);
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 1439px)');
@@ -79,6 +85,7 @@ export function FlowWorkspace({ lang, model, decision, children }: {
   const shellClass = 'qx-inspector-shell' + (compact ? ' is-compact' : '') + (compactOpen ? ' is-open' : '');
   return (
     <div className="qx-flow-shell">
+      <FlowLiveRefresh operationId={model.operation.id} watermark={watermark} onLiveEvent={setLiveEventId} />
       <div className="qx-flow-rail">
         <PhaseRail lang={lang} model={model} selection={selection} onSelectStep={stepId => select({ kind: 'step', id: stepId })} />
       </div>
@@ -92,7 +99,7 @@ export function FlowWorkspace({ lang, model, decision, children }: {
         <div ref={inspectorShell} className={shellClass} inert={compact && !open} aria-hidden={compact && !open} role={compactOpen ? 'dialog' : undefined} aria-modal={compactOpen ? true : undefined} aria-labelledby={compactOpen ? 'flow-inspector-title' : undefined}>
           <ContextInspector lang={lang} model={model} selection={selection} compact={compact} onClear={() => setSelection(null)} onClose={compact ? close : undefined} />
         </div>
-        <EventTimeline lang={lang} model={model} selection={selection} onSelect={select} />
+        <EventTimeline lang={lang} model={model} selection={selection} onSelect={select} liveEventId={liveEventId} historyHref={historyHref} />
       </div>
       <button ref={triggerRef} type="button" className="qx-inspector-trigger" aria-expanded={open} aria-controls="flow-inspector" onClick={() => { returnFocus.current = triggerRef.current; setOpen(true); }}>
         {open ? c.close : c.open}

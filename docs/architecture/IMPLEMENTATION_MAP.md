@@ -1,5 +1,7 @@
 # QeyNox 2027 — source implementation map
 
+**2026-11-17 Flow SSE client:** local QA verifies authenticated mission updates, eventless reconciliation, replay, fallback, workspace switching and form preservation using a disposable database and browser. Real external agent/approval execution and production rollout remain unverified; details are in [PROGRESS.md](PROGRESS.md).
+
 **2026-11-17 AG-UI projection:** Local implementation adds transactional projection work, per-operation event ordering and read-only activity/summary/recent. Worker catch-up runs independently of Hatchet availability. Isolated PostgreSQL/HTTP tests and limitations are recorded in [PROGRESS.md](PROGRESS.md); production migration, backfill and independent certification remain separate gates.
 
 **2026-11-17 Flow 2.0 Web release preparation:** Local Web typecheck/build, Flow fixture suites, updated HTTP smoke, browser event-motion checks and isolated Web image startup/fixture-exclusion checks passed; scope and exact limitations are recorded in [FLOW2_STATUS.md](../flow/FLOW2_STATUS.md). No merge, push or deployment was performed. External runtime, live customer journey, identity/storage/provider gates and independent production certification remain open.
