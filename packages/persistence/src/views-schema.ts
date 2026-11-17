@@ -1,4 +1,4 @@
-import { pgTable,text,integer,jsonb,index,uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable,text,integer,jsonb,index,uniqueIndex,boolean } from 'drizzle-orm/pg-core';
 export const eventEnvelopes=pgTable('operation_event_envelopes',{
  id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),operationId:text('operation_id').notNull(),
  eventId:text('event_id').notNull().unique(),sequence:integer('sequence').notNull(),
@@ -18,3 +18,7 @@ export const operationViews=pgTable('operation_views',{
 export const projectionCursors=pgTable('projection_cursors',{
  operationId:text('operation_id').primaryKey(),lastSequence:integer('last_sequence').notNull().default(0),
 });
+export const projectionWork=pgTable('projection_work',{
+ operationId:text('operation_id').primaryKey(),workspaceId:text('workspace_id').notNull(),
+ dirty:boolean('dirty').notNull().default(true),nextEventSequence:integer('next_event_sequence').notNull().default(0),
+},t=>[index('projection_work_dirty_idx').on(t.dirty,t.operationId)]);

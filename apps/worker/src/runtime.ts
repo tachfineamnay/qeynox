@@ -1,14 +1,44 @@
-import { and,eq } from 'drizzle-orm';
+import { and,eq,notInArray } from 'drizzle-orm';
 import { DomainError,newId,transitionOperation,type ID,type Evidence,type StepAttempt } from '@qeynox/domain';
-import { connectDatabase,QeyNoxStore,attempts,operations,events } from '@qeynox/persistence';
+import { connectDatabase,QeyNoxStore,attempts,operations,events,projectionWork,type QeyNoxDatabase } from '@qeynox/persistence';
 import { HermesAdapter,hermesCapabilities } from '@qeynox/engine';
 import { AgentProfileStore,CapabilityRegistry } from '@qeynox/roles';
-import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection } from '@qeynox/application';
+import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,OperationReadModels } from '@qeynox/application';
 import { createConfiguredToolRegistry } from '@qeynox/tools';
 import { PgOutboxDispatcher,type ExecutionRequest,type OrchestratorPort } from '@qeynox/orchestration';
 
+export async function projectOnce(db:QeyNoxDatabase,excluded:string[]=[]):Promise<string|undefined>{
+ return db.transaction(async tx=>{
+  const [work]=await tx.select().from(projectionWork).where(and(eq(projectionWork.dirty,true),excluded.length?notInArray(projectionWork.operationId,excluded):undefined)).orderBy(projectionWork.operationId).limit(1).for('update',{skipLocked:true});
+  if(!work)return undefined;
+  try {await new OperationReadModels(new QeyNoxStore(db)).projectInTransaction(tx,work.workspaceId as ID,work.operationId as ID);}
+  catch(error){throw new ProjectionFailure(work.operationId,error);}
+  return work.operationId;
+ });
+}
+class ProjectionFailure extends Error {
+ constructor(readonly operationId:string,cause:unknown){super('Projection failed',{cause});}
+}
+export function startProjectionPolling(db:QeyNoxDatabase,intervalMs=5000){
+ let stopped=false;let timer:ReturnType<typeof setTimeout>|undefined;let running:Promise<void>|undefined;
+ const cycle=async()=>{
+  const excluded:string[]=[];
+  for(let i=0;i<100&&!stopped;i++){
+   try {if(!await projectOnce(db,excluded))break;}
+   catch(error){
+    if(!(error instanceof ProjectionFailure)){console.error('Projection polling failed');break;}
+    excluded.push(error.operationId);console.error('Projection failed for operation',error.operationId);
+   }
+  }
+ };
+ const schedule=()=>{running=cycle().finally(()=>{if(!stopped)timer=setTimeout(schedule,intervalMs);});};
+ schedule();
+ return async()=>{stopped=true;if(timer)clearTimeout(timer);await running;};
+}
+
 export async function createWorkerDependencies(){
  const conn=connectDatabase(process.env.DATABASE_URL),store=new QeyNoxStore(conn.db);
+ let dispatcherTimer:ReturnType<typeof setInterval>|undefined;
  const profiles=new AgentProfileStore(conn.db),progression=new StepProgression(store);
  const engine=new HermesAdapter({baseUrl:process.env.HERMES_API_BASE_URL,privateOrigin:process.env.HERMES_PRIVATE_ORIGIN,apiKey:process.env.HERMES_API_KEY,model:process.env.HERMES_MODEL??'hermes-agent',timeoutMs:Number(process.env.HERMES_REQUEST_TIMEOUT_MS??60000),nativeToolsIsolated:process.env.HERMES_NATIVE_TOOLS_ISOLATED==='true',egressAttested:process.env.QEYNOX_NETWORK_POLICY_ATTESTED==='true'});
  // Startup snapshot for inspection/QA. Mission execution must reload the actual
@@ -92,9 +122,9 @@ export async function createWorkerDependencies(){
   startDispatcher:async(orchestrator:OrchestratorPort)=>{
     const dispatcher=new PgOutboxDispatcher(conn.pool,orchestrator);
     const deliver=async()=>{try{await dispatcher.dispatchOnce();}catch(error:unknown){console.error('Outbox dispatch error:',error instanceof Error?error.message:'unknown');}};
-    await deliver();setInterval(()=>{void deliver();},5000);
+    await deliver();dispatcherTimer=setInterval(()=>{void deliver();},5000);
   },
-  close:async()=>{await conn.close();},
+  close:async()=>{if(dispatcherTimer)clearInterval(dispatcherTimer);await conn.close();},
   toolRegistry:tools, // startup snapshot retained for existing QA callers
   loadToolRegistry:()=>createConfiguredToolRegistry(conn.db),
  };

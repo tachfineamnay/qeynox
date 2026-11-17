@@ -1,5 +1,11 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-17 — AG-UI projection delivery, local QA
+
+PostgreSQL migration 0018 stores transactional dirty work and per-operation event sequences, validates historical cursors and preserves existing envelopes. The worker projects under row locks independently of Hatchet startup; activity, summary and recent no longer materialize views during GET. Missing summary/activity projections explicitly return 503. No SSE or frontend implementation was added.
+
+Isolated PostgreSQL 16 QA: `qa:projection-http` PASS covers authenticated HTTP reads on a read-only database session, pagination, 503 and workspace isolation. `qa:projection-worker` PASS covers event catch-up without GET, source mutation without event, transaction rollback, competing workers and writers, stable replay, actual worker restart without Hatchet, and forced termination during an in-flight projection followed by rollback and catch-up. `qa:projection-migration` PASS covers historical cursor preservation, corruption refusal and migration rollback. Frozen install, typecheck, build, `qa:task02` (3336 assertions), `qa:backend` (28), `qa:agent-runtime` (65), `qa:connectors` (49) and `qa:raas` (47) passed locally. The latter two include a public World Bank read. External Hatchet/Hermes integration, production migration/backfill and independent certification remain NOT_RUN. The migration requires a quiescent rollout and completion of backfill before serving the new reads.
+
 ## 2026-11-17 — Flow 2.0 Web release preparation
 
 On the Flow branch based on `9dac541`, Web typecheck/build, all three Flow fixture variants and the updated Web HTTP smoke passed. A real browser observed one 220 ms signal for a new QA event, no signal for initial/repeated/paginated history, and none with reduced motion. A local Web image built with QA files excluded and served `/en` in a network-isolated container; it was built before the final documentation update, not from a deployed SHA. Full scope, screenshots, proposed Web-only delivery and remaining gates: [FLOW2_STATUS.md](../flow/FLOW2_STATUS.md). No real runtime, customer journey, merge, push, deployment or independent production certification was performed.

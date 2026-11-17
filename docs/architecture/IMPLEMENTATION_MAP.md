@@ -1,5 +1,7 @@
 # QeyNox 2027 — source implementation map
 
+**2026-11-17 AG-UI projection:** Local implementation adds transactional projection work, per-operation event ordering and read-only activity/summary/recent. Worker catch-up runs independently of Hatchet availability. Isolated PostgreSQL/HTTP tests and limitations are recorded in [PROGRESS.md](PROGRESS.md); production migration, backfill and independent certification remain separate gates.
+
 **2026-11-17 Flow 2.0 Web release preparation:** Local Web typecheck/build, Flow fixture suites, updated HTTP smoke, browser event-motion checks and isolated Web image startup/fixture-exclusion checks passed; scope and exact limitations are recorded in [FLOW2_STATUS.md](../flow/FLOW2_STATUS.md). No merge, push or deployment was performed. External runtime, live customer journey, identity/storage/provider gates and independent production certification remain open.
 
 **2026-11-15 targeted repair:** Agent findings require human review before SUPPORTED, including when structural policy checks alone would otherwise promote them. Local verification and outstanding mission 10 gates are recorded in PROGRESS.md. Existing links do not prove semantic attribution; Hermes is restarting/unhealthy in preproduction and the real end-to-end path remains unverified.

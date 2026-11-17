@@ -1,5 +1,13 @@
 # Flow 2.0 — statut
 
+## Projection AG-UI A — correctif local 2026-11-17
+
+Ce statut remplace les constats de projection antérieurs ci-dessous. Les GET activity, summary et recent lisent les projections sans écriture ; une vue encore absente renvoie 503 pour summary/activity. La migration 0018 marque durablement les sources modifiées et conserve les séquences publiées. Le worker rattrape et rejoue sous verrou PostgreSQL, même sans Hatchet ; les échecs restent à reprendre. Pas de SSE ni de changement frontend.
+
+Les tests isolés couvrent les GET HTTP sur connexion PostgreSQL read-only, deux workspaces, l'absence de projection, les mutations sans événement, la concurrence, le rollback, la reprise du processus sans Hatchet et le replay. La migration historique conserve les séquences et rejette les curseurs incohérents. Voir les commandes `qa:projection-http`, `qa:projection-worker` et `qa:projection-migration` ; les résultats effectifs et limites sont aussi consignés dans `docs/architecture/PROGRESS.md`.
+
+Déploiement **NOT_RUN** : quiescence des anciens écrivains/projecteurs, contrôle de l'historique et backfill complet sont nécessaires avant une bascule. Tests Hatchet/Hermes externes et certification indépendante restent **NOT_RUN**.
+
 ## Préparation de livraison Web — 2026-11-17
 
 - **PASS local ciblé** sur la branche Flow issue de `9dac541` : typecheck et build Web, `test:flow2` approbation (35), RUNNING (8), RESULT (6), smoke Web (91 assertions). Aucune dépendance ajoutée au dépôt, aucun backend ni runtime externe sollicité.

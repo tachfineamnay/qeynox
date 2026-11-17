@@ -14,7 +14,7 @@ export class ActivityController {
  @Get('operations/:operationId/summary')
  summary(@Req()req:Request,@Param('operationId')id:string){
   if(!req.principal)throw new DomainError('DENIED','Session required');
-  return this.view.sync(req.principal,requireId(id));
+  return this.view.summary(req.principal,requireId(id));
  }
  @Get('operations/:operationId/activity')
  activity(@Req()req:Request,@Param('operationId')id:string,@Query('after')after?:string,@Query('limit')limit?:string){
