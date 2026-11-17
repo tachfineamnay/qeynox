@@ -25,6 +25,7 @@ export function FlowWorkspace({ lang, model, decision, children }: {
   const [compact, setCompact] = useState(false);
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
   const inspectorShell = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export function FlowWorkspace({ lang, model, decision, children }: {
 
   const close = useCallback(() => {
     setOpen(false);
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
+    window.requestAnimationFrame(() => (returnFocus.current ?? triggerRef.current)?.focus());
   }, []);
 
   useEffect(() => {
@@ -71,7 +72,7 @@ export function FlowWorkspace({ lang, model, decision, children }: {
 
   const select = useCallback((next: FlowSelection) => {
     setSelection(next);
-    if (compact) setOpen(true);
+    if (compact) { returnFocus.current = document.activeElement as HTMLElement; setOpen(true); }
   }, [compact]);
 
   const compactOpen = compact && open;
@@ -83,17 +84,17 @@ export function FlowWorkspace({ lang, model, decision, children }: {
       </div>
       <div className="qx-flow-center">
         {decision ? <div className="qx-flow-decision">{decision}</div> : null}
-        <NowCanvas lang={lang} model={model} onSelectApproval={approvalId => select({ kind: 'approval', id: approvalId })} />
+        <NowCanvas lang={lang} model={model} decisionShown={Boolean(decision)} onSelectApproval={approvalId => select({ kind: 'approval', id: approvalId })} />
+        <AgentActivity lang={lang} model={model} selection={selection} onSelect={select} />
         {children}
       </div>
       <div className="qx-flow-aside">
-        <div ref={inspectorShell} className={shellClass} inert={compact && !open} aria-hidden={compact && !open}>
+        <div ref={inspectorShell} className={shellClass} inert={compact && !open} aria-hidden={compact && !open} role={compactOpen ? 'dialog' : undefined} aria-modal={compactOpen ? true : undefined} aria-labelledby={compactOpen ? 'flow-inspector-title' : undefined}>
           <ContextInspector lang={lang} model={model} selection={selection} compact={compact} onClear={() => setSelection(null)} onClose={compact ? close : undefined} />
         </div>
-        <AgentActivity lang={lang} model={model} selection={selection} onSelect={select} />
         <EventTimeline lang={lang} model={model} selection={selection} onSelect={select} />
       </div>
-      <button ref={triggerRef} type="button" className="qx-inspector-trigger" aria-expanded={open} aria-controls="flow-inspector" onClick={() => setOpen(true)}>
+      <button ref={triggerRef} type="button" className="qx-inspector-trigger" aria-expanded={open} aria-controls="flow-inspector" onClick={() => { returnFocus.current = triggerRef.current; setOpen(true); }}>
         {open ? c.close : c.open}
       </button>
       {compactOpen ? <div className="qx-inspector-backdrop" onClick={close} aria-hidden="true" /> : null}

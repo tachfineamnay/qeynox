@@ -88,6 +88,8 @@ export interface FlowDocumentSummary {
   version: number;
   createdAt: string;
   href: string;
+  findings: { claimId: string; statement: string; status: string; citations: { sourceId: string; provider: string }[] }[];
+  limitations: string[];
 }
 
 export interface FlowDocuments {

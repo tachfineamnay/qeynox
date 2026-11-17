@@ -17,18 +17,20 @@ export function EventTimeline({ lang, model, selection, onSelect }: {
   const c = flowCopy(lang).timeline;
   const availability = flowCopy(lang).availability;
   const latestId = model.events.items[0]?.eventId ?? null;
-  const lastSeen = useRef<string | null>(latestId);
+  const latestSequence = model.events.items[0]?.sequence ?? null;
+  const lastSeen = useRef({ sequence: latestSequence, page: typeof window === 'undefined' ? '' : window.location.search, operation: model.operation.id });
   const [highlight, setHighlight] = useState<string | null>(null);
   useEffect(() => {
-    if (!latestId) { lastSeen.current = null; return; }
-    if (latestId !== lastSeen.current) {
-      lastSeen.current = latestId;
+    const page = window.location.search;
+    const previous = lastSeen.current;
+    lastSeen.current = { sequence: latestSequence, page, operation: model.operation.id };
+    if (latestId && latestSequence !== null && previous.sequence !== null && latestSequence > previous.sequence && page === previous.page && model.operation.id === previous.operation && !new URLSearchParams(page).has('after')) {
       setHighlight(latestId);
-      const timer = window.setTimeout(() => setHighlight(null), 1200);
+      const timer = window.setTimeout(() => setHighlight(null), 220);
       return () => window.clearTimeout(timer);
     }
     return undefined;
-  }, [latestId]);
+  }, [latestId, latestSequence, model.operation.id]);
   const state = model.events.state;
   return (
     <section className="qx-flow-panel qx-timeline" aria-labelledby="flow-timeline-title">

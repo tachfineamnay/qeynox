@@ -25,10 +25,11 @@ function Progress({ lang, model }: { lang: Locale; model: FlowModel }) {
 }
 
 /** Current work canvas: the highest-value recorded state, derived from server data only. */
-export function NowCanvas({ lang, model, onSelectApproval }: { lang: Locale; model: FlowModel; onSelectApproval?: (approvalId: string) => void }) {
+export function NowCanvas({ lang, model, decisionShown, onSelectApproval }: { lang: Locale; model: FlowModel; decisionShown?: boolean; onSelectApproval?: (approvalId: string) => void }) {
   const c = flowCopy(lang).now;
   const h = flowCopy(lang).header;
   const f = missionCopy(lang).flow;
+  const m = missionCopy(lang);
   const statuses = copy[lang].statuses as Record<string, string>;
   const guidance = missionCopy(lang).guidance as Record<string, string>;
   const reason = missionCopy(lang).reasons as Record<string, string>;
@@ -52,7 +53,7 @@ export function NowCanvas({ lang, model, onSelectApproval }: { lang: Locale; mod
         <span className={'badge ' + (model.operation.status === 'WAITING_APPROVAL' ? 'warning' : 'info')}>{statuses[model.operation.status] ?? model.operation.status}</span>
       </div>
 
-      {model.now.kind === 'approval' ? (
+      {model.now.kind === 'approval' && !decisionShown ? (
         model.now.approval ? (
           <div className="qx-now-decision">
             <p><span className="qx-kicker">{c.approvalPurpose}</span> {model.now.approval.purpose}</p>
@@ -109,8 +110,9 @@ export function NowCanvas({ lang, model, onSelectApproval }: { lang: Locale; mod
         <div className="qx-now-result">
           {model.now.document ? (
             <>
-              <p className="muted">{c.resultBody}</p>
               <p><Link href={model.now.document.href}>{model.now.document.title}</Link> · {statuses[model.now.document.status] ?? model.now.document.status} · {h.version} {model.now.document.version}</p>
+              {model.now.document.findings.length > 0 && <div><h3>{m.findings}</h3><ul>{model.now.document.findings.map(finding => <li key={finding.claimId}>{finding.statement} · {statuses[finding.status] ?? finding.status}{finding.citations.length > 0 && <> · {finding.citations.map(citation => citation.provider).join(', ')}</>}</li>)}</ul></div>}
+              {model.now.document.limitations.length > 0 && <div><h3>{m.limits}</h3><ul>{model.now.document.limitations.map((limit, index) => <li key={index}>{limit}</li>)}</ul></div>}
               <Link className="button secondary qx-small" href="#flow-results">{c.resultLink}</Link>
             </>
           ) : <p className="qx-flow-hint">{model.now.resultCount > 0 ? c.resultMissing : c.resultEmpty}</p>}

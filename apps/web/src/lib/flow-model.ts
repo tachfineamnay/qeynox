@@ -184,6 +184,8 @@ function mapDocuments(input: FlowModelInput): { documents: FlowDocuments; items:
   const items: FlowDocumentSummary[] = scoped.map(document => ({
     id: document.id, title: document.title, status: document.status, version: document.version,
     createdAt: document.createdAt,
+    findings: document.findings.map(finding => ({ claimId: finding.claimId, statement: finding.statement, status: finding.status, citations: finding.citations.map(citation => ({ sourceId: citation.sourceId, provider: citation.provider })) })),
+    limitations: document.limitations,
     href: '/' + input.lang + '/missions/' + input.operation.id + '/results/' + encodeURIComponent(document.id),
   })).sort((left, right) => (documentWeight(right.status) - documentWeight(left.status)) || right.version - left.version);
   const delivered = items.some(item => item.status === 'DELIVERABLE');

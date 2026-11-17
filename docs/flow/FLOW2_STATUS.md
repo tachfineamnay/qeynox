@@ -1,5 +1,13 @@
 # Flow 2.0 — statut
 
+## Raffinement visuel — 2026-11-17
+
+- Ajustements Web : ordre compact, inspecteur modal et retour du focus, capacités actives au centre, décision dédupliquée, résultats et limites enregistrés, signal d'événement de 220 ms.
+- Vérification : typecheck Web et build Web **PASS** ; `test:flow2` **PASS** sur fixtures QA : approbation 35 assertions, RUNNING 8, RESULT 6.
+- Navigateur, captures des neuf vues, focus, débordement, priorité visible et nouveau signal : **NOT_RUN** ; l'initialisation du navigateur a expiré. Les captures historiques de mission 1 ne vérifient pas ce lot.
+- Le test Flow lancé dans le sandbox a échoué avant assertions sur l'accès au serveur local ; les trois variantes ci-dessus ont été exécutées hors sandbox. Aucun test de production.
+- L'adéquation visuelle P0/P1 et les interactions restent à confirmer en navigateur ; la comparaison à l'image de référence demeure **BLOCKED** car elle est absente.
+
 ## Mission 0 — contrat documentaire
 
 - Contrat de préparation préparé le 2026-11-16 ; implémentation Flow 2.0 **NOT_RUN** à ce stade.
