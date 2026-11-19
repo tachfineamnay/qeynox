@@ -1,0 +1,147 @@
+{
+  "_readme": [
+    "MISSION A03 — first operational business service: World Bank economic indicator research.",
+    "This is the APPLYABLE configuration. It replaces infra/operator/mission10-economic-research.json,",
+    "which could not produce an operational service. Defects found in that file and repaired here:",
+    "  1. BUDGET maxMoneyMinor=500 with a hermes unit cost of 40 affords 12 engine calls while the",
+    "     profile allows maxIterations=4 — but the budget is charged per attempt AND per retry turn,",
+    "     and a 4-step plan can exceed it. Raised to 4000 (100 engine calls at 40) and the engine",
+    "     rate card kept explicit. maxAgentCalls raised 12 -> 24 to match the plan ceiling.",
+    "  2. VERIFICATION humanReviewRequired=false allowed an AGENT_FINDING to look promotable.",
+    "     Set true: an authorized human decision is required before SUPPORTED.",
+    "  3. VERIFICATION maxAgeDays=365 accepted a year-old economic observation as current.",
+    "     Set 180: World Bank series publish with a lag, but a year is not defensible for a brief.",
+    "  4. OFFER regions ['FR','BE'] restricted a service whose provider is GLOBAL and whose",
+    "     capability has no regional limit. Set GLOBAL; a region restriction is a commercial",
+    "     decision that must not silently look like a provider limit.",
+    "  5. No explicit country/indicator allowlist existed, so any well-formed code was accepted.",
+    "     The allowlists below bound the service to reviewed codes only.",
+    "  6. Budget rate card named 'world-bank:indicator@1' at 0 while the tool is READ and free;",
+    "     kept at 0 (public API, no per-call cost) with the reason recorded in licenseNotes.",
+    "Do not add indicators that have not been reviewed: the allowlist IS the product scope."
+  ],
+  "idempotencyKey": "a03-economic-research-v2",
+  "dryRun": false,
+  "service": {
+    "capabilityId": "capability-slot-1-v1",
+    "offerId": "offer-economic-brief-v2",
+    "budgetPolicyId": "budget-economic-brief-v2",
+    "allowedCountries": ["FRA", "DEU", "ESP", "ITA", "MAR", "BEL", "NLD", "PRT", "GBR", "USA"],
+    "allowedIndicators": [
+      "NY.GDP.MKTP.CD",
+      "NY.GDP.PCAP.CD",
+      "NY.GDP.MKTP.KD.ZG",
+      "SP.POP.TOTL",
+      "SL.UEM.TOTL.ZS",
+      "FP.CPI.TOTL.ZG"
+    ],
+    "maximumObservations": 5
+  },
+  "entries": [
+    {
+      "domain": "TOOL",
+      "connectorId": "world-bank",
+      "version": "1",
+      "status": "ACTIVE",
+      "manifest": {
+        "description": "World Bank Indicators API v2, read-only economic indicator observations",
+        "provider": "World Bank",
+        "regions": ["GLOBAL"],
+        "operations": ["INDICATOR_RESEARCH"],
+        "mode": "READ_ONLY",
+        "licenseNotes": "Public read API. Attribution required: World Bank Open Data (CC BY 4.0). Figures are published with a lag; the provider reports no publication date, so freshness is the retrieval time. No per-call fee.",
+        "termsUrl": "https://datahelpdesk.worldbank.org/knowledgebase/articles/889392",
+        "freshness": { "ttlSeconds": 86400, "publishedAtSource": "UNKNOWN" },
+        "rateLimit": { "maxPerMinute": 20 },
+        "tools": [{ "name": "indicator", "version": "1" }]
+      }
+    },
+    {
+      "domain": "BUSINESS_CAPABILITY",
+      "slot": 1,
+      "version": 1,
+      "status": "ACTIVE",
+      "name": "Economic indicator research",
+      "purpose": "Retrieve and interpret official World Bank indicator series for a country and indicator code, with explicit sources, response digests and stated limits.",
+      "scope": [
+        "Macroeconomic indicator retrieval for one country",
+        "Optional comparison against at most two additional indicator series",
+        "Source-backed interpretation separated from observed values"
+      ],
+      "allowedTools": ["world-bank:indicator@1"],
+      "privacyScopes": [],
+      "inputSchemaVersion": 1,
+      "outputSchemaVersion": 1,
+      "maximumSteps": 4,
+      "maximumToolCalls": 3
+    },
+    {
+      "domain": "AGENT_PROFILE",
+      "slot": 1,
+      "version": 1,
+      "status": "ACTIVE",
+      "title": "Economic research analyst",
+      "systemInstructions": "You analyse official economic indicators. Request the world-bank indicator tool for the country and indicator codes stated in the task. Separate observed values from interpretation. Never invent figures, dates, indicators or sources. Never browse, fetch or call any other provider: the only external read available is the reviewed World Bank adapter through QeyNox ToolBroker. State the data freshness limit and the retrieval time of every figure you cite. If the captured series does not answer the objective, say so instead of extrapolating.",
+      "skillRefs": ["world-bank:indicator"],
+      "allowedTools": ["world-bank:indicator@1"],
+      "permittedContextKeys": [],
+      "maxOutputTokens": 2048,
+      "maxIterations": 4
+    },
+    {
+      "domain": "VERIFICATION_POLICY",
+      "capabilityId": "capability-slot-1-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "minimumSources": 1,
+      "maxAgeDays": 180,
+      "approvedProviders": ["world-bank"],
+      "humanReviewRequired": true,
+      "validFrom": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "domain": "RAAS_OFFER",
+      "offerId": "offer-economic-brief-v2",
+      "version": 1,
+      "status": "ACTIVE",
+      "label": "Economic indicator brief",
+      "capabilityIds": ["capability-slot-1-v1"],
+      "deliverableSchemaVersion": 1,
+      "scope": [
+        "One country and one primary indicator series",
+        "Up to two comparison indicator series",
+        "Evidence-backed interpretation with human review",
+        "JSON/HTML export"
+      ],
+      "exclusions": [
+        "No financial advice",
+        "No proprietary data",
+        "No forecast or projection",
+        "No indicator outside the configured allowlist"
+      ],
+      "regions": ["GLOBAL"],
+      "locales": ["fr", "en"],
+      "termsVersion": "2026-11-a03",
+      "currency": "EUR",
+      "amountMinor": 0,
+      "taxPolicy": "CONFIGURED",
+      "isExplicitlyFree": true
+    },
+    {
+      "domain": "BUDGET_POLICY",
+      "policyId": "budget-economic-brief-v2",
+      "version": 1,
+      "status": "ACTIVE",
+      "currency": "EUR",
+      "maxMoneyMinor": 4000,
+      "maxAgentCalls": 24,
+      "maxToolCalls": 8,
+      "maxDurationSeconds": 900,
+      "maxConcurrent": 1,
+      "unitMaxMinor": {
+        "hermes": 40,
+        "world-bank:indicator@1": 0
+      }
+    }
+  ]
+}

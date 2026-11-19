@@ -12,6 +12,6 @@
     {"id":"stripe","version":"1","state":"BLOCKED","auth":"restricted API key + webhook signing secret","purpose":"billing and reconciliation","blocker":"account, pricing and adapter absent"},
     {"id":"github","version":"1","state":"BLOCKED","auth":"repository scoped GitHub App","purpose":"source and delivery","blocker":"business connector adapter absent; Git access is separate"},
     {"id":"gitlab","version":"1","state":"BLOCKED","auth":"OAuth or scoped project token","purpose":"source and delivery","blocker":"authorization and adapter absent"},
-    {"id":"world-bank","version":"1","state":"INACTIVE","auth":"public read API","purpose":"macroeconomic indicators","blocker":"operator configuration, egress attestation, capability/profile and licence review required"}
+    {"id":"world-bank","version":"1","state":"INACTIVE","auth":"public read API","purpose":"macroeconomic indicators","blocker":"reviewed adapter and licence terms in place (packages/tools/src/providers/world-bank.ts, CC BY 4.0 attribution); activation still requires operator configuration, an attested egress policy and a deployment-verified provider read","reviewed":{"adapter":"packages/tools/src/providers/world-bank.ts","tools":["indicator@1"],"mode":"READ_ONLY","licence":"World Bank Open Data, CC BY 4.0, attribution required","egressHost":"api.worldbank.org","activationGates":["QEYNOX_WORLD_BANK_ENABLED=true","QEYNOX_NETWORK_POLICY_ATTESTED=true","QEYNOX_EGRESS_ALLOWED_HOSTS=api.worldbank.org","one successful provider read recorded as evidence"]}}
   ]
 }

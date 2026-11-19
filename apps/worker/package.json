@@ -15,7 +15,8 @@
     "qa:egress": "tsx scripts/qa-egress.ts",
     "qa:hermes-live": "tsx scripts/qa-hermes-live.ts",
     "qa:hermes-live-selftest": "tsx scripts/qa-hermes-live-selftest.ts",
-    "hermes:diagnose": "tsx scripts/hermes-diagnose.ts"
+    "hermes:diagnose": "tsx scripts/hermes-diagnose.ts",
+    "qa:a03-service": "tsx scripts/qa-a03-service.ts"
   },
   "dependencies": {
     "@qeynox/application": "workspace:*",
