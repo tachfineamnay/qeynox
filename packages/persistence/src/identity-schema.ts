@@ -1,11 +1,13 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, integer, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, timestamp, index, uniqueIndex, check } from 'drizzle-orm/pg-core';
 
 export const identityUsers = pgTable('identity_users', {
   id: text('id').primaryKey(), email: text('email').notNull().unique(),
   locale: text('locale').notNull().default('en'),
   createdAt: timestamp('created_at', { withTimezone:true }).notNull().defaultNow(),
   disabledAt: timestamp('disabled_at', {withTimezone:true}),
+  /** NULL means the e-mail address has not been proven; registration never implies verification. */
+  verifiedAt: timestamp('verified_at', {withTimezone:true}),
 },t=>[index('identity_user_created_idx').on(t.createdAt,t.id)]);
 export const identityCredentials = pgTable('identity_credentials',{
   userId:text('user_id').primaryKey().references(()=>identityUsers.id),
@@ -40,3 +42,37 @@ export const identityAudit=pgTable('identity_audit',{
   action:text('action').notNull(),outcome:text('outcome').notNull(),
   happenedAt:timestamp('happened_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[index('identity_audit_user_idx').on(t.userId,t.happenedAt)]);
+
+/**
+ * MISSION A04 — single-use verification and recovery tokens.
+ *
+ * Only a SHA-256 digest is stored: the bearer value exists in the message handed to the configured
+ * transport and nowhere else, so a database read cannot replay a link. `used_at` marks consumption
+ * and `revoked_at` supersedes a token when a newer one is issued for the same purpose; the partial
+ * unique index in migration 0018 allows exactly one live token per user and purpose.
+ */
+export const identityTokens = pgTable('identity_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => identityUsers.id),
+  purpose: text('purpose').$type<'EMAIL_VERIFICATION' | 'PASSWORD_RESET'>().notNull(),
+  tokenHash: text('token_hash').notNull().unique(),
+  issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  requestFingerprint: text('request_fingerprint'),
+}, t => [
+  index('identity_token_user_purpose_idx').on(t.userId, t.purpose),
+  uniqueIndex('identity_token_live_unique').on(t.userId, t.purpose).where(sql`${t.usedAt} IS NULL AND ${t.revokedAt} IS NULL`),
+  // Declared here as well as in the migration: the schema must describe every constraint the
+  // database enforces, or drift between the two goes unnoticed.
+  check('identity_token_purpose_range', sql`${t.purpose} IN ('EMAIL_VERIFICATION', 'PASSWORD_RESET')`),
+  check('identity_token_lifecycle_consistent', sql`${t.usedAt} IS NULL OR ${t.revokedAt} IS NULL`),
+]);
+
+/** Attempt ledger backing the durable rate limiter (stores a hashed bucket key, never a raw address). */
+export const identityAttempts = pgTable('identity_attempts', {
+  id: text('id').primaryKey(),
+  bucket: text('bucket').notNull(),
+  attemptedAt: timestamp('attempted_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => [index('identity_attempt_bucket_idx').on(t.bucket, t.attemptedAt)]);

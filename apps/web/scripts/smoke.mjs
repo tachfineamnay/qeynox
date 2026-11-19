@@ -12,6 +12,12 @@ const token = 'q'.repeat(64);
 const backend = createServer((req, res) => {
   res.setHeader('content-type', 'application/json');
   if (req.url === '/v1/auth/login' && req.method === 'POST') { res.end(JSON.stringify({ token, workspaceId: 'workspace_qa', expiresAt: '2099-01-01T00:00:00.000Z' })); return; }
+  // MISSION A04 — public identity routes. The web layer calls these without a session, so the
+  // fixture must answer them the way the real API does: no bearer header is sent.
+  if (req.url === '/v1/identity/state') { assert.equal(req.headers.authorization, undefined); res.end(JSON.stringify({ verified: false, verifiedAt: null, delivery: 'NOT_CONFIGURED', deliveryReason: 'EMAIL_PROVIDER_NOT_CONFIGURED' })); return; }
+  if (req.url?.startsWith('/v1/identity/recovery/inspect')) { res.end(JSON.stringify({ valid: false })); return; }
+  if (req.url?.startsWith('/v1/identity/verification/inspect')) { res.end(JSON.stringify({ valid: false })); return; }
+  if (req.url === '/v1/identity/recovery/request' && req.method === 'POST') { res.end(JSON.stringify({ sent: false, notSentReason: 'EMAIL_PROVIDER_NOT_CONFIGURED', issued: false })); return; }
   assert.equal(req.headers.authorization, `Bearer ${token}`);
   assert.equal(req.headers['x-qeynox-workspace'], 'workspace_qa');
   const operation = { id: 'operation_qa', title: 'QA mission workspace', status: 'RUNNING', version: 3, lastActivityAt: '2026-01-01T12:00:00.000Z' };
@@ -91,6 +97,20 @@ try {
   assert.match(home, /rel="canonical"/); assertions++;
   assert.match(home, /name="description"/); assertions++;
   for (const path of ['/en/how-it-works','/en/manifesto','/en/contact','/en/legal/notice','/en/legal/privacy','/en/legal/terms','/en/legal/cookies','/fr/how-it-works']) await page(path);
+  // MISSION A04 — customer identity routes. Anonymous visitors get real pages (never a blank or a
+  // redirect loop), and the recovery/verification screens state their own dead-link condition.
+  for (const path of ['/en/account/register','/fr/account/register']) await page(path);
+  const register = await page('/en/account/register');
+  assert.match(register, /Create an account/); assertions++;
+  assert.match(register, /minlength="12"/i); assertions++;
+  for (const path of ['/en/account/recover','/fr/account/recover']) await page(path);
+  const deadReset = await page('/en/account/reset?token=' + 'x'.repeat(64));
+  assert.match(deadReset, /no longer valid/); assertions++;
+  const deadVerify = await page('/en/account/verify?token=' + 'x'.repeat(64));
+  assert.match(deadVerify, /no longer valid/); assertions++;
+  // An invalid token is refused BEFORE the action is offered: the state is visible up front.
+  const badVerify = await page('/en/account/verify?token=' + 'y'.repeat(64));
+  assert.ok(!badVerify.includes('Confirm address'), 'an invalid verification token never renders a confirm button'); assertions++;
   const sitemap = await (await fetch(`http://127.0.0.1:${port}/sitemap.xml`)).text();
   assert.match(sitemap, /\/en\/how-it-works/); assertions++;
   assert.match(sitemap, /\/fr\/how-it-works/); assertions++;

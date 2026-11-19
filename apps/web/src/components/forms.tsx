@@ -1,6 +1,6 @@
 'use client';
 import { useActionState } from 'react';
-import { createMission, login } from '../lib/actions';
+import { confirmRecoveryAction, confirmVerificationAction, createMission, login, registerAction, requestRecoveryAction, requestVerificationAction, type IdentityState } from '../lib/actions';
 import { copy, type Locale } from '../lib/copy';
 import { Feedback } from './ui';
 export function errorText(code: string, lang: Locale) {
@@ -13,5 +13,84 @@ export function MissionForm({ lang, enabled }: { lang: Locale; enabled: boolean 
 }
 export function LoginForm({ lang }: { lang: Locale }) {
   const t = copy[lang]; const [state, action, pending] = useActionState(login, { code: '' });
-  return <form action={action} className="login-form"><input type="hidden" name="locale" value={lang}/><label htmlFor="email">{t.email}</label><input id="email" name="email" type="email" autoComplete="username" required disabled={pending}/><label htmlFor="password">{t.password}</label><input id="password" name="password" type="password" autoComplete="current-password" maxLength={256} required disabled={pending}/><button disabled={pending}>{pending ? t.pending : t.signin}</button>{state.code && <Feedback title={errorText(state.code, lang)} error/>}<p className="muted">{t.sessionNote}</p></form>;
+  return <form action={action} className="login-form"><input type="hidden" name="locale" value={lang}/><label htmlFor="email">{t.email}</label><input id="email" name="email" type="email" autoComplete="username" required disabled={pending}/><label htmlFor="password">{t.password}</label><input id="password" name="password" type="password" autoComplete="current-password" maxLength={256} required disabled={pending}/><button disabled={pending}>{pending ? t.pending : t.signin}</button>{state.code && <Feedback title={errorText(state.code, lang)} error/>}<p className="muted"><a href={'/' + lang + '/account/register'}>{t.noAccount}</a></p><p className="muted">{t.sessionNote}</p></form>;
+}
+
+// ---------------------------------------------------------------------------------------------
+// MISSION A04 — registration, verification and recovery forms.
+//
+// These never render a success state for a request that was not delivered: when the API reports a
+// link was issued but no transport sent it, the form says exactly that instead of "check your inbox".
+// ---------------------------------------------------------------------------------------------
+
+/** Maps an identity error code to customer-facing copy, including the recovery states. */
+export function identityErrorText(code: string, lang: Locale): string {
+  const t = copy[lang];
+  if (code === 'BUDGET_EXHAUSTED') return t.tooManyAttempts;
+  if (code === 'CONFLICT') return t.linkUsed;
+  if (code === 'DENIED') return t.accountSuspended;
+  if (code === 'INVALID_INPUT') return t.invalid;
+  return errorText(code, lang);
+}
+
+export function RegisterForm({ lang }: { lang: Locale }) {
+  const t = copy[lang]; const [state, action, pending] = useActionState(registerAction, { kind: 'IDLE' } as IdentityState);
+  return <form action={action} className="login-form"><input type="hidden" name="locale" value={lang}/>
+    <p className="muted">{t.createAccountNote}</p>
+    <label htmlFor="register-email">{t.email}</label>
+    <input id="register-email" name="email" type="email" autoComplete="email" required disabled={pending}/>
+    <label htmlFor="register-password">{t.password}</label>
+    <p id="password-rule" className="muted">{t.passwordRule}</p>
+    <input id="register-password" name="password" type="password" autoComplete="new-password" minLength={12} maxLength={256} required aria-describedby="password-rule" disabled={pending}/>
+    <label htmlFor="register-workspace">{t.workspaceName}</label>
+    <input id="register-workspace" name="workspaceName" type="text" autoComplete="organization" minLength={2} maxLength={120} required disabled={pending}/>
+    <button disabled={pending}>{pending ? t.pending : t.register}</button>
+    {state.kind === 'ERROR' && <Feedback title={identityErrorText(state.code, lang)} error/>}
+    <p className="muted"><a href={'/' + lang + '/account'}>{t.haveAccount}</a></p>
+  </form>;
+}
+
+export function RecoveryRequestForm({ lang }: { lang: Locale }) {
+  const t = copy[lang]; const [state, action, pending] = useActionState(requestRecoveryAction, { kind: 'IDLE' } as IdentityState);
+  return <form action={action} className="login-form"><input type="hidden" name="locale" value={lang}/>
+    <p className="muted">{t.resetRequestNote}</p>
+    <label htmlFor="recovery-email">{t.email}</label>
+    <input id="recovery-email" name="email" type="email" autoComplete="email" required disabled={pending}/>
+    <button disabled={pending}>{pending ? t.pending : t.resetRequest}</button>
+    {state.kind === 'CODE_SENT' && <Feedback title={t.recoverySent}>{state.delivered ? undefined : t.deliveryNotConfigured}</Feedback>}
+    {state.kind === 'ERROR' && <Feedback title={identityErrorText(state.code, lang)} error/>}
+    <p className="muted"><a href={'/' + lang + '/account'}>{t.haveAccount}</a></p>
+  </form>;
+}
+
+export function RecoveryConfirmForm({ lang, token }: { lang: Locale; token: string }) {
+  const t = copy[lang]; const [state, action, pending] = useActionState(confirmRecoveryAction, { kind: 'IDLE' } as IdentityState);
+  return <form action={action} className="login-form"><input type="hidden" name="locale" value={lang}/><input type="hidden" name="token" value={token}/>
+    <p className="muted">{t.resetNote}</p>
+    <label htmlFor="recovery-password">{t.resetPassword}</label>
+    <p id="recovery-rule" className="muted">{t.passwordRule}</p>
+    <input id="recovery-password" name="password" type="password" autoComplete="new-password" minLength={12} maxLength={256} required aria-describedby="recovery-rule" disabled={pending}/>
+    <button disabled={pending}>{pending ? t.pending : t.resetPassword}</button>
+    {state.kind === 'ERROR' && <Feedback title={identityErrorText(state.code, lang)} error/>}
+  </form>;
+}
+
+export function VerificationForm({ lang, token }: { lang: Locale; token: string }) {
+  const t = copy[lang]; const [state, action, pending] = useActionState(confirmVerificationAction, { kind: 'IDLE' } as IdentityState);
+  if (state.kind === 'DONE') return <Feedback title={t.verifyDone}><a href={'/' + lang + '/account'}>{t.haveAccount}</a></Feedback>;
+  return <form action={action} className="login-form"><input type="hidden" name="locale" value={lang}/><input type="hidden" name="token" value={token}/>
+    <p className="muted">{t.verifyNote}</p>
+    <button disabled={pending}>{pending ? t.pending : t.verifyAction}</button>
+    {state.kind === 'ERROR' && <Feedback title={identityErrorText(state.code, lang)} error/>}
+  </form>;
+}
+
+export function ResendVerification({ lang }: { lang: Locale }) {
+  const t = copy[lang]; const [state, action, pending] = useActionState(requestVerificationAction, { kind: 'IDLE' } as IdentityState);
+  return <form action={action}>{pending
+    ? <button disabled>{t.pending}</button>
+    : <button>{t.resendVerification}</button>}
+    {state.kind === 'CODE_SENT' && <Feedback title={t.deliveryNotConfigured}/>}
+    {state.kind === 'ERROR' && <Feedback title={identityErrorText(state.code, lang)} error/>}
+  </form>;
 }

@@ -26,6 +26,7 @@ export * from './engine-selection';
 export * from './context-policy';
 export * from './delivery';
 export * from './configuration';
+export * from './identity-lifecycle';
 export * from './economic-research';
 export * from './service-configuration';
 export * from './platform-admin';
