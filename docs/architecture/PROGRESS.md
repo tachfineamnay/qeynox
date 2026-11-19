@@ -197,7 +197,13 @@ consent, pause, resume, dismiss, complete) plus `GET /v1/soul/consents` and `DEL
 context consultation, edition, deletion and consent revocation. Answers are only written as
 user_context facts after the explicit consent step; a refused/revoked consent blocks memorisation.
 Guidance is deterministic and explicitly labelled (`deterministic: true`, `aiAvailable: false`,
-reason PRE_MISSION_CONTRACT): no fake LLM conversation is produced. The web route `/[lang]/soul`
+reason PRE_MISSION_CONTRACT): no fake LLM conversation is produced.
+> **Superseded on 2026-11-19 by Mission A05.** Those literals were unconditional and could not report a
+> configured engine. The view now reports real readiness (`aiAvailable`/`aiReason`/`guidanceAvailable`),
+> and an optional bounded guide layer exists. See the 2026-11-19 block and ADR-024. The claim below
+> that guidance is always deterministic no longer holds; the claim that no fake LLM conversation is
+> produced still does.
+The web route `/[lang]/soul`
 offers one useful question at a time (activity, objectives, language, needs, preferences), skip/pause/
 resume/dismiss, direct MyDash access and the consented-context panel; first login redirects there
 while onboarding is NOT_STARTED/IN_PROGRESS/PAUSED. The first objective is completed through the
@@ -440,3 +446,72 @@ BLOCKED — NOT VERIFIED, AND NOT CLAIMED:
   BLOCKED (reference image not present in the checkout).
 
 No merge, no deployment, no credential, no production e-mail address and no real customer data.
+
+## 2026-11-19 — Guided Soul onboarding (Mission A05)
+
+Evolved pre-mission Soul onboarding from a deterministic questionnaire into an optional, bounded AI
+conversation without weakening anything the deterministic flow guaranteed. The state machine
+(`WELCOME → LANGUAGE → CONSENT → ACTIVITY → OBJECTIVES → NEEDS → PREFERENCES → FIRST_OBJECTIVE → DONE`)
+is untouched and remains the only writer of progress, consent and facts. Full rationale and the
+rejected alternatives: [ADR-024-guided-soul-onboarding.md](ADR-024-guided-soul-onboarding.md).
+
+What changed:
+- New `packages/roles/src/soul-guidance.ts`: `GuidedOnboardingService` over the existing `EnginePort`,
+  plus pure `buildGuidanceMessage`, `fallbackQuestion`, `placeholderIdentity` and `looksLikeRefusal`.
+- New route `POST /v1/soul/onboarding/guide` (message, attemptKey, optional history). It refuses on
+  non-conversational steps, refuses after completion, returns `stepUnchanged: true`, and cannot write a
+  fact or create an operation.
+- `EnginePort.isAvailable?()` added; `HermesAdapter` implements it by mirroring `assertOperational()`
+  with no network I/O. The onboarding view now reports real `aiAvailable` / `aiReason` /
+  `guidanceAvailable` instead of the literal `deterministic: true / aiAvailable: false /
+  aiReason: 'PRE_MISSION_CONTRACT'`.
+- Web `/[lang]/soul` shows a truthful badge (`AI answer · READY` or `Deterministic guidance · <reason>`),
+  a one-shot guidance panel labelled per message, and an optional "ask Soul for help" form only when the
+  engine attested readiness. EN/FR copy added; the previous copy claimed "no language model is invoked"
+  and was corrected.
+- `POST /v1/soul/converse` is unchanged and still requires a real `operationId` + `stepAttemptId`.
+
+Provenance model: every guidance result carries `source` (`AI` | `DETERMINISTIC_FALLBACK`), a reason
+(`OK`, `ENGINE_NOT_CONFIGURED`, `ENGINE_UNAVAILABLE`, `ENGINE_TIMEOUT`, `ENGINE_REFUSED`, `ENGINE_EMPTY`,
+`TURN_LIMIT`) and `aiGenerated`. Fallback copy is never labelled AI. Bounded: 12 customer turns per
+conversation, 8 prior turns per prompt, 2000-character message, 15 s outer timeout, one model call per
+attempt key (a retry returns the cached result). The model receives `context: {}` — consented facts are
+never forwarded — and sees only answers already given plus the recent turns. Conversation turns are not
+persisted: there is no second memory system.
+
+VERIFIED — configuration and contract:
+- `pnpm typecheck` 4/4, `pnpm build` 4/4.
+- Rendered the three guidance states against a built server to confirm the badge and panel say what the
+  backend reported (`AI answer · READY`; `Deterministic guidance · NO_ATTESTATION` with no ask form; a
+  fallback reply labelled `Deterministic guidance` with `ENGINE_REFUSED` and its explanation).
+
+VERIFIED — integration against a disposable PostgreSQL 16.2 cluster (rebuilt for this lot):
+- `pnpm qa:soul-intelligence` (new) — **22 groups PASS**. Covers: truthful readiness from an
+  unconfigured adapter; guidance refused on `LANGUAGE`/`CONSENT` with the step unchanged; guidance after
+  declined consent writing no fact; declining the profile degrading to fallback instead of a 503;
+  offline engine → `ENGINE_NOT_CONFIGURED` with zero operations; idempotent mission creation plus
+  `CONFLICT` on a different objective; guidance closed after completion; AI path labelled AI with
+  `context: {}` and namespaced placeholder ids; retry not calling the model twice; refusal →
+  `ENGINE_REFUSED`; conservative refusal detection; French fallback from the record locale; hanging
+  engine → `ENGINE_TIMEOUT` within the outer bound; empty and failed completions → fallback; turn
+  ceiling making **no** model call; missing profile → fallback; prompt bounded to 8 recent turns and
+  carrying no facts; attempt key scoped per workspace/user; **consent revocation removing grounding
+  while the fact row survives**, with the mission still creatable afterwards; cross-tenant `NOT_STARTED`
+  and `NOT_FOUND`.
+- Regressions on the same cluster: `qa:task02` **3399**, `qa:identity` **57**, `qa:backend` **28**,
+  `qa:agent-runtime` **65**.
+- Web smoke **118 assertions** (was 112): the Soul page is now covered, asserting the fallback label,
+  the real reason code, and that neither `PRE_MISSION_CONTRACT` nor a false "AI: available" is rendered.
+  The fixture's consent row used `scope` where the contract is `scopes`; the page previously crashed on
+  it, so the render was also hardened to survive a malformed consent row.
+
+BLOCKED — NOT VERIFIED, AND NOT CLAIMED:
+- **No provider call was made and no model output was ever produced in this lot.** Every AI-path
+  assertion runs against a scripted in-process engine, so a green run proves the *contract*
+  (labelling, bounds, fallback, isolation), never that a provider was reachable or that answer quality
+  is acceptable.
+- Live Hermes guidance remains an operator gate requiring a configured endpoint, API key and the
+  native-tool isolation + egress attestations. Screenshot comparison against a design reference remains
+  BLOCKED (no reference image in the checkout).
+
+No merge, no deployment, no credential and no real customer data.

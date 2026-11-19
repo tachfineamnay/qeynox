@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import type { QeyNoxStore } from '@qeynox/persistence';
 import type { EnginePort } from '@qeynox/engine';
-import { SoulOnboardingService, SoulService, type AgentProfileStore } from '@qeynox/roles';
+import { GuidedOnboardingService, SoulOnboardingService, SoulService, type AgentProfileStore } from '@qeynox/roles';
 import { QEYNOX_STORE } from '../database/database.module';
 import { AgentRuntimeModule } from '../agent-runtime/agent-runtime.module';
 import { AGENT_PROFILES, ENGINE_PORT } from '../agent-runtime/agent-runtime.tokens';
@@ -19,8 +19,9 @@ import { SOUL_ONBOARDING_SERVICE, SOUL_SERVICE } from './soul.tokens';
     },
     {
       provide: SOUL_ONBOARDING_SERVICE,
-      useFactory: (store: QeyNoxStore, soul: SoulService) => new SoulOnboardingService(store, soul),
-      inject: [QEYNOX_STORE, SOUL_SERVICE],
+      useFactory: (store: QeyNoxStore, soul: SoulService, engine: EnginePort) =>
+        new SoulOnboardingService(store, soul, new GuidedOnboardingService(engine, () => soul.activeSoulProfile())),
+      inject: [QEYNOX_STORE, SOUL_SERVICE, ENGINE_PORT],
     },
   ],
 })

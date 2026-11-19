@@ -10,7 +10,7 @@ import {
   redactSecrets,
   type HermesChatBody,
 } from './hermes-contract';
-import type { EnginePort, EngineRequest, EngineOutcome, ProposedToolAction } from './types';
+import type { EngineAvailability, EnginePort, EngineRequest, EngineOutcome, ProposedToolAction } from './types';
 
 export interface HermesConfig {
   baseUrl: string | undefined;
@@ -52,6 +52,22 @@ const MAX_MESSAGE_CHARS = 100_000;
 
 export class HermesAdapter implements EnginePort {
   constructor(private readonly config: HermesConfig) {}
+
+  /**
+   * Reports exactly what `invoke` would refuse on, without touching the network. The order matches
+   * `assertOperational` so the reported reason is the one the caller would actually hit.
+   */
+  isAvailable(): EngineAvailability {
+    if (!this.config.nativeToolsIsolated || !this.config.egressAttested) {
+      return { available: false, reason: 'NO_ATTESTATION' };
+    }
+    if (!this.config.baseUrl) return { available: false, reason: 'NO_ENDPOINT' };
+    if (!this.config.apiKey) return { available: false, reason: 'NO_CREDENTIAL' };
+    if (!Number.isFinite(this.config.timeoutMs) || this.config.timeoutMs <= 0) {
+      return { available: false, reason: 'INVALID_TIMEOUT' };
+    }
+    return { available: true, reason: 'READY' };
+  }
 
   private diagnostic(event: HermesDiagnostic): void {
     try {

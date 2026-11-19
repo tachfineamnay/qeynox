@@ -125,12 +125,22 @@ const fr: typeof en = {
 export const copy = { en, fr };
 
 
-/** Soul pre-mission onboarding copy (deterministic guidance; no language model is invoked). */
+/** Soul pre-mission onboarding copy. Guidance is optional and always labelled AI or fallback. */
 export const soulCopy = {
   en: {
     title: 'A short guided start',
     intro: 'One useful question at a time. Answers are only remembered after your explicit consent; you can skip, pause or leave at any time.',
-    deterministic: 'Deterministic pre-mission guidance — no language model is invoked before a mission exists.',
+    deterministic: 'Answers are saved only with your consent. Guidance is optional: it is labelled AI when the model wrote it, and deterministic when it did not.',
+    askSoul: 'Ask Soul for help with this question',
+    askSoulHint: 'Optional. Soul can help you phrase the answer. It never answers for you, and nothing is saved until you submit it.',
+    guidanceAi: 'AI answer',
+    guidanceFallback: 'Deterministic guidance',
+    guidanceFallbackWhy: 'The AI advisor was not used for this reply. Reason: ',
+    guidanceAnswer: 'Your answer',
+    guidanceTurnLimit: 'Guidance for this conversation has reached its limit; you can keep answering the questions directly.',
+    guidanceTurns: 'Guidance turns',
+    guidanceRefused: 'The AI advisor declined to answer this. You can continue with the standard questions.',
+    guidanceFailed: 'The AI advisor is unavailable right now. Here is the standard guidance instead.',
     progress: 'Progress',
     start: 'Start',
     welcome: 'Welcome. Before a mission exists, this guided start helps QeyNox understand your activity, objectives, language, needs and preferences. No LLM is called at this stage.',
@@ -177,7 +187,17 @@ export const soulCopy = {
   fr: {
     title: 'Un démarrage guidé, court',
     intro: 'Une question utile à la fois. Vos réponses ne sont mémorisées qu’après votre consentement explicite ; vous pouvez passer, interrompre ou quitter à tout moment.',
-    deterministic: 'Guidage déterministe pré-mission — aucun modèle de langage n’est appelé avant l’existence d’une mission.',
+    deterministic: 'Vos réponses ne sont enregistrées qu’avec votre consentement. Le guidage est optionnel : il est étiqueté IA lorsque le modèle l’a rédigé, et déterministe sinon.',
+    askSoul: 'Demander de l’aide à Soul pour cette question',
+    askSoulHint: 'Facultatif. Soul peut vous aider à formuler votre réponse. Il ne répond jamais à votre place, et rien n’est enregistré avant votre validation.',
+    guidanceAi: 'Réponse IA',
+    guidanceFallback: 'Guidage déterministe',
+    guidanceFallbackWhy: 'L’assistant IA n’a pas été utilisé pour cette réponse. Motif : ',
+    guidanceAnswer: 'Votre réponse',
+    guidanceTurnLimit: 'Le guidage de cette conversation a atteint sa limite ; vous pouvez continuer à répondre directement aux questions.',
+    guidanceTurns: 'Tours de guidage',
+    guidanceRefused: 'L’assistant IA a refusé de répondre. Vous pouvez poursuivre avec les questions standard.',
+    guidanceFailed: 'L’assistant IA est indisponible pour le moment. Voici le guidage standard à la place.',
     progress: 'Progression',
     start: 'Commencer',
     welcome: 'Bienvenue. Avant toute mission, ce démarrage guidé aide QeyNox à comprendre votre activité, vos objectifs, votre langue, vos besoins et vos préférences. Aucun LLM n’est appelé à ce stade.',
