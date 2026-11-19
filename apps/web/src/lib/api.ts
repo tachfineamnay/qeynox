@@ -33,3 +33,15 @@ export const recentSchema = z.array(operationSchema.omit({ id: true }).extend({
   resultCount: z.number().int().nonnegative().default(0),
   evidenceCount: z.number().int().nonnegative().default(0),
 }));
+/** Identity lifecycle state of the signed-in account (verification + e-mail delivery state). */
+export const identityStateSchema = z.object({
+  verified: z.boolean(),
+  verifiedAt: z.iso.datetime().nullable(),
+  delivery: z.enum(['CONFIGURED', 'NOT_CONFIGURED']),
+  deliveryReason: z.string().nullable(),
+});
+/** Result of asking for a verification or recovery link. `sent` reflects the transport, not policy. */
+export const tokenRequestSchema = z.object({ sent: z.boolean(), notSentReason: z.string().nullable(), issued: z.boolean() });
+export const recoveryInspectSchema = z.object({ valid: z.boolean() });
+
+export { z };

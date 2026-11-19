@@ -2,7 +2,8 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createOperationSchema } from '@qeynox/contracts';
-import { api, ApiError, operationSchema, sessionSchema } from './api';
+import { z } from 'zod';
+import { api, ApiError, operationSchema, sessionSchema, tokenRequestSchema } from './api';
 import { locale } from './copy';
 export type FormState = { code: string };
 export async function login(previous: FormState, form: FormData): Promise<FormState> {
@@ -41,4 +42,87 @@ export async function logout(form: FormData) {
   try { await api('/v1/auth/logout', 'POST'); } catch { unconfirmed = true; }
   (await cookies()).delete('qx-session');
   redirect(`/${locale(String(form.get('locale')))}/account${unconfirmed ? '?revocation=unconfirmed' : ''}`);
+}
+
+// ---------------------------------------------------------------------------------------------
+// MISSION A04 — customer identity lifecycle actions.
+//
+// Every action returns a discriminated result instead of a bare code, because these flows have
+// states a single code cannot express: a request that issued a link but could not deliver it, a
+// link that is dead versus one that was already used, and a reset that succeeded.
+// ---------------------------------------------------------------------------------------------
+
+export type IdentityState =
+  | { readonly kind: 'IDLE' }
+  | { readonly kind: 'ERROR'; readonly code: string }
+  | { readonly kind: 'CODE_SENT'; readonly delivered: boolean }
+  | { readonly kind: 'DONE'; readonly message: string };
+
+const workspaceName = (form: FormData) => String(form.get('workspaceName') ?? '').trim();
+
+/** Create an account and open the owner session the API returns. */
+export async function registerAction(previous: IdentityState, form: FormData): Promise<IdentityState> {
+  let destination: string;
+  try {
+    const result = sessionSchema.parse(await api('/v1/auth/register', 'POST', {
+      email: String(form.get('email') ?? ''), password: String(form.get('password') ?? ''),
+      workspaceName: workspaceName(form), locale: locale(String(form.get('locale'))),
+    }, false));
+    (await cookies()).set('qx-session', JSON.stringify(result), {
+      httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', expires: new Date(result.expiresAt),
+    });
+    destination = '/' + locale(String(form.get('locale'))) + '/mydash';
+  } catch (error) {
+    return { kind: 'ERROR', code: error instanceof ApiError ? error.code : 'UNAVAILABLE' };
+  }
+  redirect(destination);
+}
+
+/** Request a verification link for the signed-in account. */
+export async function requestVerificationAction(): Promise<IdentityState> {
+  try {
+    const result = tokenRequestSchema.parse(await api('/v1/identity/verification/request', 'POST', {}));
+    return { kind: 'CODE_SENT', delivered: result.sent };
+  } catch (error) {
+    return { kind: 'ERROR', code: error instanceof ApiError ? error.code : 'UNAVAILABLE' };
+  }
+}
+
+/** Consume a verification token from the e-mailed link. */
+export async function confirmVerificationAction(previous: IdentityState, form: FormData): Promise<IdentityState> {
+  try {
+    await api('/v1/identity/verification/confirm', 'POST', { token: String(form.get('token') ?? '') }, false);
+    return { kind: 'DONE', message: 'VERIFIED' };
+  } catch (error) {
+    return { kind: 'ERROR', code: error instanceof ApiError ? error.code : 'UNAVAILABLE' };
+  }
+}
+
+/**
+ * Request a recovery link. The reply is identical for a known and an unknown address, so this action
+ * cannot be turned into an account-existence oracle by watching the result.
+ */
+export async function requestRecoveryAction(previous: IdentityState, form: FormData): Promise<IdentityState> {
+  try {
+    const result = tokenRequestSchema.parse(await api('/v1/identity/recovery/request', 'POST', { email: String(form.get('email') ?? '') }, false));
+    return { kind: 'CODE_SENT', delivered: result.sent };
+  } catch (error) {
+    return { kind: 'ERROR', code: error instanceof ApiError ? error.code : 'UNAVAILABLE' };
+  }
+}
+
+/** Complete recovery with a new password. On success the API has revoked every old session. */
+export async function confirmRecoveryAction(previous: IdentityState, form: FormData): Promise<IdentityState> {
+  let destination: string;
+  try {
+    const result = z.object({ reset: z.boolean(), revokedSessions: z.number().int().nonnegative() })
+      .parse(await api('/v1/identity/recovery/confirm', 'POST', {
+        token: String(form.get('token') ?? ''), password: String(form.get('password') ?? ''),
+      }, false));
+    if (!result.reset) return { kind: 'ERROR', code: 'INVALID_STATE' };
+    destination = `/${locale(String(form.get('locale')))}/account?reset=confirmed`;
+  } catch (error) {
+    return { kind: 'ERROR', code: error instanceof ApiError ? error.code : 'UNKNOWN_OUTCOME' };
+  }
+  redirect(destination);
 }

@@ -30,7 +30,8 @@
     "qa:hermes-live-selftest": "pnpm --filter @qeynox/worker qa:hermes-live-selftest",
     "hermes:diagnose": "pnpm --filter @qeynox/worker hermes:diagnose",
     "qa:runtime-readiness": "pnpm --filter @qeynox/application qa:runtime-readiness",
-    "qa:a03-service": "pnpm --filter @qeynox/worker qa:a03-service"
+    "qa:a03-service": "pnpm --filter @qeynox/worker qa:a03-service",
+    "qa:identity": "pnpm --filter @qeynox/api qa:identity"
   },
   "devDependencies": {
     "typescript": "5.9.3",

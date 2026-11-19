@@ -390,3 +390,53 @@ Regression: `pnpm typecheck` 4/4, `pnpm build` 4/4, `qa:runtime-readiness` 38+19
 `qa-task02` 3297, web smoke 91.
 
 No merge, no deployment, no credential or attestation created.
+
+## MISSION A04 — customer identity completion
+
+Completed the lifecycle ADR-009 listed as follow-up work, without adding a second identity system.
+
+Source:
+- `packages/application/src/identity-lifecycle.ts` — token issuance/consumption, durable rate limiter,
+  password reset with session revocation in one transaction.
+- `packages/persistence/migrations/0018_customer_identity_completion.sql` — `identity_tokens`
+  (digest-only, single-use, one live token per user+purpose) and `identity_attempts`.
+- `apps/api/src/auth/{identity-lifecycle.service,identity.controller,auth.module}.ts` — six routes under
+  `/v1/identity`; `AuthModule.forTest()` exists only for the QA harness.
+- `apps/web/src/app/[lang]/account/{register,recover,reset,verify}` + account page states.
+- `apps/api/scripts/qa-identity-lifecycle.ts` — the gate (`pnpm qa:identity`).
+
+Design decisions (ADR-023): the transport's state is reported, never assumed; tokens are single-use
+digest-only with atomic conditional consumption; anti-enumeration at equal status and body; the rate
+limiter is PostgreSQL-backed with an advisory lock because process memory would multiply across
+replicas; recovery revokes sessions in the token-consuming transaction; verification is surfaced but
+does not gate login.
+
+VERIFIED — configuration and contract behaviour (no database):
+- `pnpm typecheck` 4/4, `pnpm build` 4/4.
+
+VERIFIED — integration against a disposable PostgreSQL 16.2 cluster:
+- `pnpm qa:identity` — **57 assertions PASS**. Covers: registration creating an unverified account;
+  `NOT_CONFIGURED` transport reporting `sent:false` with `EMAIL_PROVIDER_NOT_CONFIGURED` while still
+  issuing the token; anti-enumeration parity for unknown addresses; replay refused; **concurrent
+  duplicate refused with exactly one winner**; **expired token refused and left unconsumed**; recovery
+  rotating the credential and revoking 2 live sessions with the old password then rejected; replay of
+  the consumed recovery token refused; cross-purpose token use refused; **suspension blocking the
+  existing session, sign-in and recovery issuance**; **cross-tenant isolation** (one account's reset
+  never touches another's session row) and workspace/platform separation re-proven after the new flows.
+- `pnpm qa:task02` — **3399 assertions PASS** (schema/migration parity; the drift check caught two real
+  defects during development: an undeclared CHECK and a redundant unique index).
+- `pnpm qa:backend` 28, `qa:platform-users` 165, `qa:platform-admin` 70,
+  `qa:platform-organizations` 87, `qa:platform-authorization` 107, `qa:agent-runtime` 65.
+- Web smoke **112 assertions** (was 91): new registration, recovery, reset and verification routes in
+  EN/FR, and the dead-link state is visible before any action is offered.
+
+BLOCKED — NOT VERIFIED, AND NOT CLAIMED:
+- **No e-mail was delivered.** No provider adapter exists. The CONFIGURED run uses an in-process
+  recording transport that performs no network I/O; it proves token handling and truthful reporting,
+  never delivery. `sent: true` means "a configured transport accepted the message".
+- Real e-mail delivery, provider bounce handling, MFA and IP reputation remain operator/deployment
+  gates requiring a reviewed adapter.
+- Screenshot comparison against `docs/design/reference/concept-02-professional-blue.png` remains
+  BLOCKED (reference image not present in the checkout).
+
+No merge, no deployment, no credential, no production e-mail address and no real customer data.
