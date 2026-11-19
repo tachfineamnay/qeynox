@@ -38,8 +38,18 @@ const backend = createServer((req, res) => {
   if (req.url?.startsWith('/v1/mydash/operations/operation_qa/activity?')) payload = { events: [{ id: 'envelope_qa', eventId: 'event_qa', sequence: 1, kind: 'EXECUTION_REQUESTED', occurredAt: operation.lastActivityAt }], nextCursor: 1, transport: 'POLLING' };
   if (req.url === '/v1/pilot/operations/operation_qa/next-action') payload = { operationId: operation.id, status: 'RUNNING', action: 'WAIT', reason: 'Based on recorded operation state only' };
   if (req.url === '/v1/pilot/overview') payload = [operation];
-  if (req.url === '/v1/soul/onboarding') payload = { status: 'COMPLETED' };
-  if (req.url === '/v1/soul/consents') payload = [{ id: 'consent_qa', scope: ['context:read'], grantedAt: operation.lastActivityAt }];
+  // MISSION A05 — the view now reports real engine readiness instead of a hardcoded literal, so the
+  // fixture states an unconfigured engine and the page must say so rather than claim AI.
+  if (req.url === '/v1/soul/onboarding') payload = {
+    status: 'COMPLETED', step: 'DONE', locale: 'en',
+    progress: { answered: 8, total: 8 },
+    consent: { granted: true, consentId: 'consent_qa', purpose: 'Soul onboarding — consented context', scopes: ['context:read', 'context:write'], grantedAt: operation.lastActivityAt },
+    startedAt: operation.lastActivityAt, updatedAt: operation.lastActivityAt, completedAt: operation.lastActivityAt,
+    aiAvailable: false, aiReason: 'NO_ATTESTATION', guidanceAvailable: false,
+  };
+  // The consent contract exposes `scopes` (plural). A fixture using the wrong key must not be able
+  // to crash the page, and must not silently masquerade as a valid consent either.
+  if (req.url === '/v1/soul/consents') payload = [{ id: 'consent_qa', purpose: 'Soul onboarding — consented context', scopes: ['context:read', 'context:write'], grantedAt: operation.lastActivityAt }];
   if (req.url === '/v1/operations/operation_qa/claims') payload = [];
   if (['/v1/operations/operation_qa/plan', '/v1/operations/operation_qa/readiness', '/v1/operations/operation_qa/commercial'].includes(req.url)) {
     res.statusCode = 503; res.end(JSON.stringify({ error: { code: 'NOT_CONFIGURED' } })); return;
@@ -147,6 +157,13 @@ try {
   assert.match(await page('/en/mydash', true), /request could not be completed/); assertions++;
   const unknown = await fetch(`http://127.0.0.1:${port}/es`);
   assert.equal(unknown.status, 404); assertions++;
+  // A05: an unconfigured engine must never be presented as AI. The badge names the fallback and the
+  // real reason, and the old untruthful PRE_MISSION_CONTRACT string is gone.
+  const soul = await page('/en/soul', true);
+  assert.match(soul, /Deterministic guidance/); assertions++;
+  assert.match(soul, /NO_ATTESTATION/); assertions++;
+  assert.doesNotMatch(soul, /PRE_MISSION_CONTRACT/); assertions++;
+  assert.doesNotMatch(soul, /AI: available/); assertions++;
   const mission = await page('/en/missions/operation_qa', true);
   for (const text of ['QA mission workspace', '1 / 3', 'EXECUTION_REQUESTED', 'QA evidence document', 'QA preference', 'Pilot']) { assert.ok(mission.includes(text), text); assertions++; }
   const document = await page('/en/missions/operation_qa/results/document_qa', true);

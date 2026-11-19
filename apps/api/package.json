@@ -15,7 +15,8 @@
     "qa:platform-users": "tsx scripts/qa-platform-users.ts",
     "qa:platform-organizations": "tsx scripts/qa-platform-organizations.ts",
     "admin:bootstrap": "tsx scripts/platform-admin-bootstrap.ts",
-    "qa:identity": "tsx scripts/qa-identity-lifecycle.ts"
+    "qa:identity": "tsx scripts/qa-identity-lifecycle.ts",
+    "qa:soul-intelligence": "tsx scripts/qa-soul-intelligence.ts"
   },
   "dependencies": {
     "@qeynox/application": "workspace:*",

@@ -19,6 +19,17 @@ export interface EngineOutcome {
   usage?: { inputTokens?:number; outputTokens?:number; totalTokens?:number };
   reason?:string; receivedAt:string;
 }
+/** Truthful, side-effect-free readiness report. Never performs network I/O. */
+export interface EngineAvailability {
+  readonly available: boolean;
+  /** Stable machine-readable reason; 'READY' only when a call could actually be dispatched. */
+  readonly reason: 'READY' | 'NO_ENDPOINT' | 'NO_CREDENTIAL' | 'NO_ATTESTATION' | 'INVALID_TIMEOUT' | 'UNKNOWN';
+}
 export interface EnginePort {
   invoke(request: EngineRequest, options?: {signal?:AbortSignal}):Promise<EngineOutcome>;
+  /**
+   * Optional: adapters that cannot attest readiness omit it, and callers must then treat the engine
+   * as unavailable rather than assuming it works.
+   */
+  isAvailable?():EngineAvailability;
 }

@@ -1,8 +1,10 @@
 'use server';
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { api, ApiError, operationSchema } from './api';
 import { locale, type Locale } from './copy';
+import { GUIDANCE_COOKIE } from './soul-guidance-cookie';
 
 function langOf(form: FormData): Locale { return locale(String(form.get('locale') ?? 'en')); }
 function errorCode(error: unknown): string { return error instanceof ApiError ? error.code : 'UNKNOWN_OUTCOME'; }
@@ -77,6 +79,28 @@ export async function createMissionFromOnboarding(form: FormData): Promise<void>
   revalidatePath('/' + lang + '/soul');
   redirect(destination);
 }
+
+/**
+ * Optional guided help. It never submits an answer and never advances the step: the result is
+ * rendered back on the same page, labelled AI or deterministic by the backend.
+ */
+export async function askSoulGuidance(form: FormData): Promise<void> {
+  const lang = langOf(form);
+  const step = String(form.get('step') ?? '');
+  const message = String(form.get('message') ?? '').trim();
+  const attemptKey = String(form.get('attemptKey') ?? '') || step + '-' + Date.now();
+  let result: unknown;
+  try {
+    result = await api('/v1/soul/onboarding/guide', 'POST', message ? { message, attemptKey } : { attemptKey });
+  } catch (error) { return back(lang, errorCode(error)); }
+  // The result is shown once, on the next render, then removed. Nothing about it is persisted.
+  (await cookies()).set(GUIDANCE_COOKIE, JSON.stringify(result), {
+    httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 120,
+  });
+  revalidatePath('/' + lang + '/soul');
+  redirect('/' + lang + '/soul');
+}
+
 
 export async function saveContextFact(form: FormData): Promise<void> {
   const lang = langOf(form);

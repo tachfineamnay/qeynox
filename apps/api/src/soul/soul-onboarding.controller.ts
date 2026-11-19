@@ -28,9 +28,13 @@ function principal(request: Request): Principal {
  * Pre-mission Soul onboarding contract.
  *
  * The existing /v1/soul/converse endpoint stays untouched: it requires a real operationId and
- * attemptId, which must never be invented. Onboarding therefore exposes its own deterministic,
- * operation-free contract. No language model is invoked; every response is explicitly marked
- * deterministic (PRE_MISSION_CONTRACT) rather than pretending to be an LLM conversation.
+ * attemptId, which must never be invented. Onboarding therefore keeps its own operation-free
+ * contract: the state machine, consent and facts stay deterministic, and an OPTIONAL guided
+ * conversation is layered on top.
+ *
+ * Every response states plainly whether text came from the model or from the deterministic
+ * fallback (`source`, `reason`, `aiGenerated`, and the view's `aiAvailable`/`aiReason`), so the UI
+ * can never present fallback copy as AI output.
  */
 @Controller('v1/soul/onboarding')
 export class SoulOnboardingController {
@@ -72,6 +76,26 @@ export class SoulOnboardingController {
   @Post('complete')
   complete(@Req() request: Request, @Body() body: unknown) {
     return this.onboarding.complete(principal(request), completeSchema.parse(body ?? {}).objective);
+  }
+
+  /**
+   * Optional clarification for the CURRENT question. It cannot advance a step, skip or write a fact,
+   * and it never touches an operation: the state machine and mission creation remain the only ways
+   * onboarding progresses.
+   */
+  @Post('guide')
+  guide(@Req() request: Request, @Body() body: unknown) {
+    const input = z.object({
+      message: z.string().trim().min(1).max(2000).optional(),
+      attemptKey: z.string().trim().min(8).max(120),
+      history: z.array(z.object({
+        role: z.enum(['CUSTOMER', 'SOUL']),
+        content: z.string().max(4000),
+        at: z.string().max(40),
+        source: z.enum(['AI', 'DETERMINISTIC_FALLBACK']).optional(),
+      })).max(24).optional(),
+    }).parse(body ?? {});
+    return this.onboarding.guide(principal(request), input);
   }
 
   @Post('mission')

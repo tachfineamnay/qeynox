@@ -8,11 +8,24 @@ import {
   type SoulOnboardingRecord, type SoulOnboardingStep, type UserContext,
 } from '@qeynox/domain';
 import { QeyNoxStore, consents, soulOnboarding, commandIds, type QeyNoxDatabase } from '@qeynox/persistence';
-import type { EnginePort, EngineOutcome } from '@qeynox/engine';
+import type { AgentProfile, EnginePort, EngineOutcome } from '@qeynox/engine';
 import { AgentProfileStore } from './profiles';
+import {
+  GuidedOnboardingService, isGuidedStep,
+  type GuidedOnboardingPort, type GuidedTurn,
+} from './soul-guidance';
 
 export class SoulService {
   constructor(private readonly store:QeyNoxStore,private readonly profiles:AgentProfileStore,private readonly engine:EnginePort) {}
+
+  /** Read-only access to the configured engine, so readiness can be reported truthfully. */
+  get enginePort(): EnginePort { return this.engine; }
+
+  /**
+   * The active, versioned Soul profile. Throws NOT_CONFIGURED when the operator has not published
+   * one, which is exactly the condition under which guidance must fall back deterministically.
+   */
+  activeSoulProfile(): Promise<AgentProfile> { return this.profiles.getActive('soul'); }
 
   withStore(store: QeyNoxStore): SoulService { return new SoulService(store, this.profiles, this.engine); }
 
@@ -85,6 +98,9 @@ export interface SoulOnboardingConsentView {
   readonly granted: boolean; readonly consentId: string | null; readonly purpose: string;
   readonly scopes: readonly string[]; readonly grantedAt: string | null;
 }
+export type OnboardingAiReason =
+  | 'READY' | 'NO_ENDPOINT' | 'NO_CREDENTIAL' | 'NO_ATTESTATION' | 'INVALID_TIMEOUT' | 'UNKNOWN';
+
 export interface SoulOnboardingView {
   readonly status: SoulOnboardingDisplayStatus;
   readonly step: SoulOnboardingStep;
@@ -95,10 +111,26 @@ export interface SoulOnboardingView {
   readonly startedAt: string | null;
   readonly updatedAt: string | null;
   readonly completedAt: string | null;
-  /** Pre-mission guidance is deterministic by contract: no language model is invoked yet. */
-  readonly deterministic: true;
-  readonly aiAvailable: false;
-  readonly aiReason: 'PRE_MISSION_CONTRACT';
+  /**
+   * True when an engine is configured and would accept a call. This is a readiness fact, not a
+   * promise: a call can still fail at request time and is then reported per-message.
+   */
+  readonly aiAvailable: boolean;
+  /** Why guidance is or is not model-backed. 'READY' when aiAvailable is true. */
+  readonly aiReason: OnboardingAiReason;
+  /** Whether the onboarding question itself accepts the optional guided conversation. */
+  readonly guidanceAvailable: boolean;
+}
+export interface SoulOnboardingGuidance {
+  readonly step: SoulOnboardingStep;
+  /** AI or DETERMINISTIC_FALLBACK — never inferred by the UI. */
+  readonly source: 'AI' | 'DETERMINISTIC_FALLBACK';
+  readonly reason: string;
+  readonly aiGenerated: boolean;
+  readonly content: string;
+  readonly turns: { readonly used: number; readonly maximum: number };
+  /** The onboarding state machine is untouched by guidance: this is the step still being asked. */
+  readonly stepUnchanged: true;
 }
 export interface SoulOnboardingCompletion {
   readonly view: SoulOnboardingView;
@@ -130,7 +162,7 @@ function onboardQuestion(step: SoulOnboardingStep): SoulOnboardingQuestionView |
  * contract (operationId + attemptId) is never called before a mission exists.
  */
 export class SoulOnboardingService {
-  constructor(private readonly store: QeyNoxStore, private readonly soul: SoulService) {}
+  constructor(private readonly store: QeyNoxStore, private readonly soul: SoulService, private readonly guidance: GuidedOnboardingPort) {}
 
   async view(actor: Principal): Promise<SoulOnboardingView> {
     return this.viewOf(actor, await this.store.getOnboarding(actor.workspaceId, actor.userId));
@@ -268,7 +300,7 @@ export class SoulOnboardingService {
       }
       if (row.status !== 'IN_PROGRESS' || row.step !== 'FIRST_OBJECTIVE') throw new DomainError('INVALID_STATE', 'Onboarding must be ready for the first mission');
       const operation = await scoped.createOperation(actor, text.slice(0, 200), text, []);
-      await new SoulOnboardingService(scoped, this.soul.withStore(scoped)).complete(actor, text);
+      await new SoulOnboardingService(scoped, this.soul.withStore(scoped), this.guidanceService()).complete(actor, text);
       await tx.insert(commandIds).values({ id: newId(), workspaceId: actor.workspaceId, operationId: operation.id, commandKey: key, outcome: { objectiveDigest: digest }, createdAt: new Date().toISOString() });
       return operation;
     });
@@ -315,7 +347,72 @@ export class SoulOnboardingService {
       },
       startedAt: record?.startedAt ?? null, updatedAt: record?.updatedAt ?? null,
       completedAt: record?.completedAt ?? null,
-      deterministic: true, aiAvailable: false, aiReason: 'PRE_MISSION_CONTRACT',
+      ...(await this.guidanceReadiness()),
+    };
+  }
+
+  /**
+   * The scoped path builds a service for one transaction. It reuses the same engine port; a missing
+   * profile surfaces as NOT_CONFIGURED and the guide converts it into the deterministic fallback.
+   */
+  private guidanceService(): GuidedOnboardingPort {
+    return new GuidedOnboardingService(this.soul.enginePort, () => this.soul.activeSoulProfile());
+  }
+
+  /**
+   * Readiness is reported exactly as the engine itself reports it. An adapter that cannot attest
+   * readiness (or no engine at all) yields aiAvailable:false, and the UI then says so instead of
+   * presenting model output that will never arrive.
+   */
+  private async guidanceReadiness(): Promise<Pick<SoulOnboardingView, 'aiAvailable' | 'aiReason' | 'guidanceAvailable'>> {
+    const report = this.soul.enginePort.isAvailable?.();
+    const aiAvailable = report?.available === true;
+    return {
+      aiAvailable,
+      aiReason: aiAvailable ? 'READY' : (report?.reason ?? 'UNKNOWN'),
+      guidanceAvailable: aiAvailable,
+    };
+  }
+
+  /**
+   * Optional guided help for the question currently being asked.
+   *
+   * Deliberately narrow. It cannot advance the state machine, cannot write a fact, and refuses any
+   * step that is not the live question. Answers used as grounding come from the consented fact store
+   * via `viewContext`, so a revoked consent removes that grounding without deleting anything, and
+   * guidance never reads another workspace.
+   */
+  async guide(actor: Principal, input: { readonly message?: string; readonly history?: readonly GuidedTurn[]; readonly attemptKey: string }): Promise<SoulOnboardingGuidance> {
+    const record = await this.requireRecord(actor);
+    if (record.status === 'COMPLETED' || record.status === 'DISMISSED') {
+      throw new DomainError('INVALID_STATE', 'Onboarding guidance is only available while onboarding is open');
+    }
+    const step = record.step;
+    if (!isGuidedStep(step)) {
+      throw new DomainError('INVALID_STATE', 'The current onboarding step does not accept guided input');
+    }
+    const readiness = await this.guidanceReadiness();
+    const facts = await this.soul.viewContext(actor);
+    const answers = facts
+      .filter(fact => !fact.deletedAt && Object.values(SOUL_ONBOARDING_FACT_KEYS).includes(fact.key as never))
+      .map(fact => ({ step: fact.key, value: typeof fact.value === 'string' ? fact.value : String(fact.value ?? '') }));
+    const outcome = await this.guidance.guide(actor, {
+      onboardingId: record.id,
+      step,
+      message: input.message,
+      answers,
+      history: input.history ?? [],
+      attemptKey: input.attemptKey,
+      locale: record.locale,
+    });
+    return {
+      step,
+      source: outcome.source,
+      reason: outcome.reason,
+      aiGenerated: outcome.aiGenerated,
+      content: outcome.content,
+      turns: outcome.turns,
+      stepUnchanged: true,
     };
   }
 

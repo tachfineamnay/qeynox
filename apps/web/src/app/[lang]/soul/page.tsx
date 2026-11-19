@@ -1,16 +1,38 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { AppShell, Card, Feedback } from '../../../components/ui';
-import { SoulOnboarding, type SoulConsent, type SoulFact, type SoulOnboardingViewData } from '../../../components/soul';
-import { api, ApiError, session } from '../../../lib/api';
+import { SoulOnboarding, type SoulConsent, type SoulFact, type SoulGuidance, type SoulOnboardingViewData } from '../../../components/soul';
+import { GUIDANCE_COOKIE } from '../../../lib/soul-guidance-cookie';
+import { api, ApiError, session, z } from '../../../lib/api';
 import { copy, locale, soulCopy } from '../../../lib/copy';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * One-shot read of the guidance result the action left behind. A malformed value is discarded
+ * silently: nothing is inferred from it and it is never rendered as AI output.
+ */
+const guidanceSchema = z.object({
+  step: z.string(),
+  source: z.enum(['AI', 'DETERMINISTIC_FALLBACK']),
+  reason: z.string(),
+  aiGenerated: z.boolean(),
+  content: z.string().max(4000),
+  turns: z.object({ used: z.number().int().nonnegative(), maximum: z.number().int().positive() }),
+});
 
 export default async function Page({ params, searchParams }: { params: Promise<{ lang: string }>; searchParams: Promise<{ error?: string }> }) {
   const lang = locale((await params).lang);
   const t = copy[lang];
   const c = soulCopy[lang];
   const error = typeof (await searchParams).error === 'string' ? (await searchParams).error : undefined;
+  const jar = await cookies();
+  const rawGuidance = jar.get(GUIDANCE_COOKIE)?.value;
+  let guidance: SoulGuidance | null = null;
+  if (rawGuidance) {
+    try { const parsed = guidanceSchema.safeParse(JSON.parse(rawGuidance)); guidance = parsed.success ? parsed.data : null; }
+    catch { guidance = null; }
+  }
   const current = await session();
   let view: SoulOnboardingViewData | null = null;
   let facts: readonly SoulFact[] = [];
@@ -29,7 +51,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       {!current ? (
         <Card><h2>{c.title}</h2><p>{t.signInRequired}</p><p><Link href={'/' + lang + '/account'}>{t.signin}</Link></p></Card>
       ) : (
-        <SoulOnboarding lang={lang} view={view} facts={facts} consents={consents} failure={failure} />
+        <SoulOnboarding lang={lang} view={view} facts={facts} consents={consents} failure={failure} guidance={guidance} />
       )}
     </AppShell>
   );
