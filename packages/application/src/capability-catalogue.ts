@@ -1,6 +1,8 @@
 import { DomainError, type Principal } from '@qeynox/domain';
 import { QeyNoxStore } from '@qeynox/persistence';
 import { capabilityAvailability } from './capability-availability';
+import type { OperationalState, RuntimeReadinessSource } from './runtime-readiness';
+import { failClosedRuntime } from './runtime-readiness';
 
 export const CAPABILITY_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
@@ -16,11 +18,20 @@ export interface CapabilityCatalogueEntry {
   readonly providerReady: boolean;
   readonly missingProviders: readonly string[];
   readonly profileReady: boolean;
+  /** Active verification policy exists. */
+  readonly policyReady: boolean;
+  readonly missingPolicies: readonly string[];
+  /** Four-state operational readiness. */
+  readonly operationalState: OperationalState;
+  /** True only when OPERATIONAL. */
+  readonly isExecutable: boolean;
 }
 export interface CapabilitySlotView {
   readonly slot: number;
   readonly status: 'ACTIVE' | 'UNCONFIGURED';
+  /** Backward compat: true only when OPERATIONAL. */
   readonly available: boolean;
+  readonly operationalState: OperationalState;
   readonly capability: CapabilityCatalogueEntry | null;
 }
 export interface CapabilityCatalogueView {
@@ -34,9 +45,16 @@ export interface CapabilityCatalogueView {
  * The eight configurable business capability slots with their real availability. Only ACTIVE slots
  * expose a capability; inactive slots never masquerade as usable services. Configuration itself is
  * operator-only and is never performed from a customer session.
+ *
+ * MISSION A01: `available` now means OPERATIONAL only (engine verifiedLive + attestations +
+ * provider/profile/policy ready). CONFIGURED/UNVERIFIED/BLOCKED are never presented as executable.
+ * Backward compat: `available`, `providerReady`, `profileReady` retained; new fields added.
  */
 export class CapabilityCatalogueService {
-  constructor(private readonly store: QeyNoxStore) {}
+  constructor(
+    private readonly store: QeyNoxStore,
+    private readonly runtime: RuntimeReadinessSource = failClosedRuntime,
+  ) {}
 
   async list(actor: Principal): Promise<CapabilityCatalogueView> {
     if (!actor.userId || !actor.workspaceId) throw new DomainError('DENIED', 'Authenticated workspace required');
@@ -47,17 +65,21 @@ export class CapabilityCatalogueService {
   async snapshot(): Promise<CapabilityCatalogueView> {
     const definitions = await this.store.getCapabilities();
     const active = definitions.filter(definition => definition.status === 'ACTIVE');
-    const availability = await capabilityAvailability(this.store, active);
+    const availability = await capabilityAvailability(this.store, active, this.runtime);
     const slots: CapabilitySlotView[] = CAPABILITY_SLOTS.map(slot => {
       const definition = active.find(candidate => candidate.slot === slot);
-      if (!definition) return { slot, status: 'UNCONFIGURED' as const, available: false, capability: null };
+      if (!definition) return { slot, status: 'UNCONFIGURED' as const, available: false, operationalState: 'BLOCKED' as const, capability: null };
       const index = availability.byCapabilityId.get(definition.id);
       const providerReady = index?.providerReady ?? false;
       const profileReady = index?.profileReady ?? false;
+      const policyReady = index?.policyReady ?? false;
+      const operationalState = index?.operationalState ?? 'BLOCKED';
+      const isExecutable = index?.isExecutable ?? false;
       return {
         slot,
         status: 'ACTIVE' as const,
-        available: providerReady && profileReady,
+        available: isExecutable,
+        operationalState,
         capability: {
           id: definition.id,
           version: definition.version,
@@ -70,6 +92,10 @@ export class CapabilityCatalogueService {
           providerReady,
           missingProviders: index?.missingProviders ?? [],
           profileReady,
+          policyReady,
+          missingPolicies: index?.missingPolicies ?? [],
+          operationalState,
+          isExecutable,
         },
       };
     });

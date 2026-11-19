@@ -25,7 +25,8 @@
     "qa:platform-users": "pnpm --filter @qeynox/api qa:platform-users",
     "qa:platform-organizations": "pnpm --filter @qeynox/api qa:platform-organizations",
     "admin:bootstrap": "pnpm --filter @qeynox/api admin:bootstrap",
-    "qa:hermes-live": "pnpm --filter @qeynox/worker qa:hermes-live"
+    "qa:hermes-live": "pnpm --filter @qeynox/worker qa:hermes-live",
+    "qa:runtime-readiness": "pnpm --filter @qeynox/application qa:runtime-readiness"
   },
   "devDependencies": {
     "typescript": "5.9.3",

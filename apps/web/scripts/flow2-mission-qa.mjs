@@ -26,13 +26,13 @@ const plan = {
   attempts: [{ attemptId: 'attempt_qa', stepId: 'step_1', sequence: 1, state: 'COMPLETED', createdAt: now, startedAt: now, finishedAt: now, errorCode: null }, { attemptId: 'attempt_qa2', stepId: 'step_2', sequence: 1, state: 'RUNNING', createdAt: now, startedAt: now, finishedAt: null, errorCode: null }],
   approvals: [{ id: 'approval_qa', purpose: 'Autoriser une collecte externe limitée', status: 'PENDING', requestedAt: now, expiresAt: '2026-11-20T20:00:00.000Z', stepAttemptId: 'attempt_qa2', stale: false }],
   capabilities: [
-    { id: 'cap_market', slot: 1, name: 'Veille marché', purpose: 'Lire la demande et les segments à partir de sources publiques.', scope: ['Maroc'], maximumSteps: 6, maximumToolCalls: 12, externalActions: false, providerReady: true, missingProviders: [], profileReady: true },
-    { id: 'cap_research', slot: 2, name: 'Recherche documentaire', purpose: 'Comparer des documents publics et enregistrer les preuves.', scope: ['Maroc'], maximumSteps: 5, maximumToolCalls: 10, externalActions: false, providerReady: true, missingProviders: [], profileReady: true },
-    { id: 'cap_analysis', slot: 3, name: 'Analyse de preuves', purpose: 'Consolider les constats et préparer la revue humaine.', scope: ['Maroc'], maximumSteps: 4, maximumToolCalls: 8, externalActions: false, providerReady: true, missingProviders: [], profileReady: true },
+    { id: 'cap_market', slot: 1, name: 'Veille marché', purpose: 'Lire la demande et les segments à partir de sources publiques.', scope: ['Maroc'], maximumSteps: 6, maximumToolCalls: 12, externalActions: false, providerReady: true, missingProviders: [], profileReady: true, policyReady: true, missingPolicies: [], operationalState: 'OPERATIONAL', isExecutable: true },
+    { id: 'cap_research', slot: 2, name: 'Recherche documentaire', purpose: 'Comparer des documents publics et enregistrer les preuves.', scope: ['Maroc'], maximumSteps: 5, maximumToolCalls: 10, externalActions: false, providerReady: true, missingProviders: [], profileReady: true, policyReady: true, missingPolicies: [], operationalState: 'OPERATIONAL', isExecutable: true },
+    { id: 'cap_analysis', slot: 3, name: 'Analyse de preuves', purpose: 'Consolider les constats et préparer la revue humaine.', scope: ['Maroc'], maximumSteps: 4, maximumToolCalls: 8, externalActions: false, providerReady: true, missingProviders: [], profileReady: true, policyReady: true, missingPolicies: [], operationalState: 'OPERATIONAL', isExecutable: true },
   ],
 };
 const readiness = {
-  operationId: operation.id, version: 3, status: 'WAITING_APPROVAL', revisionId: 'revision_qa', canStart: false,
+  operationId: operation.id, version: 3, status: 'WAITING_APPROVAL', revisionId: 'revision_qa', canStart: false, operationalState: 'BLOCKED',
   blockers: [{ code: 'STATUS_NOT_STARTABLE', detail: 'The recorded mission status does not allow a launch.', category: 'PLAN' }],
   plan: { present: true, revision: 2, steps: 3 },
   cost: { known: true, amountMinor: 120000, currency: 'MAD', orderState: 'AUTHORIZED' },
@@ -46,10 +46,12 @@ const readiness = {
     order: { ok: true, state: 'AUTHORIZED', amountMinor: 120000, currency: 'MAD' },
     budget: { ok: true, source: 'POLICY', currency: 'MAD', ceiling: 300000, spent: 120000, reserved: 0 },
     permission: { ok: true, role: 'OWNER' },
-    engine: { ok: true, runtime: 'HERMES', missing: [] },
-    orchestrator: { ok: true, runtime: 'HATCHET', missing: [] },
+    engine: { ok: true, runtime: 'HERMES', missing: [], state: 'OPERATIONAL', verifiedLive: true, attested: true },
+    orchestrator: { ok: true, runtime: 'HATCHET', missing: [], state: 'OPERATIONAL', verifiedLive: true, attested: true },
     profile: { ok: true, missing: [] },
     provider: { ok: true, missing: [] },
+    policy: { ok: true, missing: [] },
+    executionAuthorization: { ok: true, state: 'AUTHORIZED', authorized: true },
   },
 };
 const summary = { operationId: operation.id, status: 'WAITING_APPROVAL', stepCount: 3, completedSteps: 1, pendingApprovals: 1, lastSequence: 3 };

@@ -39,18 +39,21 @@ export default async function SettingsPage({ params }: { params: Promise<{ lang:
             <dl className="kv">
               <dt>{t.engineLabel}</dt>
               <dd>
-                <Badge tone={catalogue.runtime.engine.configured ? 'success' : 'warning'}>{catalogue.runtime.engine.configured ? t.configured : t.runtimeMissing}</Badge>
+                <Badge tone={catalogue.runtime.engine.state === 'OPERATIONAL' ? 'success' : 'warning'}>{catalogue.runtime.engine.state ? t.operationalState[catalogue.runtime.engine.state] : (catalogue.runtime.engine.configured ? t.configured : t.runtimeMissing)}</Badge>
                 {catalogue.runtime.engine.configured ? null : (
                   <ul className="plain-list">{catalogue.runtime.engine.missing.map(item => <li key={item}><code>{item}</code></li>)}</ul>
                 )}
+                {catalogue.runtime.engine.verifiedLive === false && catalogue.runtime.engine.configured ? <p className="muted">{t.runtimeUnverified}</p> : null}
               </dd>
               <dt>{t.orchestratorLabel}</dt>
               <dd>
-                <Badge tone={catalogue.runtime.orchestrator.configured ? 'success' : 'warning'}>{catalogue.runtime.orchestrator.configured ? t.configured : t.runtimeMissing}</Badge>
+                <Badge tone={catalogue.runtime.orchestrator.state === 'OPERATIONAL' ? 'success' : 'warning'}>{catalogue.runtime.orchestrator.state ? t.operationalState[catalogue.runtime.orchestrator.state] : (catalogue.runtime.orchestrator.configured ? t.configured : t.runtimeMissing)}</Badge>
                 {catalogue.runtime.orchestrator.configured ? null : (
                   <ul className="plain-list">{catalogue.runtime.orchestrator.missing.map(item => <li key={item}><code>{item}</code></li>)}</ul>
                 )}
               </dd>
+              <dt>{t.runtimeOverall}</dt>
+              <dd><Badge tone={catalogue.runtime.overallState === 'OPERATIONAL' ? 'success' : 'warning'}>{catalogue.runtime.overallState ? t.operationalState[catalogue.runtime.overallState] : t.operationalState.BLOCKED}</Badge></dd>
             </dl>
           </Card>
 
@@ -76,6 +79,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ lang:
                   <div className="assignment-head">
                     <strong>#{slot.slot}</strong>
                     <Badge tone={slot.status === 'ACTIVE' ? 'success' : 'neutral'}>{slot.status === 'ACTIVE' ? t.active : t.capabilityUnconfigured}</Badge>
+                    {slot.operationalState ? <Badge tone={slot.operationalState === 'OPERATIONAL' ? 'success' : 'warning'}>{t.operationalState[slot.operationalState]}</Badge> : null}
                     {slot.available ? <Badge tone="success">{t.capabilityAvailable}</Badge> : null}
                   </div>
                   {slot.capability ? (
@@ -91,9 +95,11 @@ export default async function SettingsPage({ params }: { params: Promise<{ lang:
                       {slot.capability.missingProviders.length ? (
                         <Notice tone="warning" title={t.capabilityMissingProvider}>{slot.capability.missingProviders.join(', ')}</Notice>
                       ) : null}
-                      {!slot.available && slot.capability.profileReady && slot.capability.providerReady ? (
+                      {slot.capability.policyReady === false ? <Notice tone="warning" title={t.capabilityMissingPolicy} /> : null}
+                      {!slot.available && slot.capability.profileReady && slot.capability.providerReady && slot.capability.policyReady ? (
                         <Notice tone="warning" title={t.capabilityIncomplete} />
                       ) : null}
+                      {slot.capability.operationalState === 'UNVERIFIED' ? <Notice tone="warning" title={t.runtimeUnverified} /> : null}
                     </>
                   ) : <p className="muted">{t.capabilityUnconfigured}</p>}
                 </li>

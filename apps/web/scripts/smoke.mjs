@@ -23,8 +23,8 @@ const backend = createServer((req, res) => {
     if (mode === 'capabilities-denied') { res.statusCode = 403; res.end(JSON.stringify({ error: { code: 'DENIED' } })); return; }
     if (mode === 'capabilities-malformed') { res.end(JSON.stringify({ slots: 'invalid' })); return; }
     payload = { total: 8, active: 1, available: 1, slots: Array.from({ length: 8 }, (_, index) => index === 0
-      ? { slot: 1, status: 'ACTIVE', available: true, capability: { id: 'capability_qa', version: 1, name: 'QA evidence research', purpose: 'QA fixture', scope: [], maximumSteps: 3, maximumToolCalls: 2, externalActions: false, providerReady: true, missingProviders: [], profileReady: true } }
-      : { slot: index + 1, status: 'UNCONFIGURED', available: false, capability: null }) };
+      ? { slot: 1, status: 'ACTIVE', available: true, operationalState: 'OPERATIONAL', capability: { id: 'capability_qa', version: 1, name: 'QA evidence research', purpose: 'QA fixture', scope: [], maximumSteps: 3, maximumToolCalls: 2, externalActions: false, providerReady: true, missingProviders: [], profileReady: true, policyReady: true, missingPolicies: [], operationalState: 'OPERATIONAL', isExecutable: true } }
+      : { slot: index + 1, status: 'UNCONFIGURED', available: false, operationalState: 'BLOCKED', capability: null }) };
   }
   if (req.url === '/v1/operations/operation_qa') payload = operation;
   if (req.url === '/v1/mydash/operations/operation_qa/summary') payload = { operationId: operation.id, status: 'RUNNING', stepCount: 3, completedSteps: 1, pendingApprovals: 0, lastSequence: 1 };

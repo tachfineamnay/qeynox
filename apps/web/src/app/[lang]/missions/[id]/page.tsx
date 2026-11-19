@@ -430,10 +430,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     { label: f.prereq.order, ok: data.prerequisites.order.ok, missing: [] },
     { label: f.prereq.budget, ok: data.prerequisites.budget.ok, missing: [] },
     { label: f.prereq.permission, ok: data.prerequisites.permission.ok, missing: [] },
-    { label: f.prereq.engine, ok: data.prerequisites.engine.ok, missing: data.prerequisites.engine.missing },
-    { label: f.prereq.orchestrator, ok: data.prerequisites.orchestrator.ok, missing: data.prerequisites.orchestrator.missing },
+    { label: f.prereq.engine, ok: data.prerequisites.engine.ok && data.prerequisites.engine.verifiedLive !== false, missing: data.prerequisites.engine.missing },
+    { label: f.prereq.orchestrator, ok: data.prerequisites.orchestrator.ok && data.prerequisites.orchestrator.verifiedLive !== false, missing: data.prerequisites.orchestrator.missing },
     { label: f.prereq.profile, ok: data.prerequisites.profile.ok, missing: data.prerequisites.profile.missing },
     { label: f.prereq.provider, ok: data.prerequisites.provider.ok, missing: data.prerequisites.provider.missing },
+    { label: f.prereq.policy, ok: data.prerequisites.policy?.ok ?? true, missing: data.prerequisites.policy?.missing ?? [] },
+    { label: f.prereq.authorization, ok: data.prerequisites.executionAuthorization?.ok ?? data.prerequisites.order.ok, missing: [] },
     ];
   }
 

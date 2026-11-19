@@ -35,7 +35,7 @@ export class PlatformCatalogueService {
     private readonly runtime: RuntimeReadinessSource,
     private readonly operator: OperatorConfigurationFacts,
   ) {
-    this.catalogue = new CapabilityCatalogueService(store);
+    this.catalogue = new CapabilityCatalogueService(store, runtime);
   }
 
   async read(principal: PlatformPrincipal): Promise<PlatformCatalogueView> {

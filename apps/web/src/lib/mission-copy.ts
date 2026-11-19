@@ -164,6 +164,7 @@ const en = {
     prereq: {
       plan: 'Plan', capability: 'Capability', offer: 'Offer', order: 'Order', budget: 'Budget', permission: 'Permission',
       engine: 'Engine', orchestrator: 'Orchestrator', profile: 'Agent profile', provider: 'Provider',
+      policy: 'Verification policy', authorization: 'Execution authorization',
     },
     commercialTitle: 'Offer and payment',
     commercialIntro: 'A real quote is required before launch. No price or authorization is fabricated.',
@@ -385,6 +386,7 @@ const fr: typeof en = {
     prereq: {
       plan: 'Plan', capability: 'Capacité', offer: 'Offre', order: 'Commande', budget: 'Budget', permission: 'Permission',
       engine: 'Moteur', orchestrator: 'Orchestrateur', profile: 'Profil d’agent', provider: 'Fournisseur',
+      policy: 'Politique de vérification', authorization: 'Autorisation d’exécution',
     },
     commercialTitle: 'Offre et paiement',
     commercialIntro: 'Un devis réel est requis avant le lancement. Aucun prix ni aucune autorisation n’est inventé.',

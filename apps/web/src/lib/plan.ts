@@ -1,6 +1,8 @@
 import 'server-only';
 import { z } from 'zod';
 
+export const operationalStateSchema = z.enum(['CONFIGURED', 'OPERATIONAL', 'BLOCKED', 'UNVERIFIED']);
+
 /** Mirrors GET /v1/operations/:id/plan. Read-only projection of persisted state. */
 export const planCapabilitySchema = z.object({
   id: z.string(),
@@ -14,6 +16,10 @@ export const planCapabilitySchema = z.object({
   providerReady: z.boolean(),
   missingProviders: z.array(z.string()),
   profileReady: z.boolean(),
+  policyReady: z.boolean().optional().default(false),
+  missingPolicies: z.array(z.string()).optional().default([]),
+  operationalState: operationalStateSchema.optional().default('BLOCKED'),
+  isExecutable: z.boolean().optional().default(false),
 });
 
 export const planStepSchema = z.object({
@@ -82,6 +88,7 @@ export const readinessSchema = z.object({
   status: z.string(),
   revisionId: z.string().nullable(),
   canStart: z.boolean(),
+  operationalState: operationalStateSchema.optional().default('BLOCKED'),
   blockers: z.array(z.object({ code: z.string(), detail: z.string(), category: z.string() })),
   plan: z.object({ present: z.boolean(), revision: z.number().int().nullable(), steps: z.number().int().nonnegative() }),
   cost: z.object({
@@ -115,10 +122,12 @@ export const readinessSchema = z.object({
       ceiling: z.number().int().nullable(), spent: z.number().int().nullable(), reserved: z.number().int().nullable(),
     }),
     permission: z.object({ ok: z.boolean(), role: z.string().nullable() }),
-    engine: z.object({ ok: z.boolean(), runtime: z.string(), missing: z.array(z.string()) }),
-    orchestrator: z.object({ ok: z.boolean(), runtime: z.string(), missing: z.array(z.string()) }),
+    engine: z.object({ ok: z.boolean(), runtime: z.string(), missing: z.array(z.string()), state: operationalStateSchema.optional().default('BLOCKED'), verifiedLive: z.boolean().optional().default(false), attested: z.boolean().optional().default(false) }),
+    orchestrator: z.object({ ok: z.boolean(), runtime: z.string(), missing: z.array(z.string()), state: operationalStateSchema.optional().default('BLOCKED'), verifiedLive: z.boolean().optional().default(false), attested: z.boolean().optional().default(false) }),
     profile: z.object({ ok: z.boolean(), missing: z.array(z.string()) }),
     provider: z.object({ ok: z.boolean(), missing: z.array(z.string()) }),
+    policy: z.object({ ok: z.boolean(), missing: z.array(z.string()) }).optional().default({ ok: true, missing: [] }),
+    executionAuthorization: z.object({ ok: z.boolean(), state: z.string().nullable(), authorized: z.boolean() }).optional().default({ ok: false, state: null, authorized: false }),
   }),
 });
 
@@ -128,6 +137,7 @@ export const capabilityCatalogueSchema = z.object({
     slot: z.number().int(),
     status: z.enum(['ACTIVE', 'UNCONFIGURED']),
     available: z.boolean(),
+    operationalState: operationalStateSchema.optional().default('BLOCKED'),
     capability: z.object({
       id: z.string(),
       version: z.number().int(),
@@ -140,6 +150,10 @@ export const capabilityCatalogueSchema = z.object({
       providerReady: z.boolean(),
       missingProviders: z.array(z.string()),
       profileReady: z.boolean(),
+      policyReady: z.boolean().optional().default(false),
+      missingPolicies: z.array(z.string()).optional().default([]),
+      operationalState: operationalStateSchema.optional().default('BLOCKED'),
+      isExecutable: z.boolean().optional().default(false),
     }).nullable(),
   })),
   total: z.number().int(),

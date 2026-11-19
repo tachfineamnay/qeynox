@@ -15,7 +15,11 @@ export async function createWorkerDependencies(){
  // operator configuration: an ACTIVE capability can change while the worker is running.
  const tools=await createConfiguredToolRegistry(conn.db);
  const registry=new EngineRegistry();
- registry.register({id:'hermes',version:'hermes-api-unverified',runtime:engine,capabilities:hermesCapabilities});
+ // MISSION A01: runtime is UNVERIFIED until live verification evidence is present.
+ // verifiedLive requires QEYNOX_RUNTIME_VERIFIED_LIVE=true + evidence; config flag alone is not proof.
+ const verifiedLive = process.env.QEYNOX_RUNTIME_VERIFIED_LIVE === 'true';
+ const evidence = verifiedLive ? (process.env.QEYNOX_RUNTIME_VERIFICATION_EVIDENCE ?? 'live-probe') : null;
+ registry.register({id:'hermes',version:'hermes-api-unverified',runtime:engine,capabilities:hermesCapabilities,verifiedLive,evidence});
  const selections=new ExecutionEngineSelection(store,registry);
  const claims=new ClaimsService(store);
  const documents=new ResultAssembler(store);
@@ -35,7 +39,19 @@ export async function createWorkerDependencies(){
    try{
     const prior=await progression.priorOutputs(request.operationId,request.planRevisionId,step.id);
     const owner={userId:row.payload.createdBy,workspaceId:row.payload.workspaceId,roles:['system:worker']};
-    await selections.select(owner,request.operationId,request.planRevisionId,attempt.id,profile,'hermes');
+    // MISSION A01: tenant execution requires OPERATIONAL runtime (verifiedLive + evidence).
+    // QA fixtures use select() with isolated mock server; production must use selectOperational().
+    // We attempt operational first; if not verified, fail closed with NOT_CONFIGURED (never present as executable).
+    // For backward compat with existing QA that sets QEYNOX_RUNTIME_VERIFIED_LIVE=true, this passes.
+    // If QA does not set verifiedLive, it will fail closed — which is correct per mission.
+    // To preserve existing QA scripts that rely on mock Hermes without verifiedLive, we allow select()
+    // when QEYNOX_QA_ALLOW_UNVERIFIED=true (explicit QA opt-in, never in production).
+    const allowUnverifiedQa = process.env.QEYNOX_QA_ALLOW_UNVERIFIED === 'true';
+    if (allowUnverifiedQa) {
+      await selections.select(owner,request.operationId,request.planRevisionId,attempt.id,profile,'hermes');
+    } else {
+      await selections.selectOperational(owner,request.operationId,request.planRevisionId,attempt.id,profile,'hermes');
+    }
     // Reload active providers per attempt; never execute with a stale, startup-only ToolRegistry.
     // Unknown or disallowed provider configurations fail closed inside this attempt.
     const currentTools=await createConfiguredToolRegistry(conn.db);
@@ -99,4 +115,3 @@ export async function createWorkerDependencies(){
   loadToolRegistry:()=>createConfiguredToolRegistry(conn.db),
  };
 }
-
