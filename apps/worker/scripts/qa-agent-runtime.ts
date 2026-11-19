@@ -225,6 +225,10 @@ async function main(): Promise<void> {
     process.env.HERMES_MODEL = 'qa-hermes-model';
     process.env.HERMES_NATIVE_TOOLS_ISOLATED = 'true';
     process.env.QEYNOX_NETWORK_POLICY_ATTESTED = 'true';
+    // MISSION A01: tenant execution requires an OPERATIONAL runtime (verifiedLive + evidence).
+    // This isolated QA fixture runs against a deterministic local Hermes double, so it opts out
+    // explicitly. Production never sets this flag; there the worker uses selectOperational().
+    process.env.QEYNOX_QA_ALLOW_UNVERIFIED = 'true';
 
     const planning = new PlanningService(store);
     const capabilityId = 'capability-slot-1-v1' as ID;

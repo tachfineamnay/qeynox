@@ -51,6 +51,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                 <div className="qx-capability-head">
                   <span className="qx-slot">{c.slotLabel} {slot.slot}</span>
                   <StatusBadge status={slot.status} lang={lang} />
+                  {slot.operationalState ? <span className="badge" data-state={slot.operationalState}>{c.operationalState[slot.operationalState]}</span> : null}
                   {slot.available ? <span className="badge success">{c.availableCount}</span> : null}
                 </div>
                 {slot.capability ? (
@@ -72,8 +73,14 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                     {slot.capability.missingProviders.length ? (
                       <Feedback error title={c.missingProvider}>{slot.capability.missingProviders.join(', ')}</Feedback>
                     ) : null}
-                    {!slot.available && slot.capability.profileReady && slot.capability.providerReady ? (
+                    {slot.capability.policyReady === false ? (
+                      <Feedback error title={c.missingPolicy} />
+                    ) : null}
+                    {!slot.available && slot.capability.profileReady && slot.capability.providerReady && slot.capability.policyReady ? (
                       <Feedback title={c.configuredBlocked} />
+                    ) : null}
+                    {slot.capability.operationalState === 'UNVERIFIED' ? (
+                      <Feedback title={c.runtimeUnverified} />
                     ) : null}
                   </>
                 ) : (

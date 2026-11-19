@@ -2,7 +2,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import type { CapabilityDefinition, ID, OperationStatus, Principal, WorkStep } from '@qeynox/domain';
 import { QeyNoxStore, approvals, attempts, budgetPolicies, commercialOrders, offers, operationBudgets } from '@qeynox/persistence';
 import { capabilityAvailability, type CapabilityAvailability } from './capability-availability';
-import { failClosedRuntime, type RuntimeReadinessSource } from './runtime-readiness';
+import { failClosedRuntime, type OperationalState, type RuntimeReadinessSource } from './runtime-readiness';
 
 /** Bounded customer-facing projection of one configured business capability. */
 export interface PlanCapabilityView {
@@ -10,6 +10,8 @@ export interface PlanCapabilityView {
   scope: readonly string[]; maximumSteps: number; maximumToolCalls: number;
   externalActions: boolean;
   providerReady: boolean; missingProviders: readonly string[]; profileReady: boolean;
+  policyReady: boolean; missingPolicies: readonly string[];
+  operationalState: OperationalState; isExecutable: boolean;
 }
 export interface PlanStepView {
   id: string; ordinal: number; title: string; description: string; capabilityId: string;
@@ -37,7 +39,7 @@ export interface OperationPlanView {
   capabilities: PlanCapabilityView[];
 }
 
-export type ReadinessCategory = 'PLAN' | 'CAPABILITY' | 'OFFER' | 'BUDGET' | 'PERMISSION' | 'ENGINE' | 'PROVIDER';
+export type ReadinessCategory = 'PLAN' | 'CAPABILITY' | 'OFFER' | 'BUDGET' | 'PERMISSION' | 'ENGINE' | 'PROVIDER' | 'POLICY' | 'AUTHORIZATION';
 export interface ReadinessBlocker { code: string; detail: string; category: ReadinessCategory }
 export interface OperationReadinessView {
   operationId: string;
@@ -45,6 +47,8 @@ export interface OperationReadinessView {
   status: OperationStatus;
   revisionId: string | null;
   canStart: boolean;
+  /** Four-state operational readiness for the whole operation. */
+  operationalState: OperationalState;
   blockers: ReadinessBlocker[];
   plan: { present: boolean; revision: number | null; steps: number };
   cost: { known: boolean; amountMinor: number | null; currency: string | null; orderState: string | null };
@@ -59,10 +63,12 @@ export interface OperationReadinessView {
     order: { ok: boolean; state: string | null; amountMinor: number | null; currency: string | null };
     budget: { ok: boolean; source: 'OPERATION' | 'POLICY' | 'NONE'; currency: string | null; ceiling: number | null; spent: number | null; reserved: number | null };
     permission: { ok: boolean; role: string | null };
-    engine: { ok: boolean; runtime: string; missing: readonly string[] };
-    orchestrator: { ok: boolean; runtime: string; missing: readonly string[] };
+    engine: { ok: boolean; runtime: string; missing: readonly string[]; state: OperationalState; verifiedLive: boolean; attested: boolean };
+    orchestrator: { ok: boolean; runtime: string; missing: readonly string[]; state: OperationalState; verifiedLive: boolean; attested: boolean };
     profile: { ok: boolean; missing: readonly string[] };
     provider: { ok: boolean; missing: readonly string[] };
+    policy: { ok: boolean; missing: readonly string[] };
+    executionAuthorization: { ok: boolean; state: string | null; authorized: boolean };
   };
 }
 
@@ -83,6 +89,10 @@ function capabilityView(definition: CapabilityDefinition, index: CapabilityAvail
     providerReady: index?.providerReady ?? false,
     missingProviders: index?.missingProviders ?? [],
     profileReady: index?.profileReady ?? false,
+    policyReady: index?.policyReady ?? false,
+    missingPolicies: index?.missingPolicies ?? [],
+    operationalState: index?.operationalState ?? 'BLOCKED',
+    isExecutable: index?.isExecutable ?? false,
   };
 }
 
@@ -100,6 +110,10 @@ function budgetPolicyPayload(row: { payload: Record<string, unknown> } | undefin
  * It only reads persisted state: no plan is generated, no budget is materialized and no execution
  * is requested. Readiness mirrors the checks OperationExecutionService.start and the worker perform
  * so the interface never offers a launch the backend would refuse.
+ *
+ * MISSION A01: readiness now distinguishes CONFIGURED / OPERATIONAL / BLOCKED / UNVERIFIED.
+ * canStart is true only when operationalState is OPERATIONAL (all prerequisites + verifiedLive).
+ * A configuration flag alone never yields OPERATIONAL.
  */
 export class PlanReadService {
   constructor(
@@ -121,7 +135,7 @@ export class PlanReadService {
       .where(and(eq(approvals.workspaceId, actor.workspaceId), eq(approvals.operationId, operationId)));
     const definitions = await this.store.getCapabilities();
     const activeDefinitions = definitions.filter(item => item.status === 'ACTIVE');
-    const availability = await capabilityAvailability(this.store, activeDefinitions);
+    const availability = await capabilityAvailability(this.store, activeDefinitions, this.runtime);
     const activeIds = new Set(activeDefinitions.map(item => item.id));
 
     const steps: PlanStepView[] = planSteps
@@ -176,7 +190,7 @@ export class PlanReadService {
     const currentRevision = revisionId ? await this.store.getRevision(revisionId) : undefined;
     const definitions = await this.store.getCapabilities();
     const active = new Map(definitions.filter(item => item.status === 'ACTIVE').map(item => [item.id, item]));
-    const availability = await capabilityAvailability(this.store, [...active.values()]);
+    const availability = await capabilityAvailability(this.store, [...active.values()], this.runtime);
 
     let planSteps: WorkStep[] = [];
     if (!revisionId) {
@@ -194,6 +208,7 @@ export class PlanReadService {
     const missingCapabilities = new Set<string>();
     const missingProfiles = new Set<string>();
     const missingProviders = new Set<string>();
+    const missingPolicies = new Set<string>();
     for (const step of planSteps) {
       const definition = active.get(step.capabilityId);
       if (!definition) {
@@ -209,6 +224,7 @@ export class PlanReadService {
       const index = availability.byCapabilityId.get(definition.id);
       if (index && !index.profileReady) missingProfiles.add('business:' + definition.slot);
       for (const ref of index?.missingProviders ?? []) missingProviders.add(ref);
+      for (const ref of index?.missingPolicies ?? []) missingPolicies.add(ref);
     }
 
     let order: typeof commercialOrders.$inferSelect | undefined;
@@ -240,15 +256,24 @@ export class PlanReadService {
 
       if (!runtime.engine.configured) {
         blockers.push({ code: 'ENGINE_NOT_CONFIGURED', category: 'ENGINE', detail: 'Missing: ' + runtime.engine.missing.join(', ') });
+      } else if (!runtime.engine.verifiedLive) {
+        blockers.push({ code: 'ENGINE_UNVERIFIED', category: 'ENGINE', detail: 'Engine is configured but not verified live; configuration alone is not proof of functionality' });
+      } else if (!runtime.engine.attested) {
+        blockers.push({ code: 'ENGINE_NOT_ATTESTED', category: 'ENGINE', detail: 'Engine attestations missing: ' + runtime.engine.missing.join(', ') });
       }
       if (!runtime.orchestrator.configured) {
         blockers.push({ code: 'ORCHESTRATOR_NOT_CONFIGURED', category: 'ENGINE', detail: 'Missing: ' + runtime.orchestrator.missing.join(', ') });
+      } else if (!runtime.orchestrator.verifiedLive) {
+        blockers.push({ code: 'ORCHESTRATOR_UNVERIFIED', category: 'ENGINE', detail: 'Orchestrator is configured but not verified live' });
       }
       if (missingProfiles.size) {
         blockers.push({ code: 'PROFILE_NOT_CONFIGURED', category: 'ENGINE', detail: 'Missing active business profile: ' + [...missingProfiles].join(', ') });
       }
       if (missingProviders.size) {
         blockers.push({ code: 'PROVIDER_NOT_CONFIGURED', category: 'PROVIDER', detail: 'Missing enabled tool configuration: ' + [...missingProviders].join(', ') });
+      }
+      if (missingPolicies.size) {
+        blockers.push({ code: 'POLICY_NOT_CONFIGURED', category: 'POLICY', detail: 'Missing active verification policy: ' + [...missingPolicies].join(', ') });
       }
     }
 
@@ -279,12 +304,34 @@ export class PlanReadService {
     const offerLabel = typeof offerConfiguration?.label === 'string' ? offerConfiguration.label : null;
     const offerFree = offerConfiguration?.isExplicitlyFree === true;
     const budgetOk = Boolean(operationBudget || policyPayload);
+
+    // Compute operational state: OPERATIONAL only when all prerequisites + verifiedLive + authorized.
+    let operationalState: OperationalState;
+    if (blockers.length > 0) {
+      // Distinguish BLOCKED vs UNVERIFIED: if only UNVERIFIED blockers, state is UNVERIFIED
+      const unverifiedOnly = blockers.every(b => b.code === 'ENGINE_UNVERIFIED' || b.code === 'ORCHESTRATOR_UNVERIFIED');
+      operationalState = unverifiedOnly ? 'UNVERIFIED' : 'BLOCKED';
+    } else if (!runtime.engine.verifiedLive || !runtime.orchestrator.verifiedLive) {
+      operationalState = 'UNVERIFIED';
+    } else if (!orderAuthorized) {
+      operationalState = 'BLOCKED';
+    } else if (!budgetOk || missingProfiles.size > 0 || missingProviders.size > 0 || missingPolicies.size > 0) {
+      operationalState = 'BLOCKED';
+    } else {
+      operationalState = 'OPERATIONAL';
+    }
+
+    // canStart requires OPERATIONAL, not just no blockers. This separates QA contract success
+    // (blockers empty in isolated fixture) from real operational readiness (verifiedLive).
+    const canStart = startable && operationalState === 'OPERATIONAL';
+
     return {
       operationId,
       version: operation.version,
       status: operation.status,
       revisionId,
-      canStart: startable && blockers.length === 0,
+      canStart,
+      operationalState,
       blockers,
       plan: { present: planExists, revision: currentRevision?.revision ?? null, steps: planSteps.length },
       cost: order
@@ -329,10 +376,12 @@ export class PlanReadService {
           reserved: operationBudget?.reservedMinor ?? null,
         },
         permission: { ok: workflowPermission(actor), role: actor.roles[0] ?? null },
-        engine: { ok: runtime.engine.configured, runtime: runtime.engine.id, missing: runtime.engine.missing },
-        orchestrator: { ok: runtime.orchestrator.configured, runtime: runtime.orchestrator.id, missing: runtime.orchestrator.missing },
+        engine: { ok: runtime.engine.configured, runtime: runtime.engine.id, missing: runtime.engine.missing, state: runtime.engine.state, verifiedLive: runtime.engine.verifiedLive, attested: runtime.engine.attested },
+        orchestrator: { ok: runtime.orchestrator.configured, runtime: runtime.orchestrator.id, missing: runtime.orchestrator.missing, state: runtime.orchestrator.state, verifiedLive: runtime.orchestrator.verifiedLive, attested: runtime.orchestrator.attested },
         profile: { ok: missingProfiles.size === 0, missing: [...missingProfiles] },
         provider: { ok: missingProviders.size === 0, missing: [...missingProviders] },
+        policy: { ok: missingPolicies.size === 0, missing: [...missingPolicies] },
+        executionAuthorization: { ok: orderAuthorized, state: order?.state ?? null, authorized: orderAuthorized },
       },
     };
   }
