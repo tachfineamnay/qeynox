@@ -296,3 +296,45 @@ deployment. The candidate branch is not pushed; origin lacks apps/control. No pu
 ## Final closeout continuation (2026-11-14)
 
 MAIN and PREPRODUCTION remain **NO-GO**. The targeted Soul transaction and migration rehearsal passed; Chatwoot remains explicitly disabled, and browser/Control and operator migration-procedure gates remain open. See [FINAL_CLOSEOUT_2026-11-14.md](FINAL_CLOSEOUT_2026-11-14.md) for evidence and exact remaining work.
+
+## 2026-11-19 — Mission A02: Hermes / Vertex inference contract
+
+Read the upstream Hermes Agent source (`NousResearch/hermes-agent`: `agent/vertex_adapter.py`,
+`hermes_cli/config_defaults.py`, `hermes_cli/auth.py`, `gateway/platforms/api_server*.py`) instead
+of inferring the contract. Two findings changed the implementation:
+
+1. `vertex` (aliases `google-vertex`, `vertex-ai`, `gcp-vertex`, `vertexai`) is a **first-class
+   provider** with OAuth2 service-account/ADC auth. The 2026-11-16 note that claimed otherwise is
+   corrected in `FAST_LIVE_QEYNOX.yaml` and `ADR-021`. No second inference gateway is built.
+2. The wire contract differs from what the adapter assumed: hard failure is HTTP **502**
+   `agent_incomplete`, soft partial/failed/cancelled turns are **200** with `finish_reason`
+   `length|error|cancelled` plus a `hermes{completed,partial,failed,error,error_code}` object,
+   `usage` is all zeros when unobserved, 401 is `gateway_auth_error`, 429 is
+   `rate_limit_exceeded` with `Retry-After`, and `X-Hermes-*` headers repeat the same facts.
+
+Implemented in `packages/engine`: `hermes-contract.ts` (pure classification/usage/redaction),
+a rewritten `HermesAdapter` (disposition precedence where a failure flag always beats answer text,
+timeout distinguished from cancellation, no outcome on any failure path, structured redacted
+diagnostics), and `hermes-diagnostics.ts` (`/health`, `/v1/models`, `/v1/toolsets` probing with
+isolation reported as *evidenced* only when no toolset is enabled). The API module now forwards
+`HERMES_PRIVATE_ORIGIN` (previously worker-only) and an optional `HERMES_PROVIDER` hint.
+
+VERIFIED IN ISOLATION (no model, no network, no database):
+- `pnpm qa:hermes-contract` — 57 assertions across every documented response shape, the isolation
+  gate, timeout-vs-cancel, native-tool refusal, redaction and classification precedence.
+- `pnpm qa:hermes-live-selftest` — 15 assertions proving the live procedure's exit codes
+  (BLOCKED 3 / PASS 0), the isolation gap, and that the API key never reaches the output.
+- `pnpm typecheck`, `pnpm build`.
+
+BLOCKED — NOT VERIFIED:
+- **Real inference through Hermes to Vertex/Gemini has not been executed.** No operator Vertex
+  credential and no reachable Hermes deployment exist in this environment. `pnpm qa:hermes-live`
+  exits **3 (BLOCKED)**, which is the correct result and never a pass.
+- `pnpm qa:agent-runtime`, `qa:connectors`, `qa:raas` require a disposable PostgreSQL that is not
+  available here; they were not run in this pass (the adapter changes are not exercised by them
+  beyond the local HTTP fixture, which the contract suite supersedes).
+- Native-tool isolation and egress containment remain operator attestations requiring deployment
+  review; server-side cancellation is not observable on this wire.
+
+Procedure: `docs/architecture/HERMES_VERTEX_LIVE_RUNBOOK.md`. No credential was created, no
+attestation set, no public exposure added, no deployment or merge performed.

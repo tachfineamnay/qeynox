@@ -44,6 +44,9 @@ export class BrokeredAgentExecutor {
      let answer:EngineOutcome;
      try {
        answer=await this.engine.invoke({...request,priorMessages:history});
+       // Hermes reports an all-zero usage block when it observed nothing, so a missing usage means
+       // "not measured", never "zero provider-metered tokens". The adapter withholds unobserved
+       // usage, and the ledger keeps the reservation ESTIMATED instead of claiming provider proof.
        await budget.settle(principal,engineReservation.reservationId as ID,{origin:'ESTIMATED',costMinor:engineReservation.maximumCostMinor,tokensIn:answer.usage?.inputTokens,tokensOut:answer.usage?.outputTokens});
      } catch(error:unknown) {
        await budget.settle(principal,engineReservation.reservationId as ID,{origin:'UNKNOWN'});
