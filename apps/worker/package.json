@@ -13,7 +13,9 @@
     "qa:raas-deliverable": "tsx scripts/qa-raas-deliverable.ts",
     "qa:storage": "tsx scripts/qa-object-storage.ts",
     "qa:egress": "tsx scripts/qa-egress.ts",
-    "qa:hermes-live": "tsx scripts/qa-hermes-live.ts"
+    "qa:hermes-live": "tsx scripts/qa-hermes-live.ts",
+    "qa:hermes-live-selftest": "tsx scripts/qa-hermes-live-selftest.ts",
+    "hermes:diagnose": "tsx scripts/hermes-diagnose.ts"
   },
   "dependencies": {
     "@qeynox/application": "workspace:*",

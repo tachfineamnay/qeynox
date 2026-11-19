@@ -26,8 +26,13 @@ fast_live:
       #   preuve: curl -H "Authorization: Bearer $HERMES_API_KEY" http://qeynox-hermes:8642/v1/toolsets -> enabled: []
       #   providers supportés par 0.20.0: auto|openrouter|nous|anthropic|openai-codex|copilot|gemini|zai|kimi|
       #   minimax|huggingface|nvidia|xiaomi|arcee|ollama-cloud|deepinfra|kilocode|ai-gateway|azure-foundry|lmstudio|custom
-      #   -> aucun provider "vertex" natif: Vertex exigerait un endpoint OpenAI-compatible (provider custom) + OAuth2.
+      #   -> CORRECTION 2026-11-19 (A02, source amont vérifiée): "vertex" EST un provider de
+      #      première classe (alias google-vertex|vertex-ai|gcp-vertex|vertexai), avec OAuth2 par
+      #      service-account JSON ou ADC. Voir docs/architecture/ADR-021-hermes-vertex-inference.md.
+      #      Aucune passerelle d'inférence supplémentaire n'est nécessaire.
       #   État 2026-11-16: model.provider=auto, default=anthropic/claude-opus-4.6, aucun credential Google => inférence BLOCKED.
+      #   État 2026-11-19: toujours BLOCKED — aucun credential Vertex fourni par l'opérateur, donc
+      #      aucune inférence réelle n'a été exécutée (`pnpm qa:hermes-live` -> BLOCKED, exit 3).
       #   Web UI: dashboard natif sur 9119 (HERMES_DASHBOARD=1), publié via labels Traefik sur
       #   https://yassir.qeynox.io (login mot de passe, env HERMES_DASHBOARD_USER/PASSWORD), et
       #   l'API agentique 8642 reste non routée (probe public -> 302/HTML dashboard, jamais /v1 JSON).
