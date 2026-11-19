@@ -338,3 +338,55 @@ BLOCKED — NOT VERIFIED:
 
 Procedure: `docs/architecture/HERMES_VERTEX_LIVE_RUNBOOK.md`. No credential was created, no
 attestation set, no public exposure added, no deployment or merge performed.
+
+## MISSION A03 — first operational business service (World Bank economic research)
+
+Delivered: a reusable research service with an explicit request contract, a bounded plan, validated
+operator configuration, and a QA gate that separates definition evidence from integration evidence.
+
+Source:
+- `packages/application/src/economic-research.ts` — request normalization/validation, deterministic
+  plan construction, availability and plan creation.
+- `packages/application/src/service-configuration.ts` — read-only validation of the six configuration
+  domains with stable finding codes and remedies.
+- `infra/operator/a03-economic-research.json` — the applyable configuration (repairs mission-10).
+- `infra/operator/SERVICE_TEMPLATE.md` — the reusable service pattern.
+- `apps/worker/scripts/qa-a03-service.ts` — the gate (`pnpm qa:a03-service`).
+
+Repaired configuration defects (all present in `mission10-economic-research.json`):
+`humanReviewRequired` false→true; `maxAgeDays` 365→180; budget that could not finish a retried
+plan (`maxMoneyMinor` 500→4000, `maxAgentCalls` 12→24); offer `regions` `['FR','BE']`→`['GLOBAL']`
+(the restriction was commercial, not a provider limit); no reviewed country/indicator allowlist.
+`infra/connectors.registry.json` retains `world-bank: INACTIVE` with the reviewed adapter, licence and
+activation gates recorded, so the declaration cannot be mistaken for an activated connector.
+
+VERIFIED — configuration and request contract (no database, no network):
+- `pnpm qa:a03-service` PART 1 — **49 assertions**: the six domains are internally consistent, every
+  malformed or out-of-scope request is refused, the plan is deterministic, bounded and always
+  requires approval, and every constraint the caller imposes is disclosed.
+
+VERIFIED — integration against a disposable PostgreSQL 16.2 cluster (`QEYNOX_QA_DATABASE_URL`):
+- the template applies and validates with **no blocker**;
+- `POLICY_SKIPS_HUMAN_REVIEW`, `POLICY_PROVIDER_MISMATCH`, `POLICY_PROVIDER_DISABLED` and
+  `BUDGET_EXHAUSTS_MID_PLAN` are each detected when the configuration is deliberately broken;
+- cross-workspace operations are invisible (`NOT_FOUND`, never `DENIED`, so existence does not leak);
+- the workspace budget policy materializes onto the operation and engine calls beyond the ceiling
+  raise `BUDGET_EXHAUSTED`;
+- the broker refuses a provider read for a capability that does not allow the tool (`DENIED`).
+- `pnpm qa:agent-runtime` — **65 assertions PASS** (previously BLOCKED: no PostgreSQL).
+- `qa:a03-service` total: **82 assertions** before the provider leg.
+
+BLOCKED — NOT VERIFIED:
+- **No live World Bank read was performed.** `api.worldbank.org` resolves but the TLS connection is
+  refused by this environment's network policy. `pnpm qa:a03-service` therefore exits **3 (BLOCKED)**:
+  provider provenance, response digest, human review and the DELIVERABLE were not exercised, and no
+  fixture observation was substituted. `qa:connectors` and `qa:raas-deliverable` fail at the same
+  layer for the same reason. On a host with provider egress the same command covers the full chain
+  with exit 0.
+- No Hermes/Vertex inference (A02 state unchanged). `qa:hermes-live` exits 3.
+
+Regression: `pnpm typecheck` 4/4, `pnpm build` 4/4, `qa:runtime-readiness` 38+19,
+`qa:hermes-contract` 57, `qa:hermes-live-selftest` 15, `qa:platform-authorization` 107,
+`qa-task02` 3297, web smoke 91.
+
+No merge, no deployment, no credential or attestation created.
