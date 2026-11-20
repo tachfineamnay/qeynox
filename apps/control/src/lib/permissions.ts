@@ -14,6 +14,8 @@ export function can(permissions: readonly string[], required: readonly string[])
 export const READ_ASSIGNMENTS = ['ADMINISTRATION', 'CONSULTATION'] as const;
 export const MANAGE_ASSIGNMENTS = ['ADMINISTRATION'] as const;
 export const READ_CATALOGUE = ['CONSULTATION'] as const;
+export const READ_CONFIGURATION = ['CONSULTATION'] as const;
+export const MANAGE_CONFIGURATION = ['ADMINISTRATION'] as const;
 
 export const SUPPORT = ['SUPPORT'] as const;
 

@@ -1,9 +1,10 @@
 # QeyNox — Global platform administration
 
-**Status:** source foundation implemented and authorization-verified without a database.
-The isolated-PostgreSQL HTTP suite is **BLOCKED** in the current environment (no disposable
-database available) and is **not** claimed as passing. No production change, push, merge or
-deployment was performed.
+**Status:** implemented and authorization-verified, including the Control console and the
+platform configuration routes added in A09. The isolated-PostgreSQL HTTP suites are executed
+against a disposable PostgreSQL created by the harnesses: `qa:platform-admin` — **70 assertions
+PASS**, `qa:platform-configuration` — **70 assertions PASS** (created and dropped by the harness).
+No production change, merge or deployment was performed as part of these missions.
 
 ## Why a separate layer
 
@@ -40,7 +41,12 @@ consultation is an explicit capability for `PLATFORM_ADMIN` and `AUDITOR` only. 
 decision is evaluated from `platform_admin_assignments` on each request; workspace roles are never
 consulted.
 
-## API surface (no UI yet)
+## API surface
+
+A platform console (the `@qeynox/control` application, served under `/admin`) ships read-mostly
+administration pages: users, organizations, administrators, audit, settings, operations health and
+releases — and, since A09, the operator configuration page described below. It is authenticated with
+the platform session only.
 
 All routes are under `/v1/platform` and authenticated with `Authorization: Bearer <platform token>`
 (the public login route excepted). Every route declares an explicit access policy; a platform route
@@ -57,6 +63,9 @@ without one fails closed.
 | POST | `/v1/platform/admins/:userId/revoke` | `ADMINISTRATION` |
 | GET | `/v1/platform/support/operations/:operationId` | `SUPPORT` (read-only cross-workspace diagnostics) |
 | GET | `/v1/platform/operations/:operationId/runtime` | `OPERATIONS` (read-only dispatch/execution/attempt state, never cancels or replays) |
+| GET | `/v1/platform/configuration?workspaceId=` | `CONSULTATION` (read-only desired-state for the Control console) |
+| POST | `/v1/platform/configuration/preview` | `ADMINISTRATION` (dry run: identical validation, persists nothing but the audit row) |
+| POST | `/v1/platform/configuration/apply` | `ADMINISTRATION` (idempotency-guarded, same-transaction audit) |
 
 Guarantees enforced in the services, not only in the controllers:
 
@@ -76,6 +85,58 @@ Guarantees enforced in the services, not only in the controllers:
   audited with the authenticated actor; audit writes for denials are best-effort so an audit outage
   never turns a deny into a 5xx.
 - `platform_admin_audit` is append-only at the database level: a trigger rejects all `UPDATE`/`DELETE`.
+
+## Platform configuration for the Control console (A09)
+
+Capability slots, agent profiles, tools, verification policies, offers and budget policies are
+configured by an operator for a workspace. A09 makes that configuration reachable from the platform
+console **without creating a second, divergent configuration engine and without ever promoting a
+platform session into a workspace session**.
+
+Authorization is deliberately two-layered; both layers must pass:
+
+1. **Platform layer** — reads (`GET /v1/platform/configuration?workspaceId=…`) require `CONSULTATION`
+   (PLATFORM_ADMIN, AUDITOR). Previews and applications require `ADMINISTRATION` (PLATFORM_ADMIN
+   only). SUPPORT and OPERATIONS hold no configuration permission. Permission failures are audited
+   before any engine work happens.
+2. **Operator layer** — the unchanged `ConfigurationService` engine still enforces
+   `QEYNOX_OPERATOR_USER_IDS` (failing closed with `NOT_CONFIGURED` when unset), allowlist
+   membership of the acting identity, and an ACTIVE `OWNER`/`ADMIN`/`OPERATOR` membership in the
+   target workspace (read from `identity_memberships`). A platform session never becomes a
+   workspace session: the platform route synthesizes an in-memory principal from the platform actor
+   and its *real* membership role, and mints no workspace token.
+
+The read path is additionally authorized by platform `CONSULTATION` plus an existing workspaces row,
+so the console can report a not-yet-configured deployment instead of failing closed on every read.
+Mutations never bypass the operator gate.
+
+Rules enforced on every call:
+
+- an explicit, validated `workspaceId` on every request (unknown workspace → `404 NOT_FOUND`);
+- a mandatory written justification (10–500 chars) on preview/apply, carried into the audit row;
+- preview computes the same outcomes as an apply (`CREATE`/`UNCHANGED`/`ACTIVATE`/`DEACTIVATE`),
+  validates cross-references and writes **nothing** except its audit row;
+- apply is guarded by an idempotency key (`configuration_records`); replaying the same key with the
+  same bundle returns the stored outcome (`alreadyApplied: true`), reusing it with a different
+  bundle returns `409 CONFLICT`;
+- version content is immutable: changing the content of an existing version returns `409 CONFLICT`;
+  activating a version automatically deactivates its siblings in the same scope;
+- offers carry their **tax treatment** per version (`taxPolicy: CONFIG_REQUIRED | CONFIGURED`). The
+  engine refuses to activate an offer whose tax treatment is `CONFIG_REQUIRED`; the state returned
+  to the console surfaces `taxPolicy` and the offer label, so tax configuration is visible and
+  actionable instead of implicit. There is no tax-rate store: tax is a two-state declaration on the
+  offer, enforced at activation time and in the commerce engine;
+- budget policies are workspace-scoped; at most one is ACTIVE per workspace (a newer ACTIVE version
+  deactivates the previous one inside the same transaction);
+- **both success and every denial are written to the append-only `platform_admin_audit`** (actions
+  `READ_PLATFORM_CONFIGURATION`, `PREVIEW_PLATFORM_CONFIGURATION`, `APPLY_PLATFORM_CONFIGURATION`);
+  the apply audit row commits **inside the same transaction** as the configuration mutation and its
+  idempotency record, so an applied configuration can never exist without its audit trail. A dry run
+  audits too, with `detail.dryRun = true`.
+
+Control console page `/admin/[lang]/configuration` renders the live state (capability slots, profiles,
+tools, verification policies, offers with tax, budget policies) and offers a preview → explicit
+confirmation → apply flow; previews change nothing and every attempt is audited.
 
 ## Session and credential reuse
 
@@ -131,6 +192,7 @@ read-only support/operations diagnostics that resolve a workspace name for displ
 | `pnpm --filter @qeynox/api build` (tsc, production output) | PASS |
 | `pnpm qa:platform-authorization` | **PASS — 107 assertions** (real service + real guard against in-memory ports; plus real NestJS HTTP wiring with an unreachable database URL) |
 | `pnpm qa:platform-admin` (isolated PostgreSQL HTTP e2e) | **PASS — 70 assertions** against a disposable PostgreSQL 16.6 database created and dropped by the harness (sandbox teardown warning only; assertions ran against the real database). |
+| `pnpm qa:platform-configuration` (isolated PostgreSQL HTTP e2e, A09) | **PASS — 70 assertions** against a disposable database created and dropped by the harness, incl. the read/mutation permission split, the operator-gate double check, fail-closed behaviour with the allowlist unset, the offer tax gate, version immutability, idempotency replay and same-transaction audit rows. |
 
 `qa:platform-authorization` asserts, among others: workspace roles are not platform roles; a
 workspace bearer is rejected by the platform service and guard; a workspace owner with no platform
@@ -152,9 +214,11 @@ directly.
 
 ## Known limits / remaining gates
 
-- No admin UI (explicitly out of scope for this mission).
-- Verification note: the isolated-PostgreSQL e2e suite now passes (70 assertions). It was initially
-  blocked in the earlier sandbox; a disposable PostgreSQL instance was later started locally to run it.
+- No admin UI (explicitly out of scope for this mission). The Control console described above is the
+  platform console shipped later; since A09 it also serves the configuration page.
+- Verification note: the isolated-PostgreSQL e2e suites now pass (70 + 70 assertions). They were
+  initially blocked in the earlier sandbox; disposable PostgreSQL instances are started locally by
+  the harnesses to run them.
 - Platform login reuses identity credential lockout but there is still **no ingress rate limiting,
   MFA, e-mail verification or account recovery** — the same public-identity gate recorded in
   `IMPLEMENTATION_MAP.md`. Do not expose the platform surface to untrusted networks without it.

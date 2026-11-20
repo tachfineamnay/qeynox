@@ -117,7 +117,7 @@ export interface PlatformCatalogueView {
     orchestrator: { id: string; configured: boolean; missing: string[]; state?: OperationalState; verifiedLive?: boolean; attested?: boolean; evidence?: string | null };
     overallState?: OperationalState; canExecute?: boolean;
   };
-  operator: { scope: 'WORKSPACE'; configurationEndpoint: string; allowlistConfigured: boolean };
+  operator: { scope: 'WORKSPACE'; configurationEndpoint: string; platformConfigurationEndpoint?: string; allowlistConfigured: boolean };
 }
 
 export interface SupportCapabilityView {
@@ -207,4 +207,36 @@ export interface ReleasesView {
   migrations: { count: number; latest: string | null; latestAppliedAt: string | null } | null;
   anomalies: AnomaliesView | null;
   resources: ResourceCapabilityView;
+}
+
+export interface ConfigurationSlotView { slot: number; status: 'ACTIVE' | 'UNCONFIGURED'; capabilityId?: string; version?: number; name?: string }
+export interface ConfigurationProfileView { roleKey: string; status: 'ACTIVE' | 'UNCONFIGURED'; profileId?: string; version?: number }
+export interface ConfigurationToolView { connectorId: string; version: string; status: 'ACTIVE' | 'DISABLED' }
+export interface ConfigurationVerificationPolicyView { capabilityId: string; version: number; status: 'ACTIVE' | 'DISABLED'; minimumSources: number; approvedProviders: string[] }
+export interface ConfigurationOfferView {
+  offerId: string; version: number; status: 'ACTIVE' | 'DISABLED'; currency: string; amountMinor: number;
+  isExplicitlyFree: boolean; label: string; taxPolicy: 'CONFIG_REQUIRED' | 'CONFIGURED';
+}
+export interface ConfigurationBudgetPolicyView {
+  policyId: string; version: number; status: 'ACTIVE' | 'DISABLED'; currency: string;
+  maxMoneyMinor: number; providers: string[];
+}
+export interface PlatformConfigurationStateView {
+  capabilities: ConfigurationSlotView[];
+  profiles: ConfigurationProfileView[];
+  tools: ConfigurationToolView[];
+  verificationPolicies: ConfigurationVerificationPolicyView[];
+  offers: ConfigurationOfferView[];
+  budgetPolicies: ConfigurationBudgetPolicyView[];
+}
+export interface ConfigurationChangeView { domain: string; key: string; version: number | string; outcome: 'CREATE' | 'UNCHANGED' | 'ACTIVATE' | 'DEACTIVATE' }
+export interface ConfigurationApplyResultView {
+  dryRun: boolean; idempotencyKey: string; digest: string; alreadyApplied: boolean;
+  changes: ConfigurationChangeView[];
+}
+export interface ConfigurationActionState {
+  status: 'idle' | 'done' | 'error';
+  code?: string;
+  mode?: 'preview' | 'apply';
+  result?: ConfigurationApplyResultView;
 }

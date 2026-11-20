@@ -7,6 +7,8 @@ import type { RuntimeReadiness, RuntimeReadinessSource } from './runtime-readine
 export interface OperatorConfigurationFacts {
   readonly allowlistConfigured: boolean;
   readonly configurationEndpoint: string;
+  /** Audited platform route that reaches the same engine under platform authorization. */
+  readonly platformConfigurationEndpoint: string;
 }
 
 export interface PlatformCatalogueView extends CapabilityCatalogueView {
@@ -16,6 +18,7 @@ export interface PlatformCatalogueView extends CapabilityCatalogueView {
   readonly operator: {
     readonly scope: 'WORKSPACE';
     readonly configurationEndpoint: string;
+    readonly platformConfigurationEndpoint: string;
     readonly allowlistConfigured: boolean;
   };
 }
@@ -24,8 +27,14 @@ export interface PlatformCatalogueView extends CapabilityCatalogueView {
  * Read-only platform view of the eight business capability slots and the deployment prerequisites.
  *
  * It requires the existing CONSULTATION permission (PLATFORM_ADMIN, AUDITOR). It performs no
- * configuration change: capability, profile, tool and budget configuration remain on the
- * workspace operator path, which a platform session never receives.
+ * configuration change itself. Configuration changes remain workspace-scoped operator actions:
+ * either through the workspace operator path, or through the audited platform route
+ * /v1/platform/configuration/* — which requires the ADMINISTRATION permission for previews and
+ * applications (CONSULTATION for reads), an explicit workspaceId, a mandatory written justification,
+ * and which still passes the operator engine's own gates (QEYNOX_OPERATOR_USER_IDS and an ACTIVE
+ * OWNER/ADMIN/OPERATOR membership in the target workspace). A platform session never becomes a
+ * workspace session; the platform route synthesizes an in-memory Principal with the actor's real
+ * membership role and never mints a workspace token.
  */
 export class PlatformCatalogueService {
   private readonly catalogue: CapabilityCatalogueService;
@@ -50,6 +59,7 @@ export class PlatformCatalogueService {
       operator: {
         scope: 'WORKSPACE',
         configurationEndpoint: this.operator.configurationEndpoint,
+        platformConfigurationEndpoint: this.operator.platformConfigurationEndpoint,
         allowlistConfigured: this.operator.allowlistConfigured,
       },
     };

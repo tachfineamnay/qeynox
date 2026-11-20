@@ -63,6 +63,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ lang:
             <dl className="kv">
               <dt>{t.operatorScope}</dt><dd>{t.operatorScopeValue}</dd>
               <dt>{t.operatorEndpoint}</dt><dd><code>{catalogue.operator.configurationEndpoint}</code></dd>
+              {catalogue.operator.platformConfigurationEndpoint ? <><dt>{t.platformEndpoint}</dt><dd><code>{catalogue.operator.platformConfigurationEndpoint}</code> · <Link href={'/' + lang + '/configuration'}>{t.navConfiguration}</Link></dd></> : null}
               <dt>{t.operatorAllowlist}</dt>
               <dd><Badge tone={catalogue.operator.allowlistConfigured ? 'success' : 'warning'}>{catalogue.operator.allowlistConfigured ? t.allowlistConfigured : t.allowlistMissing}</Badge></dd>
             </dl>

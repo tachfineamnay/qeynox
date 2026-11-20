@@ -136,3 +136,24 @@ export const CONFIGURABLE_DOMAINS = [
   'BUSINESS_CAPABILITY', 'AGENT_PROFILE', 'SOUL_PROFILE', 'PILOT_PROFILE',
   'TOOL', 'VERIFICATION_POLICY', 'RAAS_OFFER', 'BUDGET_POLICY',
 ] as const satisfies readonly ConfigurableDomain[];
+
+/**
+ * Platform-scoped configuration entry points. A platform administrator reaches the same
+ * validation and application engine as the workspace operator path, but every call carries an
+ * explicit workspaceId, a mandatory written justification and a platform-side audit record. The
+ * operator allowlist and the target workspace membership are still enforced by the engine itself;
+ * a platform session never becomes a workspace session.
+ */
+export const platformWorkspaceIdSchema = z.string().trim().min(4).max(120).regex(/^[A-Za-z0-9_-]+$/, 'Invalid workspace id');
+export const platformReasonSchema = z.string().trim().min(10).max(500);
+export const platformConfigurationQuerySchema = z.object({
+  workspaceId: platformWorkspaceIdSchema,
+}).strict();
+export const platformConfigurationApplySchema = z.object({
+  workspaceId: platformWorkspaceIdSchema,
+  reason: platformReasonSchema,
+  idempotencyKey: z.string().trim().min(8).max(200).regex(/^[A-Za-z0-9_.:-]+$/),
+  entries: z.array(configurationEntrySchema).min(1).max(64),
+}).strict();
+export type PlatformConfigurationQuery = z.infer<typeof platformConfigurationQuerySchema>;
+export type PlatformConfigurationApplyInput = z.infer<typeof platformConfigurationApplySchema>;
