@@ -45,4 +45,6 @@ export * from './platform-operations';
 export * from './support';
 export * from './workspace-access';
 export * from './pagination';
-
+export * from './connection-providers';
+export * from './connection-vault';
+export * from './connections';
