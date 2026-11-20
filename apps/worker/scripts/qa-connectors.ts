@@ -175,9 +175,9 @@ async function main(): Promise<void> {
     assert(workerDeps.toolRegistry.manifest('world-bank').rateLimit.maxPerMinute === 1, 'operator-tightened provider rate limit applied');
 
     // Provider activation gates fail closed.
-    await expectDomainError('NOT_CONFIGURED', () => createConfiguredToolRegistry(db, { worldBankEnabled: false, egress: attestation }), 'configured provider with deployment switch off');
+    await expectDomainError('NOT_CONFIGURED', () => createConfiguredToolRegistry(db, { worldBankEnabled: false, braveSearchEnabled: false, egress: attestation }), 'configured provider with deployment switch off');
     const unattested = new EgressPolicy({ attested: false, allowedHosts: ['api.worldbank.org'] });
-    await expectDomainError('NOT_CONFIGURED', () => createConfiguredToolRegistry(db, { worldBankEnabled: true, egress: unattested }), 'registry built while egress attestation is absent');
+    await expectDomainError('NOT_CONFIGURED', () => createConfiguredToolRegistry(db, { worldBankEnabled: true, braveSearchEnabled: false, egress: unattested }), 'registry built while egress attestation is absent');
 
     // Configuration can only use reviewed adapters: an unsupported configured provider fails closed.
     await configuration.apply(owner, {
@@ -192,7 +192,7 @@ async function main(): Promise<void> {
         },
       }],
     } as never);
-    await expectDomainError('NOT_CONFIGURED', () => createConfiguredToolRegistry(db, { worldBankEnabled: true, egress: attestation }), 'configured provider without a reviewed adapter');
+    await expectDomainError('NOT_CONFIGURED', () => createConfiguredToolRegistry(db, { worldBankEnabled: true, braveSearchEnabled: false, egress: attestation }), 'configured provider without a reviewed adapter');
     await configuration.apply(owner, {
       idempotencyKey: 'qa-connector-unknown-provider-disable',
       entries: [{
@@ -235,7 +235,7 @@ async function main(): Promise<void> {
     const started = await execution.start(owner, operating.id, readyOperation.version, 'qa-connector-start-0001') as { attemptId: ID };
     assert(typeof started.attemptId === 'string', 'QA operation started with an attempt');
 
-    const registry = await createConfiguredToolRegistry(db, { worldBankEnabled: true, egress: policy });
+    const registry = await createConfiguredToolRegistry(db, { worldBankEnabled: true, braveSearchEnabled: false, egress: policy });
     const broker = new ToolBroker(registry, new PgToolLedger(db));
     const basePermission = {
       principal: owner, operationId: operating.id, planRevisionId: plan.revision.id,
@@ -316,7 +316,7 @@ async function main(): Promise<void> {
         },
       }],
     } as never);
-    const disabledRegistry = await createConfiguredToolRegistry(db, { worldBankEnabled: true, egress: policy });
+    const disabledRegistry = await createConfiguredToolRegistry(db, { worldBankEnabled: true, braveSearchEnabled: false, egress: policy });
     assert(disabledRegistry.available().length === 0, 'disabled provider configuration is not registered');
     const refreshedWorkerRegistry = await workerDeps.loadToolRegistry();
     assert(refreshedWorkerRegistry.available().length === 0, 'running worker reloads the disabled provider configuration without restart');

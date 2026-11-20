@@ -347,7 +347,7 @@ async function partTwo(): Promise<'PASSED' | 'BLOCKED'> {
     check(materialized.maxToolCalls === budgetEntry.maxToolCalls, 'the tool-call ceiling is carried onto the operation');
 
     // --- 6. The real provider read ---------------------------------------------------------
-    const registry = await createConfiguredToolRegistry(db, { worldBankEnabled: true, egress: egressPolicyFromEnv() });
+    const registry = await createConfiguredToolRegistry(db, { worldBankEnabled: true, braveSearchEnabled: false, egress: egressPolicyFromEnv() });
     const broker = new ToolBroker(registry, new PgToolLedger(db));
     const call: ConnectorCall = {
       operationId: created.operationId, planRevisionId: created.revisionId, stepAttemptId: started.attemptId,

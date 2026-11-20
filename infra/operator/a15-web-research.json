@@ -1,0 +1,91 @@
+{
+  "_readme": [
+    "MISSION A15 — web research capability backed by the licensed Brave Search API.",
+    "This bundle creates an INTERNAL research capability only. It deliberately ships NO RAAS_OFFER",
+    "and NO BUDGET_POLICY:",
+    "  - no offer: the capability is not a sellable service and appears nowhere in the customer catalogue;",
+    "  - no budget: spend must be approved by the operator explicitly. The BudgetService fails",
+    "    closed with NOT_CONFIGURED until the workspace budget policy maps 'brave-search:web@1'",
+    "    in unitMaxMinor (e.g. 1 minor unit per call as an upper bound). Do NOT apply this bundle",
+    "    expecting execution to work without that mapping — it will not, by design.",
+    "Activation requires ALL of:",
+    "  1. An active Brave Search API plan and subscription token (server-side only):",
+    "       QEYNOX_BRAVE_SEARCH_API_KEY=<token>",
+    "  2. QEYNOX_BRAVE_SEARCH_ENABLED=true on the API and worker deployment;",
+    "  3. QEYNOX_NETWORK_POLICY_ATTESTED=true and api.search.brave.com in QEYNOX_EGRESS_ALLOWED_HOSTS;",
+    "  4. the workspace consent scope 'web:search' granted to the executing member (query text",
+    "     leaves this deployment to Brave);",
+    "  5. an operator-approved send: the budget mapping described above.",
+    "Optional: consent scope and retention are audited through the existing ledger; source",
+    "provenance (provider, retrievedAt, sourceUri, digests) is recorded for every call.",
+    "Licensed use only: comply with the Brave Search API Terms of Service at subscription time",
+    "(pricing, attribution and re-publication rules depend on the plan tier). Never widen",
+    "allowedTools here without reviewing the adapter. QA doubles live in",
+    "apps/worker/scripts/qa-brave-search.ts and never substitute for the real provider."
+  ],
+  "idempotencyKey": "a15-web-research-v1",
+  "dryRun": false,
+  "entries": [
+    {
+      "domain": "TOOL",
+      "connectorId": "brave-search",
+      "version": "1",
+      "status": "ACTIVE",
+      "manifest": {
+        "description": "Brave Search API, licensed web search with retrieval provenance",
+        "provider": "Brave",
+        "regions": ["GLOBAL"],
+        "operations": ["WEB_RESEARCH"],
+        "mode": "READ_ONLY",
+        "licenseNotes": "Commercial subscription required. Operator must hold an active Brave Search API plan and comply with the Brave Search API Terms of Service; query text leaves this deployment.",
+        "termsUrl": "https://api-dashboard.search.brave.com/app/documentation/web-search/get-started",
+        "freshness": { "ttlSeconds": 3600, "publishedAtSource": "UNKNOWN" },
+        "rateLimit": { "maxPerMinute": 10 },
+        "tools": [{ "name": "web", "version": "1" }]
+      }
+    },
+    {
+      "domain": "BUSINESS_CAPABILITY",
+      "slot": 1,
+      "version": 1,
+      "status": "ACTIVE",
+      "name": "Licensed web research",
+      "purpose": "Retrieve ranked web results from the licensed Brave Search API with explicit sources, retrieval times and response digests, separated from interpretation.",
+      "scope": [
+        "Web search for short, specific queries",
+        "Ranked results with title, URL, description and retrieval time",
+        "Source-backed observations separated from interpretation"
+      ],
+      "allowedTools": ["brave-search:web@1"],
+      "privacyScopes": [],
+      "inputSchemaVersion": 1,
+      "outputSchemaVersion": 1,
+      "maximumSteps": 3,
+      "maximumToolCalls": 2
+    },
+    {
+      "domain": "AGENT_PROFILE",
+      "slot": 1,
+      "version": 1,
+      "status": "ACTIVE",
+      "title": "Web research analyst",
+      "systemInstructions": "You retrieve web evidence through the reviewed Brave Search adapter only, through QeyNox ToolBroker. Never fetch, browse or call any other provider. Never invent queries, results, URLs, dates or sources. Separate observed results from interpretation. Cite the retrieved URL and the retrieval time for every observation. State freshness (results change) and never present a search snippet as verified fact. If the results do not answer the objective, say so instead of extrapolating. The query text leaves this deployment to Brave: never include customer data in a query unless the customer has granted web:search consent for it.",
+      "skillRefs": ["brave-search:web"],
+      "allowedTools": ["brave-search:web@1"],
+      "permittedContextKeys": [],
+      "maxOutputTokens": 2048,
+      "maxIterations": 2
+    },
+    {
+      "domain": "VERIFICATION_POLICY",
+      "capabilityId": "capability-slot-1-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "minimumSources": 1,
+      "maxAgeDays": 30,
+      "approvedProviders": ["brave-search"],
+      "humanReviewRequired": true,
+      "validFrom": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}
