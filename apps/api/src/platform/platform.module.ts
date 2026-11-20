@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { PlatformAdminService, PlatformCatalogueService, PlatformOperationsService, PlatformOrganizationsService, PlatformSupportService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
+import { PlatformAdminService, PlatformCatalogueService, PlatformConfigurationService, PlatformOperationsService, PlatformOrganizationsService, PlatformSupportService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
 import { PlatformAdminStore, PlatformOperationsStore, PlatformUserStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection, type QeyNoxStore } from '@qeynox/persistence';
 import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';
@@ -19,6 +19,7 @@ import { CoolifyReadOnlyClient } from './coolify-readonly.client';
 import { EnvironmentDeploymentInfo } from './deployment-info.provider';
 import { PlatformOperationsController } from './platform-operations.controller';
 import { PlatformCatalogueController } from './platform-catalogue.controller';
+import { PlatformConfigurationController } from './platform-configuration.controller';
 import { apiRuntimeReadiness } from '../operations/runtime-readiness';
 import { CHATWOOT_PORT, PLATFORM_SUPPORT_SERVICE, SUPPORT_LINK_STORE } from '../support/support.tokens';
 import {
@@ -34,11 +35,12 @@ import {
   RESOURCE_INVENTORY_PORT,
   DEPLOYMENT_INFO,
   PLATFORM_CATALOGUE_SERVICE,
+  PLATFORM_CONFIGURATION_SERVICE,
 } from './platform.tokens';
 
 @Module({
   imports: [AuthModule],
-  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController, PlatformOperationsController, PlatformCatalogueController],
+  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController, PlatformOperationsController, PlatformCatalogueController, PlatformConfigurationController],
   providers: [
     {
       provide: PLATFORM_STORE,
@@ -115,9 +117,17 @@ import {
         {
           allowlistConfigured: Boolean((process.env.QEYNOX_OPERATOR_USER_IDS ?? '').trim()),
           configurationEndpoint: '/v1/operator/configuration/apply',
+          platformConfigurationEndpoint: '/v1/platform/configuration/apply',
         },
       ),
       inject: [QEYNOX_STORE, PLATFORM_ADMIN_SERVICE],
+    },
+    {
+      provide: PLATFORM_CONFIGURATION_SERVICE,
+      // The platform route reaches the same ConfigurationService engine; it synthesizes an
+      // in-memory workspace Principal (never a session token) with the actor's real membership role.
+      useFactory: (store: QeyNoxStore, platform: PlatformAdminService, workspaces: WorkspaceStore) => new PlatformConfigurationService(store, platform, workspaces),
+      inject: [QEYNOX_STORE, PLATFORM_ADMIN_SERVICE, PLATFORM_ORGANIZATION_STORE],
     },
     { provide: APP_GUARD, useClass: PlatformAccessGuard },
   ],

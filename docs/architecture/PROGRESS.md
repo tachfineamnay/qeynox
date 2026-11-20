@@ -645,6 +645,66 @@ No merge, no deployment, no credential and no real customer data.
 
 ---
 
+## MISSION A09 — Platform administrator configuration support (branch `arena/e253f733-qeynox`)
+
+The Control console can now read and change the operator-scoped business configuration —
+capability slots, agent profiles, tools, verification policies, offers with their **tax
+treatment**, and budget policies — reaching the *same* `ConfigurationService` engine used by the
+workspace operator path, through an audited platform route. There is no second, divergent engine.
+
+- **Contracts**: additive `platformConfigurationQuerySchema` / `platformConfigurationApplySchema`
+  (explicit `workspaceId`, mandatory 10–500 char justification, idempotency key, 1–64 strict
+  entries) in `@qeynox/contracts`. No existing schema changed.
+- **Engine**: `apply()` accepts an optional same-transaction audit callback (committed with the
+  configuration mutation and its idempotency record — an applied bundle can never exist without its
+  audit row). `state()` accepts an explicit `bypassOperatorGate` for reads **only**: platform
+  `CONSULTATION` + an existing workspace row authorizes reads, so the console can report a
+  not-yet-configured deployment; mutations never bypass. The returned offers now surface `taxPolicy`
+  and `label`.
+- **Platform route** (`/v1/platform/configuration`): `GET` (`CONSULTATION`), `POST preview`
+  (dry run, `ADMINISTRATION`), `POST apply` (`ADMINISTRATION`). Both mutating routes still pass the
+  unchanged operator gate: `QEYNOX_OPERATOR_USER_IDS` must be set (fail closed `NOT_CONFIGURED`
+  otherwise), the acting identity must be allowlisted, and it must hold an ACTIVE
+  `OWNER`/`ADMIN`/`OPERATOR` membership in the target workspace — read from `identity_memberships`,
+  never fabricated. A platform session is never promoted to a workspace session: no workspace token
+  is minted; an in-memory principal is synthesized with the actor's real membership role.
+- **Audit**: every success and every denial lands in append-only `platform_admin_audit`
+  (`READ/PREVIEW/APPLY_PLATFORM_CONFIGURATION`). Guard denials, engine denials, validation
+  rejections and idempotent replays are all recorded; apply audit rows carry `workspaceId`,
+  justification, idempotency key, digest, `alreadyApplied` and the per-entry change outcomes.
+- **Control**: new `/admin/[lang]/configuration` page — live state (slots, profiles, tools,
+  verification policies, offers with tax badges, budget policies) and a preview → explicit
+  confirmation → apply flow with a stable idempotency key, all server actions zod-validated.
+  Settings page now shows the platform endpoint next to the workspace endpoint; nav entry added
+  (EN/FR copy). `PLATFORM_ADMIN` (ADMINISTRATION) manages; AUDITOR reads; SUPPORT/OPERATIONS are
+  denied and audited.
+- **Tax honesty**: there is no tax-rate store anywhere in the system. Tax is a two-state
+  declaration on the offer (`CONFIG_REQUIRED`/`CONFIGURED`), enforced by the engine at activation
+  and by the commerce path. A09 surfaces and makes it actionable; it does not invent rates.
+
+VERIFIED IN THIS ENVIRONMENT:
+- `qa:platform-configuration` — **70 assertions PASS** against an isolated PostgreSQL database:
+  read/mutation permission split, SUPPORT/OPERATIONS/AUDITOR denial, workspace-bearer and
+  platform-bearer isolation, unknown/malformed workspace, operator-gate double check (no
+  membership, allowlist unset, non-allowlisted actor), dry-run writes nothing, apply digest equals
+  preview digest, idempotent replay, conflicting-key refusal, ACTIVE offer refused with
+  `CONFIG_REQUIRED` tax, version immutability, budget supersession, state read-back with tax and
+  label, same-transaction audit rows, denial audit rows, zero configuration records for refused
+  applies.
+- `pnpm typecheck` 4/4 and `pnpm build` 4/4 PASS. Web (`qa:stripe-payments` 17 groups/108,
+  `qa:soul-intelligence` 22 groups, `qa:mission-lifecycle` 88, `qa:atlas-results` 150,
+  `qa:identity` 57, `qa:runtime-readiness` 38, `qa:hermes-contract` 57, `qa:task02` 3695,
+  `qa:backend` 28, `qa:agent-runtime` 65, `qa:platform-admin` 70, `qa:platform-users` 165,
+  `qa:platform-organizations` 87, `qa:platform-authorization` 107) all PASS.
+- Control page rendered against a real API + database: HTTP 200, live tables show an applied tool,
+  capability, ACTIVE offer with `CONFIGURED` tax badge and budget policy, and `platform_admin_audit`
+  records the reads and applies. No browser was driven; the interactive form is covered by the API
+  e2e suite plus typecheck/build, not by a UI automation run (none exists in this repo).
+- `qa:raas` remains BLOCKED on the same pre-existing TLS disconnect against the external provider
+  (reproduced on unmodified baseline before). Not rerun here.
+
+No merge, no deployment, no credential and no real customer data.
+
 ## MISSION A08 — Stripe commercial integration (branch `arena/91ddb82a-qeynox`)
 
 Scope: secure one-time payments for versioned RaaS offers through the existing `PaymentPort`. No

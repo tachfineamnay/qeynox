@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { api, ApiError, CONTROL_COOKIE, controlPath, sessionSchema } from './api';
 import { locale } from './copy';
-import type { InviteState } from './types';
+import type { ConfigurationActionState, ConfigurationApplyResultView, InviteState } from './types';
 
 const emailSchema = z.email();
 const reasonSchema = z.string().trim().min(10).max(500);
@@ -174,5 +174,48 @@ export async function inviteMemberAction(previous: InviteState, form: FormData):
     };
   } catch (error) {
     return { status: 'error', code: errorCode(error) };
+  }
+}
+
+const configurationWorkspaceSchema = z.string().trim().min(4).max(120).regex(/^[A-Za-z0-9_-]+$/, 'Invalid workspace id');
+const configurationIdempotencySchema = z.string().trim().min(8).max(200).regex(/^[A-Za-z0-9_.:-]+$/, 'Invalid idempotency key');
+const configurationEntriesSchema = z.array(z.record(z.string(), z.unknown())).min(1).max(64);
+
+/**
+ * Preview or apply an operator configuration bundle from the platform console.
+ *
+ * The platform API re-validates everything (strict entry contract, operator allowlist, ACTIVE
+ * membership in the target workspace) and audits the call. Applying additionally requires the
+ * explicit confirmation checkbox; the idempotency key makes a retry safe.
+ */
+export async function configureAction(previous: ConfigurationActionState, form: FormData): Promise<ConfigurationActionState> {
+  void previous;
+  const lang = langOf(form);
+  const mode = String(form.get('mode') ?? 'preview');
+  if (mode !== 'preview' && mode !== 'apply') return { status: 'error', code: 'INVALID_INPUT' };
+  const workspaceId = configurationWorkspaceSchema.safeParse(String(form.get('workspaceId') ?? ''));
+  const reason = reasonSchema.safeParse(String(form.get('reason') ?? ''));
+  const idempotencyKey = configurationIdempotencySchema.safeParse(String(form.get('idempotencyKey') ?? ''));
+  let entriesJson: unknown = null;
+  try { entriesJson = JSON.parse(String(form.get('entries') ?? '')); } catch { entriesJson = null; }
+  const entries = configurationEntriesSchema.safeParse(entriesJson);
+  if (!workspaceId.success || !reason.success || !idempotencyKey.success || !entries.success) {
+    return { status: 'error', code: 'INVALID_INPUT', mode };
+  }
+  if (mode === 'apply' && String(form.get('confirm') ?? '') !== 'on') {
+    return { status: 'error', code: 'CONFIRMATION_REQUIRED', mode };
+  }
+  const path = mode === 'preview' ? '/v1/platform/configuration/preview' : '/v1/platform/configuration/apply';
+  try {
+    const result = await api(path, 'POST', {
+      workspaceId: workspaceId.data,
+      reason: reason.data,
+      idempotencyKey: idempotencyKey.data,
+      entries: entries.data,
+    }) as ConfigurationApplyResultView;
+    revalidate(lang, '/configuration');
+    return { status: 'done', mode, result };
+  } catch (error) {
+    return { status: 'error', code: errorCode(error), mode };
   }
 }

@@ -15,9 +15,12 @@ import {
   configurationRecords,
   identityWorkspaces,
   offers,
+  platformAdminAudit,
+  platformAuditValues,
   toolConfigurations,
   verificationPolicies,
   type ConfigurationStatus,
+  type PlatformAuditRecord,
   type QeyNoxDatabase,
 } from '@qeynox/persistence';
 
@@ -41,7 +44,7 @@ export interface ConfigurationState {
   readonly profiles: readonly { roleKey: string; status: 'ACTIVE' | 'UNCONFIGURED'; profileId?: string; version?: number }[];
   readonly tools: readonly { connectorId: string; version: string; status: ConfigurationStatus }[];
   readonly verificationPolicies: readonly { capabilityId: string; version: number; status: ConfigurationStatus; minimumSources: number; approvedProviders: readonly string[] }[];
-  readonly offers: readonly { offerId: string; version: number; status: ConfigurationStatus; currency: string; amountMinor: number; isExplicitlyFree: boolean }[];
+  readonly offers: readonly { offerId: string; version: number; status: ConfigurationStatus; currency: string; amountMinor: number; isExplicitlyFree: boolean; label: string; taxPolicy: 'CONFIG_REQUIRED' | 'CONFIGURED' }[];
   readonly budgetPolicies: readonly { policyId: string; version: number; status: ConfigurationStatus; currency: string; maxMoneyMinor: number; providers: readonly string[] }[];
 }
 
@@ -136,8 +139,15 @@ export class ConfigurationService {
     if (!actor.workspaceId || !actor.userId) throw new DomainError('DENIED', 'Authenticated workspace required');
   }
 
-  async state(actor: Principal): Promise<ConfigurationState> {
-    this.requireOperator(actor);
+  /**
+   * Desired-state read. The workspace operator path passes no options and is fully gated. The
+   * platform Control route reads through this method with `bypassOperatorGate: true`: platform
+   * CONSULTATION permission plus a valid workspaces row is the authorization for reads, and the
+   * operator allowlist must not render the console blind before the deployment operator configures
+   * anything. Mutations never bypass the operator gate; only reads do.
+   */
+  async state(actor: Principal, options?: { readonly bypassOperatorGate?: boolean }): Promise<ConfigurationState> {
+    if (!options?.bypassOperatorGate) this.requireOperator(actor);
     this.assertWorkspace(actor);
     const [capabilityRows, profileRows, toolRows, policyRows, offerRows, budgetRows] = await Promise.all([
       this.store.db.select().from(capabilities),
@@ -168,8 +178,8 @@ export class ConfigurationService {
         minimumSources: row.minimumSources, approvedProviders: row.approvedProviders,
       })),
       offers: offerRows.map(row => {
-        const configuration = row.configuration as { isExplicitlyFree?: boolean };
-        return { offerId: row.id, version: row.version, status: row.status as ConfigurationStatus, currency: row.currency, amountMinor: row.amountMinor, isExplicitlyFree: configuration.isExplicitlyFree === true };
+        const configuration = row.configuration as { isExplicitlyFree?: boolean; label?: string; taxPolicy?: string };
+        return { offerId: row.id, version: row.version, status: row.status as ConfigurationStatus, currency: row.currency, amountMinor: row.amountMinor, isExplicitlyFree: configuration.isExplicitlyFree === true, label: typeof configuration.label === 'string' ? configuration.label : row.id, taxPolicy: configuration.taxPolicy === 'CONFIGURED' ? 'CONFIGURED' as const : 'CONFIG_REQUIRED' as const };
       }),
       budgetPolicies: budgetRows.map(row => {
         const policy = row.payload as { policyId?: string; currency?: string; maxMoneyMinor?: number; unitMaxMinor?: Record<string, number> };
@@ -178,7 +188,7 @@ export class ConfigurationService {
     };
   }
 
-  async apply(actor: Principal, input: ApplyConfigurationInput | unknown): Promise<ConfigurationApplyResult> {
+  async apply(actor: Principal, input: ApplyConfigurationInput | unknown, options?: { readonly audit?: (result: ConfigurationApplyResult) => PlatformAuditRecord }): Promise<ConfigurationApplyResult> {
     this.requireOperator(actor);
     this.assertWorkspace(actor);
     const request = applyConfigurationSchema.parse(input);
@@ -195,7 +205,10 @@ export class ConfigurationService {
         if (record) {
           if (record.digest !== digest) throw new DomainError('CONFLICT', 'Idempotency key already used for a different configuration');
           const summary = record.summary as { changes?: readonly ConfigurationChange[] };
-          return { dryRun: request.dryRun === true, idempotencyKey: request.idempotencyKey, digest, alreadyApplied: true, changes: summary.changes ?? [] };
+          const replay: ConfigurationApplyResult = { dryRun: request.dryRun === true, idempotencyKey: request.idempotencyKey, digest, alreadyApplied: true, changes: summary.changes ?? [] };
+          // The platform route commits its audit row here too: a replayed idempotency key is still a recorded attempt.
+          if (options?.audit) await tx.insert(platformAdminAudit).values(platformAuditValues(options.audit(replay)));
+          return replay;
         }
         const context = await this.loadContext(tx, entries);
         this.validateEntries(entries, context);
@@ -207,7 +220,10 @@ export class ConfigurationService {
             digest, actorId: actor.userId, summary: { changes: changes.slice(0, configurationRecordSummaryLimit) },
           });
         }
-        return { dryRun: request.dryRun === true, idempotencyKey: request.idempotencyKey, digest, alreadyApplied: false, changes };
+        const result: ConfigurationApplyResult = { dryRun: request.dryRun === true, idempotencyKey: request.idempotencyKey, digest, alreadyApplied: false, changes };
+        // Dry runs skip configuration_records but the platform audit row is still committed atomically with the transaction.
+        if (options?.audit) await tx.insert(platformAdminAudit).values(platformAuditValues(options.audit(result)));
+        return result;
       });
     } catch (error: unknown) {
       if (error instanceof DomainError) throw error;

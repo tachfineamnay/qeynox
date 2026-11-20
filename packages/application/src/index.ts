@@ -38,6 +38,7 @@ export * from './service-configuration';
 export * from './platform-admin';
 export * from './platform-users';
 export * from './platform-organizations';
+export * from './platform-configuration';
 export * from './platform-operations';
 export * from './support';
 export * from './workspace-access';
