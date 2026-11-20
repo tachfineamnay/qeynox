@@ -120,16 +120,20 @@ function applyInput(idempotencyKey: string, entries: ConfigurationEntry[], dryRu
 }
 
 interface SchemaColumn { type: string; nullable: boolean; hasDefault: boolean }
-const drizzleTypeMap: Readonly<Record<string, string>> = { string: 'text', number: 'integer', boolean: 'boolean', json: 'jsonb', date: 'timestamp with time zone' };
+// `custom` is the dataType reported by Drizzle for the single customType in the schema (bytea, A14).
+// Any new customType with a different SQL type fails this mapping until it is explicitly added.
+const drizzleTypeMap: Readonly<Record<string, string>> = { string: 'text', number: 'integer', boolean: 'boolean', json: 'jsonb', date: 'timestamp with time zone', custom: 'bytea' };
 
 async function verifySchemaParity(pool: Pool): Promise<void> {
-  const { rows } = await pool.query<{ table_name: string; column_name: string; data_type: string; is_nullable: string; column_default: string | null }>(
-    "SELECT table_name, column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name, column_name",
+  const { rows } = await pool.query<{ table_name: string; column_name: string; data_type: string; is_nullable: string; column_default: string | null; is_generated: string; generation_expression: string | null }>(
+    "SELECT table_name, column_name, data_type, is_nullable, column_default, is_generated, generation_expression FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name, column_name",
   );
   const actual = new Map<string, Map<string, SchemaColumn>>();
+  const generatedColumns = new Map<string, string>();
   for (const row of rows) {
     if (!actual.has(row.table_name)) actual.set(row.table_name, new Map());
     actual.get(row.table_name)!.set(row.column_name, { type: row.data_type, nullable: row.is_nullable === 'YES', hasDefault: row.column_default !== null });
+    if (row.is_generated === 'ALWAYS') generatedColumns.set(row.table_name + '.' + row.column_name, row.generation_expression ?? '');
   }
   const drizzleTables = new Map<string, PgTable>();
   const expected = new Map<string, Map<string, SchemaColumn>>();
@@ -157,7 +161,14 @@ async function verifySchemaParity(pool: Pool): Promise<void> {
       assert(found.nullable === expectation.nullable, 'nullability parity ' + table + '.' + column);
       assert(found.hasDefault === expectation.hasDefault, 'default parity ' + table + '.' + column);
     }
-    for (const column of database.keys()) assert(columns.has(column), 'no undeclared extra column ' + table + '.' + column);
+    for (const column of database.keys()) {
+      if (columns.has(column)) continue;
+      // A column the application never writes is allowed only when PostgreSQL owns it as a GENERATED
+      // ALWAYS column; the expression must derive from text, never from stored data or secrets.
+      const expression = generatedColumns.get(table + '.' + column);
+      assert(expression !== undefined, 'no undeclared extra column ' + table + '.' + column);
+      assert(/to_tsvector/i.test(expression), 'server-generated column derives from text only: ' + table + '.' + column);
+    }
   }
   for (const table of actual.keys()) {
     if (table === 'schema_migrations') continue;
@@ -178,9 +189,26 @@ async function verifySchemaParity(pool: Pool): Promise<void> {
       assert(definition.startsWith('CREATE UNIQUE INDEX') === index.config.unique, 'index uniqueness parity ' + indexName);
     }
   }
+  // A migration index absent from Drizzle is allowed only when every key column is a server-generated
+  // column (GIN over a tsvector generated column) and the index is non-unique — there is nothing for
+  // Drizzle to declare, and uniqueness would change meaning. Anything else fails closed.
+  const generatedIndexRows = await pool.query<{ indexname: string; unique: boolean; generated_keys: number; total_keys: number }>(`
+    SELECT i.relname AS indexname, ix.indisunique AS unique,
+           count(*) FILTER (WHERE a.attgenerated = 's')::int AS generated_keys,
+           count(*)::int AS total_keys
+    FROM pg_index ix
+    JOIN pg_class i ON i.oid = ix.indexrelid
+    JOIN pg_am am ON am.oid = i.relam
+    JOIN unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ord) ON true
+    JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = k.attnum AND a.attnum > 0
+    WHERE i.relnamespace = 'public'::regnamespace
+    GROUP BY i.relname, ix.indisunique`);
+  const generatedOnlyIndexes = new Set(
+    generatedIndexRows.rows.filter(row => !row.unique && row.total_keys > 0 && row.generated_keys === row.total_keys).map(row => row.indexname),
+  );
   for (const name of databaseIndexes.keys()) {
     if (declaredIndexes.has(name) || name.endsWith('_pkey') || name.endsWith('_key')) continue;
-    throw new Error('ASSERTION FAILED: migration index is not declared in Drizzle: ' + name);
+    assert(generatedOnlyIndexes.has(name), 'migration index is not declared in Drizzle: ' + name);
   }
   for (const name of [
     'capability_active_slot_unique', 'agent_profile_active_role_unique', 'verification_policy_active_capability_unique',
