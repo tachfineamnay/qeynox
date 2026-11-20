@@ -17,5 +17,6 @@ import { SupportModule } from './support/support.module';
 import { CapabilitiesModule } from './capabilities/capabilities.module';
 import { ServicesModule } from './services/services.module';
 import { ConnectionsModule } from './connections/connections.module';
-@Module({controllers:[HealthController],imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule,OperatorModule,ConfigurationModule,SoulModule,PilotModule,PlatformModule,WorkspacesModule,SupportModule,CapabilitiesModule,ServicesModule,ConnectionsModule]})
+import { DocumentsModule } from './documents/documents.module';
+@Module({controllers:[HealthController],imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule,OperatorModule,ConfigurationModule,SoulModule,PilotModule,PlatformModule,WorkspacesModule,SupportModule,CapabilitiesModule,ServicesModule,ConnectionsModule,DocumentsModule]})
 export class AppModule {}

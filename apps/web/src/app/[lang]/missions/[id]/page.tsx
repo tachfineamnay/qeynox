@@ -12,6 +12,8 @@ import { copy, locale } from '../../../../lib/copy';
 import { flowCopy } from '../../../../lib/flow-copy';
 import { buildFlowModel, stateOf } from '../../../../lib/flow-model';
 import { missionCopy } from '../../../../lib/mission-copy';
+import { documentViewSchema } from '../../../../lib/documents';
+import { MissionDocumentControls } from '../../../../components/mission-documents';
 import { read, detailSchema, summarySchema, activitySchema, documentSchema, guidanceSchema, contextSchema } from '../../../../lib/mission';
 import { planViewSchema, readinessSchema, commercialViewSchema, claimListSchema, paymentViewSchema, formatMoney, type PlanAttempt } from '../../../../lib/plan';
 
@@ -57,7 +59,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   // MISSION A08 — the provider sends the customer back to this page. The marker only changes wording;
   // it is never read as evidence that a payment succeeded.
   const returnMarker = query.payment === 'returned' ? 'returned' : query.payment === 'cancelled' ? 'cancelled' : null;
-  const [plan, readiness, summary, activity, pilot, commercial, claims, documents, facts, consents] = await Promise.all([
+  const [plan, readiness, summary, activity, pilot, commercial, claims, documents, facts, consents, vaultAttached, vaultAvailable] = await Promise.all([
     read(base + '/plan', planViewSchema),
     read(base + '/readiness', readinessSchema),
     read('/v1/mydash/operations/' + id.data + '/summary', summarySchema),
@@ -68,6 +70,9 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     read(base + '/documents', z.array(documentSchema)),
     read('/v1/soul/context', contextSchema),
     read('/v1/soul/consents', consentsSchema),
+    // MISSION A17 — vault files attached to this mission (separate route from result documents).
+    read('/v1/operations/' + id.data + '/vault-documents', z.array(documentViewSchema)),
+    read('/v1/documents', z.array(documentViewSchema)),
   ]);
   // MISSION A08 — payment status is read separately so an unavailable payment provider degrades to a
   // stated condition on the commercial card instead of breaking the whole mission page.
@@ -433,8 +438,25 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     </Card>
   );
 
+  const attachedDocs = vaultAttached.data ?? null;
+  const availableDocs = vaultAvailable.data ?? null;
+  const missionDocumentsCard = (
+    <Card id="flow-vault-documents">
+      <SectionHeading title={m.missionDocuments} />
+      {!attachedDocs || !availableDocs
+        ? unavailable((vaultAttached.code ?? vaultAvailable.code) ?? 'INVALID_RESPONSE')
+        : <MissionDocumentControls
+            lang={lang}
+            operationId={op.id}
+            attached={attachedDocs.map(doc => ({ id: doc.id, name: doc.name, state: doc.state, sizeBytes: doc.sizeBytes }))}
+            available={availableDocs.map(doc => ({ id: doc.id, name: doc.name, state: doc.state, sizeBytes: doc.sizeBytes }))}
+          />}
+    </Card>
+  );
+
   const cards: { key: string; node: ReactNode }[] = [];
   const push = (key: string, node: ReactNode) => cards.push({ key, node });
+  push('vaultDocuments', missionDocumentsCard);
   if (op.status === 'COMPLETED') {
     push('results', resultsCard);
     push('claims', claimsCard);

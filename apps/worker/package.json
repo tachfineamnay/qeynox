@@ -22,7 +22,8 @@
     "qa:mission-lifecycle": "tsx scripts/qa-mission-lifecycle.ts",
     "qa:atlas-results": "tsx scripts/qa-atlas-results.ts",
     "qa:stripe-payments": "tsx scripts/qa-stripe-payments.ts",
-    "qa:brave-search": "tsx scripts/qa-brave-search.ts"
+    "qa:brave-search": "tsx scripts/qa-brave-search.ts",
+    "qa:documents": "tsx scripts/qa-documents.ts"
   },
   "dependencies": {
     "@hatchet-dev/typescript-sdk": "1.46.1",
@@ -38,9 +39,10 @@
     "pg": "8.16.3"
   },
   "devDependencies": {
-    "@types/pg": "8.15.5",
     "@aws-sdk/client-s3": "3.1166.0",
     "@aws-sdk/s3-request-presigner": "3.1166.0",
+    "@types/pg": "8.15.5",
+    "fflate": "^0.8.3",
     "pdf-lib": "1.17.1",
     "stripe": "23.2.0"
   }

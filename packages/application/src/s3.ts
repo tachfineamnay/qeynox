@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { GetObjectCommand,HeadObjectCommand,PutObjectCommand,S3Client,type PutObjectCommandInput } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand,GetObjectCommand,HeadObjectCommand,PutObjectCommand,S3Client,type PutObjectCommandInput } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { DomainError } from '@qeynox/domain';
 import type { ArtifactStorePort,ObjectHead,ObjectReceipt } from './artifacts';
@@ -36,5 +36,18 @@ export class S3ArtifactStore implements ArtifactStorePort {
  }
  signedRead(key:string,expiresSeconds:number):Promise<string>{
   return getSignedUrl(this.client,new GetObjectCommand({Bucket:this.bucket,Key:key}),{expiresIn:Math.max(30,Math.min(300,expiresSeconds))});
+ }
+ /** MISSION A17 — presigned single-PUT upload for the document vault (private objects only). */
+ async signedPut(key:string,contentType:string,expiresSeconds:number):Promise<string>{
+  return getSignedUrl(this.client,new PutObjectCommand({Bucket:this.bucket,Key:key,ContentType:contentType}),{expiresIn:Math.max(60,Math.min(900,expiresSeconds))});
+ }
+ async read(key:string):Promise<Uint8Array>{
+  const response=await this.client.send(new GetObjectCommand({Bucket:this.bucket,Key:key}));
+  if(!response.Body)throw new DomainError('UNAVAILABLE','Object body missing');
+  const bytes=await response.Body.transformToByteArray();
+  return bytes;
+ }
+ async deleteObject(key:string):Promise<void>{
+  await this.client.send(new DeleteObjectCommand({Bucket:this.bucket,Key:key}));
  }
 }

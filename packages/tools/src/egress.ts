@@ -105,6 +105,10 @@ export interface ProviderRequestOptions {
   maxBytes?: number;
   timeoutMs?: number;
   resolver?: ProviderResolver;
+  /** Defaults to GET. POST is only for reviewed, attested provider calls that need a JSON body. */
+  method?: 'GET' | 'POST';
+  /** UTF-8 JSON body for method POST; written verbatim with an exact content-length. */
+  body?: string;
 }
 export interface ProviderHttpResponse { status: number; headers: IncomingHttpHeaders; body: string }
 /**
@@ -127,9 +131,11 @@ export async function secureProviderRequest(url: URL, policy: EgressPolicy, opti
       hostname: url.hostname,
       port: 443,
       path: url.pathname + url.search,
-      method: 'GET',
+      method: options.method ?? 'GET',
       servername: url.hostname,
-      headers: { accept: 'application/json', ...options.headers },
+      headers: options.body === undefined
+        ? { accept: 'application/json', ...options.headers }
+        : { accept: 'application/json', ...options.headers, 'content-length': Buffer.byteLength(options.body) },
       lookup: ((_hostname: string, details: unknown, callback: (error: NodeJS.ErrnoException | null, address: unknown, family?: number) => void) => {
         // Node may request all resolved addresses for Happy Eyeballs; always return the single pinned address.
         const wantsAll = Boolean(details && typeof details === 'object' && (details as { all?: boolean }).all);
@@ -161,6 +167,7 @@ export async function secureProviderRequest(url: URL, policy: EgressPolicy, opti
     });
     request.on('timeout', () => { request.destroy(); finalize(new DomainError('INVALID_STATE', 'Provider request timed out')); });
     request.on('error', error => finalize(new DomainError('INVALID_STATE', 'Provider connection failed: ' + (error instanceof Error ? error.message : 'unknown'))));
+    if (options.body !== undefined) request.write(options.body);
     request.end();
   });
 }

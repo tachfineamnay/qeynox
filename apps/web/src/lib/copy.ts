@@ -5,7 +5,7 @@ export { SUPPORTED_LOCALES, isSupportedLocale };
 /** Normalise an arbitrary route segment to a supported locale. Unknown segments get the default. */
 export function locale(value: string): Locale { return value === 'fr' ? 'fr' : 'en'; }
 const en = {
-  home: 'Overview', dash: 'MyDash', missions: 'Missions', soul: 'Soul', support: 'Support', capabilities: 'Capabilities', services: 'Services', connections: 'Connections', account: 'Account', menu: 'Navigation', skip: 'Skip to content',
+  home: 'Overview', dash: 'MyDash', missions: 'Missions', soul: 'Soul', support: 'Support', capabilities: 'Capabilities', services: 'Services', connections: 'Connections', documents: 'Documents', account: 'Account', menu: 'Navigation', skip: 'Skip to content',
   eyebrow: 'RESULTS AS A SERVICE', headline: 'Your next business objective. A result you can use.', intro: 'Define the outcome. Review the plan and cost. Stay in control of the work, and inspect the evidence behind your deliverable.', enter: 'Open MyDash',
   steps: ['Describe your objective', 'Review and approve', 'Receive an evidenced result'], stepCopy: ['Start with what you need to understand or achieve.', 'Clarify scope, access and cost before execution.', 'Inspect sources, limitations and the next useful action.'],
   dashTitle: 'What result do you need next?', dashIntro: 'Start with an objective, or return to your recorded work.', goal: 'Describe the result you need', goalHint: 'Include the decision, market or question that matters. 5–5,000 characters.', placeholder: 'What do you need to understand or deliver?',
@@ -66,7 +66,7 @@ const en = {
     ACTIVE: 'Active', UNCONFIGURED: 'Not configured', DISABLED: 'Disabled' }
 };
 const fr: typeof en = {
-  home: 'Présentation', dash: 'MyDash', missions: 'Missions', soul: 'Soul', support: 'Support', capabilities: 'Capacités', services: 'Services', connections: 'Connexions', account: 'Compte', menu: 'Navigation', skip: 'Aller au contenu',
+  home: 'Présentation', dash: 'MyDash', missions: 'Missions', soul: 'Soul', support: 'Support', capabilities: 'Capacités', services: 'Services', connections: 'Connexions', documents: 'Documents', account: 'Compte', menu: 'Navigation', skip: 'Aller au contenu',
   eyebrow: 'RESULTS AS A SERVICE', headline: 'Votre prochain objectif. Un résultat utile.', intro: 'Définissez le résultat attendu. Examinez le plan et le coût. Gardez le contrôle et consultez les preuves qui étayent votre livrable.', enter: 'Ouvrir MyDash',
   steps: ['Décrivez votre objectif', 'Examinez et approuvez', 'Recevez un résultat étayé'], stepCopy: ['Partez de ce que vous souhaitez comprendre ou accomplir.', 'Précisez le périmètre, les accès et le coût avant toute exécution.', 'Consultez les sources, les limites et les prochaines actions utiles.'],
   dashTitle: 'Quel résultat souhaitez-vous obtenir ?', dashIntro: 'Partez d’un objectif ou reprenez vos missions enregistrées.', goal: 'Décrivez le résultat attendu', goalHint: 'Précisez la décision, le marché ou la question. De 5 à 5 000 caractères.', placeholder: 'Que souhaitez-vous comprendre ou produire ?',
