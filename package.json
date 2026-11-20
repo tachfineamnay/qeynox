@@ -37,6 +37,7 @@
     "hermes:diagnose": "pnpm --filter @qeynox/worker hermes:diagnose",
     "qa:runtime-readiness": "pnpm --filter @qeynox/application qa:runtime-readiness",
     "qa:a03-service": "pnpm --filter @qeynox/worker qa:a03-service",
+    "qa:service-catalogue": "pnpm --filter @qeynox/worker qa:service-catalogue",
     "qa:identity": "pnpm --filter @qeynox/api qa:identity",
     "qa:soul-intelligence": "pnpm --filter @qeynox/api qa:soul-intelligence",
     "qa:pilot-planner": "pnpm --filter @qeynox/api qa:pilot-planner",

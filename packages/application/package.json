@@ -1,1 +1,29 @@
-{"name":"@qeynox/application","version":"0.1.0","type":"module","scripts":{"qa:runtime-readiness":"tsx scripts/qa-runtime-readiness.ts && tsx scripts/qa-runtime-readiness-negative.ts"},"exports":{".":"./src/index.ts"},"dependencies":{"@aws-sdk/client-s3":"3.1166.0","@aws-sdk/s3-request-presigner":"3.1166.0","@qeynox/contracts":"workspace:*","@qeynox/domain":"workspace:*","@qeynox/engine":"workspace:*","@qeynox/orchestration":"workspace:*","@qeynox/persistence":"workspace:*","@qeynox/tools":"workspace:*","drizzle-orm":"0.44.5","pdf-lib":"1.17.1","pg":"8.16.3","stripe":"23.2.0"},"devDependencies":{"@types/pg":"8.15.5"}}
+{
+  "name": "@qeynox/application",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "qa:runtime-readiness": "tsx scripts/qa-runtime-readiness.ts && tsx scripts/qa-runtime-readiness-negative.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1166.0",
+    "@aws-sdk/s3-request-presigner": "3.1166.0",
+    "@qeynox/contracts": "workspace:*",
+    "@qeynox/domain": "workspace:*",
+    "@qeynox/engine": "workspace:*",
+    "@qeynox/orchestration": "workspace:*",
+    "@qeynox/persistence": "workspace:*",
+    "@qeynox/tools": "workspace:*",
+    "drizzle-orm": "0.44.5",
+    "pdf-lib": "1.17.1",
+    "pg": "8.16.3",
+    "stripe": "23.2.0",
+    "zod": "4.1.11"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.5"
+  }
+}

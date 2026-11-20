@@ -1,0 +1,2 @@
+export const SERVICES_CATALOGUE = 'SERVICES_CATALOGUE' as const;
+export const SERVICES_CONTRACTS = 'SERVICES_CONTRACTS' as const;

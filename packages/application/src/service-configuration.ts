@@ -48,7 +48,8 @@ export interface ServiceConfigurationReport {
 export interface ServiceConfigurationInput {
   readonly capabilityId: string;
   readonly offerId: string;
-  readonly budgetPolicyId: string;
+  /** Accepted for compatibility with callers that have it; the validator inspects workspace policies. */
+  readonly budgetPolicyId?: string;
   /**
    * Budget policies are workspace-scoped rows (`budget-<workspaceId>-<policyId>-v<n>`), because a
    * spending ceiling is a property of the paying tenant, not of the global catalogue. The validator
@@ -56,8 +57,10 @@ export interface ServiceConfigurationInput {
    */
   readonly workspaceId: string;
   readonly expectedProvider: 'world-bank';
-  /** Maximum engine calls a single plan may make, from the profile(s) the capability uses. */
-  readonly maximumIterations: number;
+  /** Maximum engine calls a single plan may make, from the profile(s) the capability uses.
+   *  Pass null when no ACTIVE business profile exists: iteration-dependent checks are then skipped
+   *  (a missing profile is itself reported by capability availability) and BUDGET checks still run. */
+  readonly maximumIterations: number | null;
 }
 
 /**
@@ -167,13 +170,13 @@ export async function validateServiceConfiguration(
       add({ code: 'BUDGET_NO_ENGINE_RATE', severity: 'BLOCKER', domain: 'BUDGET', detail: 'Budget policy has no "hermes" rate', remedy: 'Add a hermes unit cost so engine calls can be reserved' });
     } else if ((payload.maxMoneyMinor ?? 0) < engineUnit) {
       add({ code: 'BUDGET_BELOW_ONE_CALL', severity: 'BLOCKER', domain: 'BUDGET', detail: 'maxMoneyMinor ' + String(payload.maxMoneyMinor) + ' cannot pay for one engine call at ' + engineUnit, remedy: 'Raise maxMoneyMinor or lower the hermes unit cost' });
-    } else {
+    } else if (input.maximumIterations !== null && input.maximumIterations !== undefined) {
       const affordable = Math.floor((payload.maxMoneyMinor ?? 0) / engineUnit);
       if (affordable < input.maximumIterations) {
         add({ code: 'BUDGET_EXHAUSTS_MID_PLAN', severity: 'BLOCKER', domain: 'BUDGET', detail: 'Budget affords ' + affordable + ' engine calls but the profile allows ' + input.maximumIterations, remedy: 'Raise maxMoneyMinor, lower maximumIterations, or lower the hermes unit cost' });
       }
     }
-    if ((payload.maxAgentCalls ?? 0) < input.maximumIterations) {
+    if (input.maximumIterations !== null && input.maximumIterations !== undefined && (payload.maxAgentCalls ?? 0) < input.maximumIterations) {
       add({ code: 'BUDGET_AGENT_CALLS_TOO_LOW', severity: 'BLOCKER', domain: 'BUDGET', detail: 'maxAgentCalls ' + String(payload.maxAgentCalls) + ' is below the profile iteration ceiling ' + input.maximumIterations, remedy: 'Raise maxAgentCalls' });
     }
     if ((payload.maxToolCalls ?? 0) < 1) {

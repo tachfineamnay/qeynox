@@ -293,7 +293,7 @@ export class EconomicResearchService {
     actor: Principal,
     input: ResearchRequest,
     planning: PlanningService,
-  ): Promise<{ operationId: ID; revisionId: ID; request: NormalizedResearchRequest; steps: readonly PlanStepDraft[] }> {
+  ): Promise<{ operationId: ID; revisionId: ID; request: NormalizedResearchRequest; steps: readonly PlanStepDraft[]; warnings: readonly string[] }> {
     const proposal = await this.propose(input);
     const operation = await this.store.createOperation(actor, titleOf(proposal.request), proposal.request.objective, []);
     const plan = await planning.create(actor, operation.id, operation.version, proposal.steps);
@@ -302,6 +302,7 @@ export class EconomicResearchService {
       revisionId: plan.revision.id,
       request: proposal.request,
       steps: proposal.steps,
+      warnings: proposal.warnings,
     };
   }
 }

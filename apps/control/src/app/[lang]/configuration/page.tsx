@@ -3,6 +3,7 @@ import { copy, locale } from '../../../lib/copy';
 import { can, MANAGE_CONFIGURATION, READ_CONFIGURATION } from '../../../lib/permissions';
 import { ApiErrorNotice, Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
 import { ConfigurationForm } from '../../../components/configuration-form';
+import { ServiceValidationForm } from '../../../components/service-validation-form';
 import type { PlatformConfigurationStateView } from '../../../lib/types';
 
 function first(value: string | string[] | undefined): string { return typeof value === 'string' ? value.trim() : ''; }
@@ -119,7 +120,7 @@ export default async function ConfigurationPage({ params, searchParams }: { para
                 <h2>{t.configurationOffers}</h2>
                 {state.offers.length === 0 ? <Empty>{t.configurationOffersEmpty}</Empty> : (
                   <div className="table-wrap"><table>
-                    <thead><tr><th>{t.configurationOffer}</th><th>{t.configurationVersion}</th><th>{t.status}</th><th>{t.configurationCurrency}</th><th>{t.configurationAmount}</th><th>{t.configurationTax}</th></tr></thead>
+                    <thead><tr><th>{t.configurationOffer}</th><th>{t.configurationVersion}</th><th>{t.status}</th><th>{t.configurationCurrency}</th><th>{t.configurationAmount}</th><th>{t.configurationTax}</th><th>{t.configurationScope}</th><th>{t.configurationTerms}</th></tr></thead>
                     <tbody>
                       {state.offers.map(row => (
                         <tr key={row.offerId + '@' + row.version}>
@@ -129,6 +130,8 @@ export default async function ConfigurationPage({ params, searchParams }: { para
                           <td>{row.isExplicitlyFree ? t.configurationFree : row.currency}</td>
                           <td>{row.isExplicitlyFree ? '—' : money(row.amountMinor, row.currency, lang)}</td>
                           <td><Badge tone={row.taxPolicy === 'CONFIGURED' ? 'success' : 'warning'}>{row.taxPolicy === 'CONFIGURED' ? t.configurationTaxConfigured : t.configurationTaxRequired}</Badge></td>
+                          <td>{row.scope.join(' · ') || '—'}{row.exclusions.length ? <div className="muted">{t.configurationExclusions}: {row.exclusions.join(' · ')}</div> : null}<div className="muted">{t.configurationOfferCapabilities}: {row.capabilityIds.join(', ') || '—'}</div></td>
+                          <td>{row.termsVersion || '—'}<div className="muted">{t.configurationDeliverable}: v{row.deliverableSchemaVersion}</div></td>
                         </tr>
                       ))}
                     </tbody>
@@ -152,6 +155,8 @@ export default async function ConfigurationPage({ params, searchParams }: { para
               </Card>
             </>
           ) : null}
+
+          {requested ? <ServiceValidationForm lang={lang} workspaceId={requested} /> : null}
 
           {requested && canManage ? <ConfigurationForm lang={lang} workspaceId={requested} idempotencyKey={suggestedKey} /> : null}
           {requested && !canManage ? <Notice tone="warning" title={t.configurationNeedsAdminTitle}>{t.configurationNeedsAdmin}</Notice> : null}

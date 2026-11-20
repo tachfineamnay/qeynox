@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Post, Query, Req } from '@nestjs/common';
 import { ZodError, z } from 'zod';
-import { platformConfigurationApplySchema, platformConfigurationQuerySchema } from '@qeynox/contracts';
+import { platformConfigurationApplySchema, platformConfigurationQuerySchema, serviceValidationRequestSchema } from '@qeynox/contracts';
 import { DomainError, type PlatformPrincipal } from '@qeynox/domain';
 import type {
   PlatformConfigurationService,
@@ -66,6 +66,17 @@ export class PlatformConfigurationController {
       action: 'PREVIEW_PLATFORM_CONFIGURATION', targetType: 'PLATFORM_CONFIGURATION', targetId: (body as { workspaceId?: string })?.workspaceId ?? null,
     });
     return this.configuration.preview(actor, input);
+  }
+
+  /** Read-only validation of one service definition against the live configuration. Never mutates. */
+  @PlatformAccess('CONSULTATION')
+  @Post('validate-service')
+  async validateService(@Req() request: PlatformRequest, @Body() body: unknown) {
+    const actor = principal(request);
+    const input = await parseOrAudit(this.configuration, serviceValidationRequestSchema, body, request, {
+      action: 'READ_PLATFORM_SERVICE_VALIDATION', targetType: 'PLATFORM_CONFIGURATION', targetId: (body as { workspaceId?: string })?.workspaceId ?? null,
+    });
+    return this.configuration.validateService(actor, input);
   }
 
   /** Apply the configuration bundle. Idempotency-key guarded; audit row commits with the mutation. */
