@@ -20,6 +20,22 @@ export type SupportLink = Readonly<{
   workspaceId: ID;
   chatwootContactId: string;
   chatwootConversationId: string;
+  state: 'ACTIVE' | 'ORPHANED';
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+/** Durable intent-to-create record: the deterministic Chatwoot source_id for one open request. */
+export type SupportIntentState = 'PENDING_CONTACT' | 'PENDING_CONVERSATION' | 'LINKED' | 'FAILED' | 'ORPHANED';
+export type SupportIntent = Readonly<{
+  id: ID;
+  userId: ID;
+  workspaceId: ID;
+  intentRef: string;
+  chatwootContactId: string | null;
+  chatwootConversationId: string | null;
+  state: SupportIntentState;
+  failureCode: string | null;
   createdAt: string;
   updatedAt: string;
 }>;
@@ -41,6 +57,7 @@ export type SupportMessage = Readonly<{
   content: string;
   messageType: string;
   private: boolean;
+  sourceId: string | null;
   createdAt: string;
   sender: Readonly<{ id: string | null; name: string | null; type: string | null }> | null;
 }>;
@@ -59,4 +76,12 @@ export type SupportActorProfile = Readonly<{
   email: string;
   displayName: string;
   workspaceName: string;
+}>;
+
+export type SupportConversationList = Readonly<{
+  conversations: readonly SupportConversation[];
+  page: number;
+  perPage: number;
+  totalCount: number | null;
+  hasMore: boolean;
 }>;

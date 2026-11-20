@@ -44,6 +44,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
             <div className="section-heading"><h2>{c.newTitle}</h2><span className="badge success">{'CONFIGURED'}</span></div>
             <form action={openSupportConversation}>
               <input type="hidden" name="locale" value={lang} />
+              <input type="hidden" name="requestId" value={crypto.randomUUID()} />
               <label htmlFor="message">{c.message}</label>
               <textarea id="message" name="message" minLength={2} maxLength={5000} rows={4} required />
               <div className="form-bottom"><button>{c.send}</button></div>

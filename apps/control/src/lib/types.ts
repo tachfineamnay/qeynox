@@ -133,12 +133,19 @@ export interface SupportConversationView {
   assignee: { id: string | null; name: string | null } | null;
 }
 export interface SupportMessageView {
-  id: string; content: string; messageType: string; private: boolean; createdAt: string;
+  id: string; content: string; messageType: string; private: boolean; sourceId: string | null; createdAt: string;
   sender: { id: string | null; name: string | null; type: string | null } | null;
 }
 export interface PlatformSupportConversationView {
   conversation: SupportConversationView;
   qeynox: { userId: string; workspaceId: string } | null;
+}
+export interface PlatformSupportConversationListView {
+  items: PlatformSupportConversationView[];
+  page: number;
+  perPage: number;
+  totalCount: number | null;
+  hasMore: boolean;
 }
 export interface PlatformSupportConversationDetailView extends PlatformSupportConversationView {
   messages: SupportMessageView[];

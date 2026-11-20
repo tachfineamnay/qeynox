@@ -4,10 +4,11 @@ import { requirePlatformMe, tryApi } from '../../../lib/api';
 import { copy, locale } from '../../../lib/copy';
 import { can, SUPPORT } from '../../../lib/permissions';
 import { Badge, Card, Empty, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
-import type { PlatformSupportConversationView, SupportCapabilityView } from '../../../lib/types';
+import type { PlatformSupportConversationListView, SupportCapabilityView } from '../../../lib/types';
 
 function first(value: string | string[] | undefined): string { return typeof value === 'string' ? value : ''; }
 const statuses = ['open', 'pending', 'resolved', 'snoozed', 'all'] as const;
+function pageOf(value: string | string[] | undefined): number { const parsed = Number(typeof value === 'string' ? value : '1'); return Number.isInteger(parsed) && parsed >= 1 ? parsed : 1; }
 
 export default async function SupportPage({ params, searchParams }: { params: Promise<{ lang: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const lang = locale((await params).lang);
@@ -17,24 +18,25 @@ export default async function SupportPage({ params, searchParams }: { params: Pr
   const allowed = can(me.permissions, SUPPORT);
   const rawStatus = first(query.status);
   const status = (statuses as readonly string[]).includes(rawStatus) ? rawStatus : 'all';
+  const page = pageOf(query.page);
   const statusResult = allowed ? await tryApi<{ capability: SupportCapabilityView; note: string }>('/v1/platform/support/status') : null;
   const capability = statusResult && statusResult.ok ? statusResult.value.capability : null;
   const configured = capability?.status === 'CONFIGURED';
-  const listResult = configured ? await tryApi<PlatformSupportConversationView[]>('/v1/platform/support/conversations?status=' + encodeURIComponent(status)) : null;
+  const listResult = configured ? await tryApi<PlatformSupportConversationListView>('/v1/platform/support/conversations?status=' + encodeURIComponent(status) + '&page=' + page) : null;
   let content: ReactNode;
   if (!allowed) content = <PermissionDenied lang={lang} />;
   else if (!statusResult || !statusResult.ok) content = <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + (statusResult && !statusResult.ok ? statusResult.code : 'UNAVAILABLE')}</Notice>;
   else if (statusResult.value.capability.status !== 'CONFIGURED') {
     content = <Card><div className="section-heading"><h2>{t.supportNotConfigured}</h2><Badge tone="warning">{'NOT_CONFIGURED'}</Badge></div><p><strong>{t.supportReason + ': '}</strong><code>{capability?.reason ?? 'CHATWOOT_NOT_CONFIGURED'}</code></p><p className="muted">{t.supportConfigHint}</p></Card>;
   } else if (!listResult || !listResult.ok) content = <Notice tone="warning" title={t.apiUnavailable}>{t.apiCode + ': ' + (listResult && !listResult.ok ? listResult.code : 'UNAVAILABLE')}</Notice>;
-  else if (listResult.value.length === 0) content = <Card><Empty>{t.supportEmpty}</Empty></Card>;
+  else if (listResult.value.items.length === 0) content = <Card><Empty>{t.supportEmpty}</Empty></Card>;
   else {
     content = (
       <Card>
         <div className="table-wrap"><table>
           <thead><tr><th>{'#'}</th><th>{t.supportContact}</th><th>{t.status}</th><th>{t.supportPriority}</th><th>{t.supportQeynox}</th><th>{t.supportUpdated}</th><th>{t.supportOpen}</th></tr></thead>
           <tbody>
-            {listResult.value.map(view => (
+            {listResult.value.items.map(view => (
               <tr key={view.conversation.id}>
                 <td>{view.conversation.id}</td>
                 <td>{view.conversation.contact.name ?? view.conversation.contact.email ?? '—'}</td>
@@ -47,6 +49,11 @@ export default async function SupportPage({ params, searchParams }: { params: Pr
             ))}
           </tbody>
         </table></div>
+        <div className="row-actions">
+          {page > 1 ? <Link className="button secondary" href={'/' + lang + '/support?status=' + encodeURIComponent(status) + '&page=' + (page - 1)}>{t.supportPrevious}</Link> : null}
+          <span className="muted">{'page ' + page + (listResult.value.totalCount !== null ? ' / ' + Math.max(1, Math.ceil(listResult.value.totalCount / listResult.value.perPage)) : '')}</span>
+          {listResult.value.hasMore ? <Link className="button secondary" href={'/' + lang + '/support?status=' + encodeURIComponent(status) + '&page=' + (page + 1)}>{t.supportNext}</Link> : null}
+        </div>
       </Card>
     );
   }

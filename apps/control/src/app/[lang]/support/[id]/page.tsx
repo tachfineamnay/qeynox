@@ -6,6 +6,7 @@ import { can, SUPPORT } from '../../../../lib/permissions';
 import { replySupportAction, updateSupportStatusAction } from '../../../../lib/support-actions';
 import { Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
 import type { PlatformSupportConversationDetailView } from '../../../../lib/types';
+import { randomUUID } from 'node:crypto';
 
 export default async function SupportDetailPage({ params, searchParams }: { params: Promise<{ lang: string; id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const resolved = await params;
@@ -17,6 +18,8 @@ export default async function SupportDetailPage({ params, searchParams }: { para
   const result = allowed ? await tryApi<PlatformSupportConversationDetailView>('/v1/platform/support/conversations/' + encodeURIComponent(resolved.id)) : null;
   const done = typeof query.done === 'string' ? query.done : undefined;
   const error = typeof query.error === 'string' ? query.error : undefined;
+  // One deterministic request id per page render: double-submitting the same form is deduplicated downstream.
+  const replyRequestId = randomUUID();
   return (
     <Shell lang={lang} path="/support" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
       <p className="pager"><Link href={'/' + lang + '/support'}>{t.supportBack}</Link></p>
@@ -53,6 +56,7 @@ export default async function SupportDetailPage({ params, searchParams }: { para
                     <option value="resolved">resolved</option>
                   </select>
                 </label>
+                <label className="field"><span>{t.supportJustification}</span><input name="reason" minLength={10} maxLength={500} required /></label>
                 <button className="button secondary" type="submit">{t.supportStatusUpdated}</button>
               </form>
             </Card>
@@ -74,7 +78,9 @@ export default async function SupportDetailPage({ params, searchParams }: { para
             <form action={replySupportAction}>
               <input type="hidden" name="lang" value={lang} />
               <input type="hidden" name="conversationId" value={result.value.conversation.id} />
+              <input type="hidden" name="requestId" value={replyRequestId} />
               <label className="field"><span>{t.supportReply}</span><textarea name="content" minLength={2} maxLength={5000} rows={3} required /></label>
+              <label className="field"><span>{t.supportJustification}</span><input name="reason" minLength={10} maxLength={500} required /></label>
               <button className="button" type="submit">{t.supportReplySend}</button>
             </form>
           </Card>

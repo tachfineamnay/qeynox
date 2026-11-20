@@ -6,8 +6,9 @@ import { SUPPORT_SERVICE } from './support.tokens';
 
 interface Request { principal?: Principal }
 
-const openSchema = z.object({ message: z.string().trim().min(2).max(5000) });
-const replySchema = z.object({ content: z.string().trim().min(2).max(5000) });
+const requestIdSchema = z.string().trim().min(8).max(200).optional();
+const openSchema = z.object({ message: z.string().trim().min(2).max(5000), requestId: requestIdSchema });
+const replySchema = z.object({ content: z.string().trim().min(2).max(5000), requestId: requestIdSchema });
 
 function principal(request: Request): Principal {
   if (!request.principal?.workspaceId || !request.principal.userId) throw new DomainError('DENIED', 'Authenticated workspace required');
@@ -18,6 +19,9 @@ function principal(request: Request): Principal {
  * Customer support endpoints. Chatwoot is only reached server-side; no token or webhook secret is
  * returned. Conversations are scoped by the authenticated user AND active workspace through the
  * support_chatwoot_links mapping, so a workspace session can never read another user's inbox.
+ *
+ * Clients may (and the first-party UI does) send a `requestId`: retrying the same open/reply with
+ * the same key is idempotent — it never creates a second contact, conversation or message.
  */
 @Controller('v1/support')
 export class SupportController {
@@ -31,7 +35,8 @@ export class SupportController {
 
   @Post('conversations')
   open(@Req() request: Request, @Body() body: unknown) {
-    return this.support.open(principal(request), openSchema.parse(body).message);
+    const input = openSchema.parse(body);
+    return this.support.open(principal(request), input.message, { requestId: input.requestId });
   }
 
   @Get('conversations/:id')
@@ -39,6 +44,7 @@ export class SupportController {
 
   @Post('conversations/:id/messages')
   reply(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
-    return this.support.reply(principal(request), id, replySchema.parse(body).content);
+    const input = replySchema.parse(body);
+    return this.support.reply(principal(request), id, input.content, { requestId: input.requestId });
   }
 }
