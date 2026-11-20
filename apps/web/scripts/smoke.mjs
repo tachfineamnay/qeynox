@@ -22,7 +22,11 @@ const backend = createServer((req, res) => {
   assert.equal(req.headers['x-qeynox-workspace'], 'workspace_qa');
   const operation = { id: 'operation_qa', title: 'QA mission workspace', status: 'RUNNING', version: 3, lastActivityAt: '2026-01-01T12:00:00.000Z' };
   const citation = { sourceId: 'source_qa', provider: 'QA source', uri: mode === 'unsafe-source' ? 'javascript:alert(1)' : 'https://example.org/evidence', retrievedAt: operation.lastActivityAt };
-  const doc = { id: 'document_qa', operationId: operation.id, revisionId: 'revision_qa', version: 1, title: 'QA evidence document', objective: 'QA objective', status: 'PARTIAL', scope: [], nextActions: ['Review missing evidence'], limitations: ['QA limitation'], unresolved: ['claim_qa'], createdAt: operation.lastActivityAt, citations: [citation], findings: [{ claimId: 'claim_qa', statement: 'QA finding', status: 'UNVERIFIED', sourceIds: ['source_qa'], attemptId: 'attempt_qa', limitations: ['Needs review'], citations: [citation] }] };
+  // A07 — the fixture carries one claim that can be verified and one that cannot, so the reader has a
+  // real distinction to display rather than an empty state that could hide a regression.
+  const supportedCitation = { sourceId: 'source_qa2', provider: 'QA provider', uri: 'https://example.org/supported', retrievedAt: operation.lastActivityAt };
+  const unsafeCitation = { sourceId: 'source_qa3', provider: 'QA unsafe source', uri: 'https://leaked:secret@example.org/private', retrievedAt: operation.lastActivityAt };
+  const doc = { id: 'document_qa', operationId: operation.id, revisionId: 'revision_qa', version: 1, title: 'QA evidence document', objective: 'QA objective', status: 'PARTIAL', scope: [], nextActions: ['Review missing evidence'], limitations: ['QA limitation'], unresolved: ['claim_qa'], createdAt: operation.lastActivityAt, citations: [citation, supportedCitation, unsafeCitation], findings: [{ claimId: 'claim_qa', statement: 'QA finding', status: 'UNVERIFIED', sourceIds: ['source_qa'], attemptId: 'attempt_qa', limitations: ['Needs review'], citations: [citation] }, { claimId: 'claim_qa2', statement: 'QA supported finding', status: 'SUPPORTED', sourceIds: ['source_qa2'], attemptId: 'attempt_qa', limitations: [], citations: [supportedCitation] }, { claimId: 'claim_qa3', statement: 'QA unsafe-citation claim', status: 'SUPPORTED', sourceIds: ['source_qa3'], attemptId: 'attempt_qa', limitations: [], citations: [unsafeCitation] }] };
   let payload;
   if (req.url === '/v1/capabilities') {
     capabilityReads++;
@@ -58,7 +62,12 @@ const backend = createServer((req, res) => {
   if (req.url === '/v1/operations/operation_qa/documents/document_qa') payload = doc;
   if (req.url === '/v1/soul/context') payload = [{ id: 'fact_qa', key: 'QA preference', value: 'French', consentId: 'consent_qa', updatedAt: operation.lastActivityAt }];
   if (mode === 'section-failure' && req.url?.endsWith('/documents')) { res.statusCode = 503; res.end(JSON.stringify({ error: { code: 'NOT_CONFIGURED' } })); return; }
-  if (req.url?.endsWith('/export/json') || req.url?.endsWith('/export/html')) { res.end(JSON.stringify({ artifactId: 'artifact_qa', sha256: 'a'.repeat(64) })); return; }
+  // MISSION A07 — PDF is now a first-class export format, alongside JSON and HTML.
+  if (req.url?.endsWith('/export/json') || req.url?.endsWith('/export/html') || req.url?.endsWith('/export/pdf')) {
+    const format = req.url.slice(req.url.lastIndexOf('/') + 1);
+    res.end(JSON.stringify({ artifactId: 'artifact_qa', sha256: 'a'.repeat(64), format, contentType: format === 'pdf' ? 'application/pdf' : 'text/plain' }));
+    return;
+  }
   if (req.url?.endsWith('/artifacts/artifact_qa')) { res.end(JSON.stringify({ url: 'https://example.org/qa-only-artifact' })); return; }
   if (payload !== undefined) { res.end(JSON.stringify(payload)); return; }
   assert.equal(req.url, '/v1/mydash/recent?limit=30');
@@ -173,10 +182,27 @@ try {
   const mission = await page('/en/missions/operation_qa', true);
   for (const text of ['QA mission workspace', '1 / 3', 'EXECUTION_REQUESTED', 'QA evidence document', 'QA preference', 'Pilot']) { assert.ok(mission.includes(text), text); assertions++; }
   const document = await page('/en/missions/operation_qa/results/document_qa', true);
-  for (const text of ['QA finding', 'Unverified', 'https://example.org/evidence', 'QA limitation', 'Partial']) { assert.ok(document.includes(text), text); assertions++; }
+  for (const text of ['QA finding', 'QA limitation', 'https://example.org/evidence']) { assert.ok(document.includes(text), text); assertions++; }
   assert.ok(!document.includes('>UNVERIFIED<') && !document.includes('>PARTIAL<'), 'raw document/finding enums must be localized'); assertions++;
+  // MISSION A07 — the reader separates classes structurally, and never shows an unreviewed claim as a
+  // verified conclusion. These are the load-bearing assertions of the whole mission.
+  for (const id of ['atlas-verified', 'atlas-unresolved', 'atlas-awaiting', 'atlas-provenance', 'atlas-review']) { assert.ok(document.includes('id="' + id + '"'), 'the reader exposes section ' + id); assertions++; }
+  assert.ok(document.includes('Awaiting human review') || document.includes('Partial: at least one finding is unresolved'), 'an unreviewed document states it is not a delivered result'); assertions++;
+  assert.ok(!/Reviewed result\./.test(document), 'an unreviewed document is never presented as a reviewed result'); assertions++;
+  assert.ok(document.includes('QA supported finding') && document.includes('QA unsafe-citation claim'), 'both claims are rendered'); assertions++;
+  // A SUPPORTED claim citing only a credential-bearing URL is demoted, and its password is redacted.
+  assert.ok(!document.includes('leaked:secret@'), 'embedded credentials are never rendered in the reader'); assertions++;
+  assert.ok(!document.includes('href="https://leaked'), 'a credential-bearing URL never becomes a link'); assertions++;
+  // The verified section holds exactly the one genuinely verifiable finding.
+  const verifiedSection = document.slice(document.indexOf('id="atlas-verified"'), document.indexOf('id="atlas-unresolved"'));
+  assert.ok(verifiedSection.includes('QA supported finding'), 'the verifiable finding appears in the verified section'); assertions++;
+  assert.ok(!verifiedSection.includes('QA unsafe-citation claim') && !verifiedSection.includes('QA finding'), 'no unverifiable claim appears in the verified section'); assertions++;
+  // Every export format is offered, including the new PDF one.
+  for (const format of ['pdf', 'html', 'json']) { assert.ok(document.includes('value="' + format + '"'), 'the reader offers the ' + format + ' export'); assertions++; }
+  assert.ok(document.includes('PDF'), 'the export note names the PDF format'); assertions++;
   const frenchDocument = await page('/fr/missions/operation_qa/results/document_qa', true);
-  assert.ok(frenchDocument.includes('Non vérifié') && frenchDocument.includes('Partiel')); assertions++;
+  assert.ok(frenchDocument.includes('En attente d’évaluation') && frenchDocument.includes('Partiel'), 'the French reader is translated'); assertions++;
+  assert.ok(!frenchDocument.includes('>UNVERIFIED<'), 'the French reader does not leak raw enums'); assertions++;
   mode = 'section-failure';
   const partial = await page('/fr/missions/operation_qa', true);
   assert.ok(partial.includes('NOT_CONFIGURED') && partial.includes('QA mission workspace')); assertions++;
@@ -184,7 +210,8 @@ try {
   assert.ok(anonymousMission.includes('SESSION_REQUIRED') && !anonymousMission.includes('QA preference')); assertions++;
   mode = 'unsafe-source';
   const unsafeSource = await page('/en/missions/operation_qa/results/document_qa', true);
-  assert.ok(!unsafeSource.includes('href="javascript:') && unsafeSource.includes('No citation available')); assertions++;
+  assert.ok(!unsafeSource.includes('href="javascript:'), 'a javascript: citation is never a link'); assertions++;
+  assert.ok(unsafeSource.includes('non verifiable') || unsafeSource.includes('not verifiable') || unsafeSource.includes('No citation available'), 'an unverifiable citation is labelled as such'); assertions++;
   console.log(`PASS: ${assertions} HTTP assertions; EN/FR, session boundary, genuine empty/loaded/denied/malformed states. QA fixtures only; no database or agent runtime used.`);
   }
 } finally {

@@ -33,7 +33,8 @@
     "qa:a03-service": "pnpm --filter @qeynox/worker qa:a03-service",
     "qa:identity": "pnpm --filter @qeynox/api qa:identity",
     "qa:soul-intelligence": "pnpm --filter @qeynox/api qa:soul-intelligence",
-    "qa:mission-lifecycle": "pnpm --filter @qeynox/worker qa:mission-lifecycle"
+    "qa:mission-lifecycle": "pnpm --filter @qeynox/worker qa:mission-lifecycle",
+    "qa:atlas-results": "pnpm --filter @qeynox/worker qa:atlas-results"
   },
   "devDependencies": {
     "typescript": "5.9.3",

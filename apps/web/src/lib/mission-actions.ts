@@ -40,7 +40,7 @@ export async function change(previous: ChangeState, form: FormData): Promise<Cha
       if (kind === 'renew') {
         artifactId = idSchema.parse(form.get('artifactId'));
       } else {
-        const saved = z.object({ artifactId: idSchema, sha256: z.string().regex(/^[a-fA-F0-9]{64}$/) }).parse(await api(`${base}/export/${z.enum(['json','html']).parse(form.get('format'))}`, 'POST'));
+        const saved = z.object({ artifactId: idSchema, sha256: z.string().regex(/^[a-fA-F0-9]{64}$/) }).parse(await api(`${base}/export/${z.enum(['json','html','pdf']).parse(form.get('format'))}`, 'POST'));
         artifactId = saved.artifactId;
         sha256 = saved.sha256;
       }

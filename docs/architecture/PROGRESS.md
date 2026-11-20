@@ -582,3 +582,63 @@ BLOCKED — NOT VERIFIED, AND NOT CLAIMED:
 - Screenshot comparison remains BLOCKED (no reference image in the checkout).
 
 No merge, no deployment, no credential and no real customer data.
+
+---
+
+## MISSION A07 — Atlas results experience (branch `arena/eb110693-qeynox`)
+
+Scope: make the existing mission result reader a complete, honest results experience, without adding a
+second application. The route, the `ResultDocument` contract and the artifact delivery path are
+unchanged (see the A07 amendment in `ADR-014-results.md`).
+
+DELIVERED:
+- **One classifier** (`packages/application/src/result-classification.ts`) shared by the API view, the
+  HTML export, the PDF export and the reader: `VERIFIED` / `AI_INTERPRETATION` / `UNRESOLVED` /
+  `AWAITING_ASSESSMENT`. It can only demote — a `SUPPORTED` finding without a verifiable http(s)
+  citation becomes `UNRESOLVED` with a stated blocker — and it is total over unknown statuses. An
+  unreviewed claim is never rendered as a verified conclusion in any surface.
+- **One document verdict** (`documentVerdict()`), stated once per document, so no page or export can
+  imply a stronger claim than the persisted state supports.
+- **Atlas reader** (`apps/web/src/components/atlas.tsx`) on the existing results route: verdict →
+  scope → verified → unresolved → awaiting assessment → AI interpretation → limitations →
+  provenance → review/version. Provenance and review always render, even when empty. Class identity is
+  carried by headings and text labels, never by colour alone; sections are landmarked with `h2` +
+  `aria-labelledby`; jump links; no information depends on hover.
+- **PDF export** (`pdf-lib`, deterministic) alongside JSON and HTML, on the existing
+  `export/:format` endpoint; `reconcilePending` now re-derives `application/pdf` too.
+- **Two defects found by the new QA and fixed**: the generator crashed with `WinAnsi cannot encode`
+  on any non-CP1252 character, and lines drawn after the last section could land below the bottom
+  margin and be invisible on paper. Non-encodable characters are now substituted with `?`, counted,
+  and disclosed on the exported page; the HTML and JSON exports keep the exact original text.
+- **One privacy leak found and fixed**: a citation URI carrying `user:password@` was rendered
+  verbatim in the reader, HTML and PDF. It is now redacted in every display surface and never made
+  clickable; the "not verifiable" marker is preserved so redaction cannot strengthen a weak citation.
+
+VERIFIED IN THIS ENVIRONMENT:
+- `qa:atlas-results` — **10 groups, 150 assertions PASS**, against an isolated PostgreSQL database and
+  the real generators: classifier totality/conservatism, verdict honesty, JSON byte-stability, HTML
+  byte-stability, PDF determinism, PDF structural validity and pagination, HTML escaping and event-
+  handler injection, credential redaction, tenant isolation of read/export/reconcile (a real id and a
+  fake id are indistinguishable to an outsider), superseded-revision refusal, deterministic PDF
+  reconciliation.
+- Web smoke — **137 assertions** (was 121), including: the reader exposes each section, an unreviewed
+  document is never presented as a reviewed result, the verified section contains only the
+  verifiable finding, credentials never reach the page, and all three export formats are offered.
+- Regressions on the same cluster: `qa:task02` **3399**, `qa:identity` **57**, `qa:backend` **28**,
+  `qa:agent-runtime` **65**, `qa:mission-lifecycle` **88**, `qa:platform-admin` **70**,
+  `qa:platform-users` **165**, `qa:platform-organizations` **87**, `qa:platform-authorization` **107**,
+  `qa:runtime-readiness` **38**, `qa:hermes-contract` **57**, `qa:soul-intelligence` **22 groups**.
+- `pnpm typecheck` 4/4, `pnpm build` 4/4.
+
+BLOCKED — NOT VERIFIED, AND NOT CLAIMED:
+- **No browser and no PDF viewer ran.** The PDF assertions prove structure, content, determinism and
+  pagination count, not visual layout or print fidelity. PDF visual fidelity remains NOT VERIFIED.
+  Responsive behaviour at mobile/tablet/desktop widths is implemented with CSS grid/`clamp` and a
+  768px breakpoint but was not visually confirmed.
+- `qa:storage` stays BLOCKED (no S3 endpoint): signed-URL expiry, bucket privacy and SSE are unchanged
+  and still uncertified here. Artefact upload in `qa:atlas-results` uses an in-memory store double.
+- `qa:a03-service` PART 2 BLOCKED and `qa:egress` fails with a TLS socket disconnect against a live
+  provider — the same environment gap as previous lots, not a regression.
+- No Hatchet server: live dispatch/cancellation remain NOT VERIFIED (unchanged from A06).
+
+No merge, no deployment, no credential and no real customer data.
