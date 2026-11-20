@@ -55,8 +55,35 @@ const backend = createServer((req, res) => {
   // to crash the page, and must not silently masquerade as a valid consent either.
   if (req.url === '/v1/soul/consents') payload = [{ id: 'consent_qa', purpose: 'Soul onboarding — consented context', scopes: ['context:read', 'context:write'], grantedAt: operation.lastActivityAt }];
   if (req.url === '/v1/operations/operation_qa/claims') payload = [];
+  // MISSION A08 — a commercial state with an accepted paid order, so the payment panel has something
+  // real to render. Without it the panel would be untestable in this fixture.
+  if (req.url === '/v1/operations/operation_qa/commercial' && mode.startsWith('payment-')) {
+    payload = {
+      operationId: operation.id, revisionId: 'revision_qa', offers: [], quotes: [],
+      order: { id: 'order_qa', state: 'PAYMENT_REQUIRED', amountMinor: 2500, currency: 'USD', createdAt: operation.lastActivityAt },
+      executionAuthorized: false, payment: { required: true, state: 'PAYMENT_REQUIRED' },
+    };
+    res.end(JSON.stringify(payload)); return;
+  }
   if (['/v1/operations/operation_qa/plan', '/v1/operations/operation_qa/readiness', '/v1/operations/operation_qa/commercial'].includes(req.url)) {
     res.statusCode = 503; res.end(JSON.stringify({ error: { code: 'NOT_CONFIGURED' } })); return;
+  }
+  // MISSION A08 — payment status. The fixture reports a real recorded state; it never claims success.
+  if (req.url === '/v1/operations/operation_qa/payment') {
+    payload = mode === 'payment-authorized'
+      ? {
+          orderId: 'order_qa', orderState: 'AUTHORIZED', refunds: [], executionAuthorized: true,
+          canStartCheckout: false, blockedReason: 'ORDER_AUTHORIZED', providerConfigured: true,
+          payment: { id: 'payment_qa', status: 'AUTHORIZED', amountMinor: 2500, currency: 'USD', capturedMinor: 0, refundedMinor: 0, checkoutUrl: null, expiresAt: null, failureCode: null },
+        }
+      : mode === 'payment-unconfigured'
+        ? { orderId: 'order_qa', orderState: 'PAYMENT_REQUIRED', payment: null, refunds: [], executionAuthorized: false, canStartCheckout: false, blockedReason: 'PROVIDER_NOT_CONFIGURED', providerConfigured: false }
+        : {
+            orderId: 'order_qa', orderState: 'PAYMENT_REQUIRED', refunds: [], executionAuthorized: false,
+            canStartCheckout: true, blockedReason: null, providerConfigured: true,
+            payment: { id: 'payment_qa', status: 'FAILED', amountMinor: 2500, currency: 'USD', capturedMinor: 0, refundedMinor: 0, checkoutUrl: 'https://checkout.stripe.test/qa', expiresAt: null, failureCode: 'card_declined' },
+          };
+    res.end(JSON.stringify(payload)); return;
   }
   if (req.url === '/v1/operations/operation_qa/documents') payload = [doc];
   if (req.url === '/v1/operations/operation_qa/documents/document_qa') payload = doc;
@@ -203,6 +230,16 @@ try {
   const frenchDocument = await page('/fr/missions/operation_qa/results/document_qa', true);
   assert.ok(frenchDocument.includes('En attente d’évaluation') && frenchDocument.includes('Partiel'), 'the French reader is translated'); assertions++;
   assert.ok(!frenchDocument.includes('>UNVERIFIED<'), 'the French reader does not leak raw enums'); assertions++;
+  // MISSION A08 — a failed payment must be visible, recoverable, and must never read as paid.
+  mode = 'payment-failed';
+  const payFailed = await page('/en/missions/operation_qa', true);
+  assert.ok(payFailed.includes('Declined'), 'a declined payment is named in the page'); assertions++;
+  assert.ok(payFailed.includes('You can try again'), 'a declined payment offers a retry'); assertions++;
+  assert.ok(!/Paid<\/span>/.test(payFailed), 'a declined payment is never shown as paid'); assertions++;
+  mode = 'payment-unconfigured';
+  const payUnconfigured = await page('/en/missions/operation_qa', true);
+  assert.ok(payUnconfigured.includes('Payments are not configured'), 'an unconfigured provider is stated plainly'); assertions++;
+  assert.ok(!/Continue to secure checkout/.test(payUnconfigured), 'no checkout button is offered without a provider'); assertions++;
   mode = 'section-failure';
   const partial = await page('/fr/missions/operation_qa', true);
   assert.ok(partial.includes('NOT_CONFIGURED') && partial.includes('QA mission workspace')); assertions++;

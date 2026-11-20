@@ -7,14 +7,24 @@ import { ChangeForm, RefreshMission } from '../../../../components/mission-contr
 import { AcceptQuoteForm, ApprovalDecision, ClaimReviewForm, QuoteForm, ReassembleForm, StartMission } from '../../../../components/mission-flow';
 import { FlowHeader, FlowWorkspace } from '../../../../components/flow';
 import { PlanEditor, type DraftStep } from '../../../../components/plan-editor';
+import { PaymentPanel } from '../../../../components/payment-panel';
 import { copy, locale } from '../../../../lib/copy';
 import { flowCopy } from '../../../../lib/flow-copy';
 import { buildFlowModel, stateOf } from '../../../../lib/flow-model';
 import { missionCopy } from '../../../../lib/mission-copy';
 import { read, detailSchema, summarySchema, activitySchema, documentSchema, guidanceSchema, contextSchema } from '../../../../lib/mission';
-import { planViewSchema, readinessSchema, commercialViewSchema, claimListSchema, formatMoney, type PlanAttempt } from '../../../../lib/plan';
+import { planViewSchema, readinessSchema, commercialViewSchema, claimListSchema, paymentViewSchema, formatMoney, type PlanAttempt } from '../../../../lib/plan';
 
 const consentsSchema = z.array(z.object({ id: z.string(), scope: z.array(z.string()).optional(), scopes: z.array(z.string()).optional(), revokedAt: z.string().optional(), expiresAt: z.string().optional(), grantedAt: z.string() }));
+
+/**
+ * The origin used for provider redirect targets.
+ *
+ * Read from configuration rather than from the incoming Host header: an attacker-supplied Host must
+ * never be able to point the payment provider's return URL at another site. When unset, the form falls
+ * back to the browser's own origin, which the server then validates as absolute http(s).
+ */
+const paymentOrigin = () => process.env.QEYNOX_PUBLIC_ORIGIN ?? 'http://localhost:3000';
 
 const stamp = (lang: 'en' | 'fr', value: string) => {
   const date = new Date(value);
@@ -24,7 +34,7 @@ const stamp = (lang: 'en' | 'fr', value: string) => {
 };
 const dict = (value: Record<string, string>, key: string, fallback: string) => value[key] ?? fallback;
 
-export default async function Page({ params, searchParams }: { params: Promise<{ lang: string; id: string }>; searchParams: Promise<{ after?: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ lang: string; id: string }>; searchParams: Promise<{ after?: string; payment?: string }> }) {
   const p = await params;
   const lang = locale(p.lang);
   const t = copy[lang];
@@ -41,8 +51,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   }
   const op = operation.data;
   const pageSize = 50;
-  const after = z.coerce.number().int().nonnegative().safeParse((await searchParams).after ?? 0);
+  const query = await searchParams;
+  const after = z.coerce.number().int().nonnegative().safeParse(query.after ?? 0);
   const cursor = after.success ? after.data : 0;
+  // MISSION A08 — the provider sends the customer back to this page. The marker only changes wording;
+  // it is never read as evidence that a payment succeeded.
+  const returnMarker = query.payment === 'returned' ? 'returned' : query.payment === 'cancelled' ? 'cancelled' : null;
   const [plan, readiness, summary, activity, pilot, commercial, claims, documents, facts, consents] = await Promise.all([
     read(base + '/plan', planViewSchema),
     read(base + '/readiness', readinessSchema),
@@ -55,6 +69,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     read('/v1/soul/context', contextSchema),
     read('/v1/soul/consents', consentsSchema),
   ]);
+  // MISSION A08 — payment status is read separately so an unavailable payment provider degrades to a
+  // stated condition on the commercial card instead of breaking the whole mission page.
+  const payment = await read(base + '/payment', paymentViewSchema);
+  const paymentData = payment.data && payment.data.orderId === commercial.data?.order?.id ? payment.data : null;
 
   const planData = plan.data && plan.data.operation.id === op.id ? plan.data : null;
   const planStale = planData !== null && planData.operation.version !== op.version;
@@ -330,7 +348,25 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           {commercialData.order ? (
             <p><span className="qx-kicker">{f.orderLabel}</span> <StatusBadge status={commercialData.order.state} lang={lang} /> {formatMoney(commercialData.order.amountMinor, commercialData.order.currency, lang)}</p>
           ) : null}
-          {commercialData.payment.required ? <Feedback error title={f.paymentRequired} /> : null}
+          {/* MISSION A08 — a paid order needs an explicit payment state and a way to recover from any
+              non-paid outcome. The panel never decides success; it renders what the server recorded. */}
+          {commercialData.order && commercialData.order.state !== 'AUTHORIZED' && commercialData.order.state !== 'FULFILLING' && commercialData.order.state !== 'DELIVERED' ? (
+            <PaymentPanel
+              lang={lang}
+              operationId={op.id}
+              orderId={commercialData.order.id}
+              origin={paymentOrigin()}
+              payment={paymentData?.payment ?? null}
+              executionAuthorized={paymentData?.executionAuthorized ?? commercialData.executionAuthorized}
+              canStartCheckout={paymentData?.canStartCheckout ?? false}
+              providerConfigured={paymentData?.providerConfigured ?? false}
+              returned={returnMarker === 'returned'}
+            />
+          ) : null}
+          {!paymentData && commercialData.order ? (
+            <p className="muted">{lang === 'fr' ? 'État du paiement indisponible (' + payment.code + '). Aucun paiement n’est supposé effectué.' : 'Payment status unavailable (' + payment.code + '). No payment is assumed to have happened.'}</p>
+          ) : null}
+          {commercialData.payment.required && !paymentData?.canStartCheckout && paymentData?.providerConfigured === false ? <Feedback error title={f.paymentRequired} /> : null}
           {commercialData.executionAuthorized ? <p className="qx-ready">✓ {f.scopeAccepted}</p> : null}
           <p className="muted qx-hint">{f.quoteNote}</p>
         </>
