@@ -219,3 +219,34 @@ export async function configureAction(previous: ConfigurationActionState, form: 
     return { status: 'error', code: errorCode(error), mode };
   }
 }
+
+export type ServiceValidationState = { status: 'idle' | 'done' | 'error'; code?: string; report?: import('./types').PlatformServiceValidationView };
+
+const validateServiceSchema = z.object({
+  workspaceId: configurationWorkspaceSchema,
+  capabilityId: z.string().trim().min(2).max(120).regex(/^[A-Za-z0-9_.:-]+$/),
+  offerId: z.string().trim().min(2).max(120).regex(/^[A-Za-z0-9_.:-]+$/),
+  expectedProvider: z.literal('world-bank'),
+});
+
+/**
+ * Read-only validation of one service definition against the live configuration. The platform API
+ * re-checks authorization and audits the call; nothing is created, modified or activated. The
+ * iteration basis comes from the ACTIVE business profile and is reported, never invented.
+ */
+export async function validateServiceAction(previous: ServiceValidationState, form: FormData): Promise<ServiceValidationState> {
+  void previous;
+  const parsed = validateServiceSchema.safeParse({
+    workspaceId: String(form.get('workspaceId') ?? ''),
+    capabilityId: String(form.get('capabilityId') ?? ''),
+    offerId: String(form.get('offerId') ?? ''),
+    expectedProvider: String(form.get('expectedProvider') ?? ''),
+  });
+  if (!parsed.success) return { status: 'error', code: 'INVALID_INPUT' };
+  try {
+    const report = await api('/v1/platform/configuration/validate-service', 'POST', parsed.data) as import('./types').PlatformServiceValidationView;
+    return { status: 'done', report };
+  } catch (error) {
+    return { status: 'error', code: errorCode(error) };
+  }
+}

@@ -223,6 +223,8 @@ export interface ConfigurationVerificationPolicyView { capabilityId: string; ver
 export interface ConfigurationOfferView {
   offerId: string; version: number; status: 'ACTIVE' | 'DISABLED'; currency: string; amountMinor: number;
   isExplicitlyFree: boolean; label: string; taxPolicy: 'CONFIG_REQUIRED' | 'CONFIGURED';
+  scope: string[]; exclusions: string[]; regions: string[]; locales: string[];
+  termsVersion: string; deliverableSchemaVersion: number; capabilityIds: string[];
 }
 export interface ConfigurationBudgetPolicyView {
   policyId: string; version: number; status: 'ACTIVE' | 'DISABLED'; currency: string;
@@ -246,4 +248,11 @@ export interface ConfigurationActionState {
   code?: string;
   mode?: 'preview' | 'apply';
   result?: ConfigurationApplyResultView;
+}
+
+export interface ServiceValidationFindingView {
+  code: string; severity: 'BLOCKER' | 'WARNING'; domain: string; detail: string; remedy: string;
+}
+export interface PlatformServiceValidationView {
+  valid: boolean; findings: ServiceValidationFindingView[]; maximumIterations: number | null;
 }

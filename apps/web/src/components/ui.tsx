@@ -9,6 +9,7 @@ const ICONS: Record<string, ReactNode> = {
   life: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="3.6" /><path d="m6 6 3.6 3.6M14.4 14.4 18 18M18 6l-3.6 3.6M9.6 14.4 6 18" /></>,
   layers: <><path d="m12 3.5 8 4.2-8 4.2-8-4.2z" /><path d="m4 12.2 8 4.2 8-4.2" /><path d="m4 16.6 8 4.2 8-4.2" /></>,
   sliders: <><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></>,
+  bag: <><path d="M5 8h14l1.4 11.2a1.6 1.6 0 0 1-1.6 1.8H5.2a1.6 1.6 0 0 1-1.6-1.8z" /><path d="M9 11V6.5a3 3 0 0 1 6 0V11" /></>,
 };
 
 export function Icon({ name }: { name: string }) {
@@ -85,6 +86,7 @@ function navItems(t: (typeof copy)['en']): readonly (readonly [string, string, s
     ['soul', t.soul, 'user'],
     ['support', t.support, 'life'],
     ['capabilities', t.capabilities, 'layers'],
+    ['services', t.services, 'bag'],
     ['account', t.account, 'sliders'],
   ];
 }

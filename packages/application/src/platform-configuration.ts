@@ -1,7 +1,10 @@
 import { DomainError, type ID, type PlatformPrincipal } from '@qeynox/domain';
 import type { PlatformConfigurationApplyInput } from '@qeynox/contracts';
 import { QeyNoxStore, WorkspaceStore } from '@qeynox/persistence';
+import { and, eq } from 'drizzle-orm';
+import { agentProfiles } from '@qeynox/persistence';
 import { ConfigurationService, type ConfigurationApplyResult, type ConfigurationState } from './configuration';
+import { validateServiceConfiguration, type ServiceConfigurationReport } from './service-configuration';
 import { PlatformAdminService, type PlatformPermissionContext } from './platform-admin';
 
 /**
@@ -28,7 +31,7 @@ export class PlatformConfigurationService {
   private readonly configuration: ConfigurationService;
 
   constructor(
-    store: QeyNoxStore,
+    private readonly store: QeyNoxStore,
     private readonly platform: PlatformAdminService,
     private readonly workspaces: WorkspaceStore,
   ) {
@@ -71,6 +74,48 @@ export class PlatformConfigurationService {
   /** Real application, idempotency-key guarded and committed together with its audit row. */
   apply(principal: PlatformPrincipal, input: PlatformConfigurationApplyInput): Promise<ConfigurationApplyResult> {
     return this.run(principal, input, false);
+  }
+
+  /**
+   * Read-only validation of one service definition against the live configuration. Authorization is
+   * the same two-layer shape as state(): platform CONSULTATION plus an existing workspace. Nothing is
+   * created, modified or activated; the report names every BLOCKER and its remedy. The iteration
+   * basis is the ACTIVE business profile for the capability's slot — reported, never assumed.
+   */
+  async validateService(principal: PlatformPrincipal, input: { readonly workspaceId: string; readonly capabilityId: string; readonly offerId: string; readonly expectedProvider: 'world-bank' }): Promise<ServiceConfigurationReport & { readonly maximumIterations: number | null }> {
+    const action = 'READ_PLATFORM_SERVICE_VALIDATION';
+    await this.platform.requirePermission(principal, 'CONSULTATION', {
+      action,
+      targetType: 'PLATFORM_CONFIGURATION',
+      targetId: input.workspaceId,
+    });
+    await this.assertWorkspace(principal, input.workspaceId, action, null);
+    try {
+      const capability = await this.store.getCapability(input.capabilityId as ID);
+      let maximumIterations: number | null = null;
+      if (capability) {
+        const [profile] = await this.store.db.select().from(agentProfiles)
+          .where(and(eq(agentProfiles.roleKey, 'business:' + capability.slot), eq(agentProfiles.active, true))).limit(1);
+        const fromProfile = (profile?.payload as { maxIterations?: unknown } | undefined)?.maxIterations;
+        maximumIterations = typeof fromProfile === 'number' && Number.isInteger(fromProfile) && fromProfile > 0 ? fromProfile : null;
+      }
+      const report = await validateServiceConfiguration(this.store, {
+        capabilityId: input.capabilityId,
+        offerId: input.offerId,
+        workspaceId: input.workspaceId,
+        expectedProvider: input.expectedProvider,
+        maximumIterations,
+      });
+      await this.platform.recordAudit({
+        actor: principal, targetType: 'PLATFORM_CONFIGURATION', targetId: input.workspaceId,
+        action, permission: 'CONSULTATION', outcome: 'SUCCESS',
+        detail: { workspaceId: input.workspaceId, capabilityId: input.capabilityId, offerId: input.offerId, valid: report.valid, blockers: report.findings.filter(finding => finding.severity === 'BLOCKER').map(finding => finding.code) },
+      });
+      return { ...report, maximumIterations };
+    } catch (error: unknown) {
+      await this.denied(principal, action, input.workspaceId, error, { workspaceId: input.workspaceId, capabilityId: input.capabilityId, offerId: input.offerId });
+      throw error;
+    }
   }
 
   /** Controller hook re-exported so route validation stays audited with the same rules. */
@@ -122,7 +167,7 @@ export class PlatformConfigurationService {
     if (!workspace) {
       await this.platform.recordAudit({
         actor: principal, targetType: 'PLATFORM_CONFIGURATION', targetId: workspaceId,
-        action, permission: action === 'READ_PLATFORM_CONFIGURATION' ? 'CONSULTATION' : 'ADMINISTRATION',
+        action, permission: action.startsWith('READ_') ? 'CONSULTATION' : 'ADMINISTRATION',
         outcome: 'DENIED', reason: 'WORKSPACE_NOT_FOUND',
         detail: { workspaceId, ...(reason ? { justification: reason } : {}) },
       });
@@ -146,7 +191,7 @@ export class PlatformConfigurationService {
     try {
       await this.platform.recordAudit({
         actor: principal, targetType: 'PLATFORM_CONFIGURATION', targetId: workspaceId,
-        action, permission: action === 'READ_PLATFORM_CONFIGURATION' ? 'CONSULTATION' : 'ADMINISTRATION',
+        action, permission: action.startsWith('READ_') ? 'CONSULTATION' : 'ADMINISTRATION',
         outcome: code === 'ERROR' ? 'ERROR' : 'DENIED', reason: code, detail,
       });
     } catch {

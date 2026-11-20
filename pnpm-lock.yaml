@@ -131,6 +131,9 @@ importers:
       '@qeynox/application':
         specifier: workspace:*
         version: link:../../packages/application
+      '@qeynox/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@qeynox/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -210,6 +213,9 @@ importers:
       stripe:
         specifier: 23.2.0
         version: 23.2.0(@types/node@22.15.30)
+      zod:
+        specifier: 4.1.11
+        version: 4.1.11
     devDependencies:
       '@types/pg':
         specifier: 8.15.5

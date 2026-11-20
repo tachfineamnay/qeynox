@@ -44,7 +44,12 @@ export interface ConfigurationState {
   readonly profiles: readonly { roleKey: string; status: 'ACTIVE' | 'UNCONFIGURED'; profileId?: string; version?: number }[];
   readonly tools: readonly { connectorId: string; version: string; status: ConfigurationStatus }[];
   readonly verificationPolicies: readonly { capabilityId: string; version: number; status: ConfigurationStatus; minimumSources: number; approvedProviders: readonly string[] }[];
-  readonly offers: readonly { offerId: string; version: number; status: ConfigurationStatus; currency: string; amountMinor: number; isExplicitlyFree: boolean; label: string; taxPolicy: 'CONFIG_REQUIRED' | 'CONFIGURED' }[];
+  readonly offers: readonly {
+    offerId: string; version: number; status: ConfigurationStatus; currency: string; amountMinor: number;
+    isExplicitlyFree: boolean; label: string; taxPolicy: 'CONFIG_REQUIRED' | 'CONFIGURED';
+    scope: readonly string[]; exclusions: readonly string[]; regions: readonly string[]; locales: readonly string[];
+    termsVersion: string; deliverableSchemaVersion: number; capabilityIds: readonly string[];
+  }[];
   readonly budgetPolicies: readonly { policyId: string; version: number; status: ConfigurationStatus; currency: string; maxMoneyMinor: number; providers: readonly string[] }[];
 }
 
@@ -178,8 +183,25 @@ export class ConfigurationService {
         minimumSources: row.minimumSources, approvedProviders: row.approvedProviders,
       })),
       offers: offerRows.map(row => {
-        const configuration = row.configuration as { isExplicitlyFree?: boolean; label?: string; taxPolicy?: string };
-        return { offerId: row.id, version: row.version, status: row.status as ConfigurationStatus, currency: row.currency, amountMinor: row.amountMinor, isExplicitlyFree: configuration.isExplicitlyFree === true, label: typeof configuration.label === 'string' ? configuration.label : row.id, taxPolicy: configuration.taxPolicy === 'CONFIGURED' ? 'CONFIGURED' as const : 'CONFIG_REQUIRED' as const };
+        const configuration = row.configuration as {
+          isExplicitlyFree?: boolean; label?: string; taxPolicy?: string;
+          scope?: unknown; exclusions?: unknown; regions?: unknown; locales?: unknown;
+          termsVersion?: unknown; deliverableSchemaVersion?: unknown; capabilityIds?: unknown;
+        };
+        const strings = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+        return {
+          offerId: row.id, version: row.version, status: row.status as ConfigurationStatus, currency: row.currency, amountMinor: row.amountMinor,
+          isExplicitlyFree: configuration.isExplicitlyFree === true,
+          label: typeof configuration.label === 'string' ? configuration.label : row.id,
+          taxPolicy: configuration.taxPolicy === 'CONFIGURED' ? 'CONFIGURED' as const : 'CONFIG_REQUIRED' as const,
+          scope: strings(configuration.scope),
+          exclusions: strings(configuration.exclusions),
+          regions: strings(configuration.regions),
+          locales: strings(configuration.locales),
+          termsVersion: typeof configuration.termsVersion === 'string' ? configuration.termsVersion : '',
+          deliverableSchemaVersion: typeof configuration.deliverableSchemaVersion === 'number' ? configuration.deliverableSchemaVersion : 1,
+          capabilityIds: strings(configuration.capabilityIds),
+        };
       }),
       budgetPolicies: budgetRows.map(row => {
         const policy = row.payload as { policyId?: string; currency?: string; maxMoneyMinor?: number; unitMaxMinor?: Record<string, number> };
