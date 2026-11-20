@@ -1,0 +1,181 @@
+{
+  "email": "qa-browser-mwoe1ilc@example.org",
+  "log": [
+    {
+      "step": "register-page",
+      "detail": "title=QeyNox — Results as a Service"
+    },
+    {
+      "step": "after-register-nav",
+      "detail": "null"
+    },
+    {
+      "step": "after-register-url",
+      "detail": "http://127.0.0.1:3000/en/soul"
+    },
+    {
+      "step": "mydash-fresh",
+      "detail": "{\"h1\":[\"What result do you need next?\"],\"bodyHasEmpty\":true,\"signedIn\":true}"
+    },
+    {
+      "step": "soul-view-0",
+      "detail": "{\"heading\":[\"Welcome. Before a mission exists, this guided start helps QeyNox understand your activity, objectives, language, needs and preferences. No LLM is called at this stage.\",\"My consented context\"],\"buttons\":[\"Start\"]}"
+    },
+    {
+      "step": "soul-click-0",
+      "detail": "Start"
+    },
+    {
+      "step": "soul-url-0",
+      "detail": "http://127.0.0.1:3000/en/soul"
+    },
+    {
+      "step": "soul-view-1",
+      "detail": "{\"heading\":[\"Welcome. Before a mission exists, this guided start helps QeyNox understand your activity, objectives, language, needs and preferences. No LLM is called at this stage.\",\"My consented context\"],\"buttons\":[\"Begin\"]}"
+    },
+    {
+      "step": "soul-click-1",
+      "detail": "Begin"
+    },
+    {
+      "step": "soul-url-1",
+      "detail": "http://127.0.0.1:3000/en/soul"
+    },
+    {
+      "step": "soul-view-2",
+      "detail": "{\"heading\":[\"Which language should QeyNox use with you?\",\"My consented context\"],\"buttons\":[\"Continue\",\"Skip this question\",\"Pause and resume later\"]}"
+    },
+    {
+      "step": "soul-click-2",
+      "detail": "Continue"
+    },
+    {
+      "step": "soul-url-2",
+      "detail": "http://127.0.0.1:3000/en/soul"
+    },
+    {
+      "step": "soul-view-3",
+      "detail": "{\"heading\":[\"May QeyNox remember your answers as consented context?\",\"My consented context\"],\"buttons\":[\"I accept\",\"Not now\"]}"
+    },
+    {
+      "step": "soul-click-3",
+      "detail": "I accept"
+    },
+    {
+      "step": "soul-url-3",
+      "detail": "http://127.0.0.1:3000/en/soul"
+    },
+    {
+      "step": "soul-view-4",
+      "detail": "{\"heading\":[\"What is your main business activity?\",\"My consented context\"],\"buttons\":[\"Continue\",\"Skip this question\",\"Pause and resume later\",\"Revoke consent\",\"Delete all my context\"]}"
+    },
+    {
+      "step": "soul-click-4",
+      "detail": "Continue"
+    },
+    {
+      "step": "soul-url-4",
+      "detail": "http://127.0.0.1:3000/en/soul"
+    },
+    {
+      "step": "soul-view-5",
+      "detail": "{\"heading\":[\"What outcome do you need first?\",\"My consented context\"],\"buttons\":[\"Continue\",\"Skip this question\",\"Pause and resume later\",\"Revoke consent\",\"Save\",\"Delete\"]}"
+    },
+    {
+      "step": "soul-click-5",
+      "detail": "Continue"
+    },
+    {
+      "step": "soul-url-5",
+      "detail": "http://127.0.0.1:3000/en/soul"
+    },
+    {
+      "step": "soul-view-6",
+      "detail": "{\"heading\":[\"What do you need most from QeyNox?\",\"My consented context\"],\"buttons\":[\"Continue\",\"Skip this question\",\"Pause and resume later\",\"Revoke consent\",\"Save\",\"Delete\"]}"
+    },
+    {
+      "step": "soul-click-6",
+      "detail": "Continue"
+    },
+    {
+      "step": "soul-url-6",
+      "detail": "http://127.0.0.1:3000/en/soul"
+    },
+    {
+      "step": "soul-view-7",
+      "detail": "{\"heading\":[\"How do you prefer to work or receive results?\",\"My consented context\"],\"buttons\":[\"Continue\",\"Skip this question\",\"Pause and resume later\",\"Revoke consent\",\"Save\",\"Delete\"]}"
+    },
+    {
+      "step": "soul-click-7",
+      "detail": "Continue"
+    },
+    {
+      "step": "soul-url-7",
+      "detail": "http://127.0.0.1:3000/en/soul"
+    },
+    {
+      "step": "soul-view-8",
+      "detail": "{\"heading\":[\"State the first objective we should turn into a mission.\",\"My consented context\"],\"buttons\":[\"Create my first mission\",\"Skip this question\",\"Pause and resume later\",\"Revoke consent\",\"Save\",\"Delete\"]}"
+    },
+    {
+      "step": "soul-click-8",
+      "detail": "Create my first mission"
+    },
+    {
+      "step": "soul-url-8",
+      "detail": "http://127.0.0.1:3000/en/missions/454b8cc1-f5fc-453c-83b7-d73b0e17e79b"
+    },
+    {
+      "step": "soul-created-mission",
+      "detail": "http://127.0.0.1:3000/en/missions/454b8cc1-f5fc-453c-83b7-d73b0e17e79b"
+    },
+    {
+      "step": "signed-out",
+      "detail": "http://127.0.0.1:3000/en/account"
+    },
+    {
+      "step": "wrong-password",
+      "detail": "Account / Sign in to your workspace / Email / Password / Sign in / That e-mail or password was not recognized. If the problem persists, check your workspace access. /  / No account yet? Create one /  / Your session is stored in an HTTP-only cookie. Credentials are sent only to the configured QeyNox API. /  / Forgot your "
+    },
+    {
+      "step": "login-destination",
+      "detail": "http://127.0.0.1:3000/en/mydash"
+    },
+    {
+      "step": "after-create-mission",
+      "detail": "http://127.0.0.1:3000/en/missions/c8cd1570-cf17-4d00-94e1-56ab42c64ed2"
+    },
+    {
+      "step": "mission-detail",
+      "detail": "{\"h1\":[\"QA browser-audit mission: verify the onboarding-to-mission journey end to end\",\"Preparation and launch\",\"Active agents\",\"Launch readiness\",\"Plan\",\"Offer and payment\"],\"text\":\"← Back to MyDash\\n\\nMission workspace\\n\\nRefresh now\\nQA browser-audit mission: verify the onboarding-to-mission journey end to end\\n\\nQA browser-audit mission: verify the onboarding-to-mission journey end to end\\n\\nDraft\\nVersion 1\\nRetrieved: Nov 20, 2026, 2:57 AM UTC\\nRecorded steps: 0 / 0\\nView the plan\\nView the results\\n1\\nFrame and launch\\nNo step is recorded.\\nPending\\n2\\nRecorded execution\\nNo step is rec"
+    },
+    {
+      "step": "missions-list",
+      "detail": "RESULTS AS A SERVICE /  / Missions /  / Up to 30 recorded operations in this workspace. Refresh to retrieve current status. /  / Refresh / Recent missions / MISSIONS\tSTATUS\tSTEPS\tRESULTS\tUPDATED\t / OPEN MISSION /  / QA browser-audit mission: verify the onboarding-to-mission journey end to end\tDraft\t0 / 0\t0\tNov 20, 2026, 2:57 AM UTC\tOpen mission / Verify the QA mission journey e"
+    },
+    {
+      "step": "support",
+      "detail": "RESULTS AS A SERVICE /  / Support /  / Your support conversations with QeyNox. Status, priority and history are read live from the external support engine. /  / Support is not configured yet. / NOT_CONFIGURED /  / Server configuration: QEYNOX_CHATWOOT_BASE_URL|QEYNOX_CHATWOOT_API_TOKEN|QEYNOX_CHATWOOT_ACCOUNT_ID|QEYNOX_CHATWOOT_INBOX_ID /  / The operator must provision Chatwoot"
+    },
+    {
+      "step": "account",
+      "detail": "Account / Sign in to your workspace /  / Unverified E-mail not confirmed /  / No e-mail provider is configured on this deployment, so no message was sent. The request was recorded; nothing was delivered. / Sign out"
+    },
+    {
+      "step": "keyboard-/en",
+      "detail": "[{\"name\":\"Skip to content\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"#content\"},{\"name\":\"QQeyNoxResults as a Service\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en\"},{\"name\":\"Home\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en\"},{\"name\":\"How it works\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/how-it-works\"},{\"name\":\"Manifesto\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/manifesto\"},{\"name\":\"Contact\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/contact\"},{\"name\":\"FR\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/fr\"},{\"name\":\"Sign in\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/account\"},{\"name\":\"Open MyDash\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/mydash\"},{\"name\":\"Open MyDash\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/mydash\"}]"
+    },
+    {
+      "step": "keyboard-/en/mydash",
+      "detail": "[{\"name\":\"Skip to content\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"#content\"},{\"name\":\"QQeyNox\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/mydash\"},{\"name\":\"MyDash\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/mydash\"},{\"name\":\"Missions\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/missions\"},{\"name\":\"Soul\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/soul\"},{\"name\":\"Support\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/support\"},{\"name\":\"Capabilities\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/capabilities\"},{\"name\":\"Account\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/account\"},{\"name\":\"EN\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/en/mydash\"},{\"name\":\"FR\",\"tag\":\"a\",\"focusVisible\":true,\"href\":\"/fr/mydash\"}]"
+    },
+    {
+      "step": "console-errors",
+      "detail": "none"
+    },
+    {
+      "step": "page-errors",
+      "detail": "none"
+    }
+  ]
+}

@@ -4,7 +4,24 @@ import { redirect } from 'next/navigation';
 import { createOperationSchema } from '@qeynox/contracts';
 import { z } from 'zod';
 import { api, ApiError, operationSchema, sessionSchema, tokenRequestSchema } from './api';
-import { locale } from './copy';
+import { locale, type Locale } from './copy';
+
+/**
+ * Where a freshly issued session should land.
+ *
+ * A brand-new account (and any account whose guided start is unfinished) belongs in Soul first:
+ * the guided start is opt-in but recommended, and both sign-in and registration must route the
+ * same way. An unavailable onboarding view never blocks access — it falls back to the default.
+ */
+async function soulAwareDestination(lang: Locale, fallback: string): Promise<string> {
+  try {
+    const onboarding = await api('/v1/soul/onboarding') as { status?: string };
+    if (onboarding.status === 'NOT_STARTED' || onboarding.status === 'IN_PROGRESS' || onboarding.status === 'PAUSED') {
+      return '/' + lang + '/soul';
+    }
+  } catch { /* an unavailable onboarding view never blocks access to MyDash */ }
+  return fallback;
+}
 export type FormState = { code: string };
 export async function login(previous: FormState, form: FormData): Promise<FormState> {
   let destination: string;
@@ -12,13 +29,7 @@ export async function login(previous: FormState, form: FormData): Promise<FormSt
     const result = sessionSchema.parse(await api('/v1/auth/login', 'POST', { email: form.get('email'), password: form.get('password') }, false));
     (await cookies()).set('qx-session', JSON.stringify(result), { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', expires: new Date(result.expiresAt) });
     const lang = locale(String(form.get('locale')));
-    destination = '/' + lang + '/mydash';
-    try {
-      const onboarding = await api('/v1/soul/onboarding') as { status?: string };
-      if (onboarding.status === 'NOT_STARTED' || onboarding.status === 'IN_PROGRESS' || onboarding.status === 'PAUSED') {
-        destination = '/' + lang + '/soul';
-      }
-    } catch { /* an unavailable onboarding view never blocks access to MyDash */ }
+    destination = await soulAwareDestination(lang, '/' + lang + '/mydash');
   } catch (error) { return { code: error instanceof ApiError ? error.code : 'UNAVAILABLE' }; }
   redirect(destination);
 }
@@ -71,7 +82,9 @@ export async function registerAction(previous: IdentityState, form: FormData): P
     (await cookies()).set('qx-session', JSON.stringify(result), {
       httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', expires: new Date(result.expiresAt),
     });
-    destination = '/' + locale(String(form.get('locale'))) + '/mydash';
+    // Registration and sign-in route identically: new accounts belong in the guided start.
+    const lang = locale(String(form.get('locale')));
+    destination = await soulAwareDestination(lang, '/' + lang + '/mydash');
   } catch (error) {
     return { kind: 'ERROR', code: error instanceof ApiError ? error.code : 'UNAVAILABLE' };
   }

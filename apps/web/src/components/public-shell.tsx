@@ -10,6 +10,9 @@ import { publicCopy } from '../lib/public-content';
 export function PublicShell({ lang, path, children }: { lang: Locale; path: string; children: ReactNode }) {
   const c = publicCopy[lang];
   const other: Locale = lang === 'en' ? 'fr' : 'en';
+  // Callers pass the route path without a leading slash (e.g. "legal/notice"); normalise it once so
+  // the language switcher never builds a broken href like "/frlegal/notice".
+  const safePath = path ? '/' + path.replace(/^\/+/, '') : '';
   const nav = [
     { path: '', label: c.nav.home },
     { path: 'how-it-works', label: c.nav.how },
@@ -36,7 +39,7 @@ export function PublicShell({ lang, path, children }: { lang: Locale; path: stri
               {nav.map(item => <Link key={item.path} href={'/' + lang + (item.path.length ? '/' + item.path : '')}>{item.label}</Link>)}
             </nav>
             <div className="public-actions">
-              <Link className="public-lang" href={'/' + other + path} hrefLang={other} aria-label={c.language}>{other.toUpperCase()}</Link>
+              <Link className="public-lang" href={'/' + other + safePath} hrefLang={other} aria-label={c.language}>{other.toUpperCase()}</Link>
               <Link className="public-button small secondary" href={'/' + lang + '/account'}>{c.nav.signin}</Link>
               <Link className="public-button small" href={'/' + lang + '/mydash'}>{c.nav.enter}</Link>
             </div>
@@ -46,7 +49,7 @@ export function PublicShell({ lang, path, children }: { lang: Locale; path: stri
                 {nav.map(item => <Link key={item.path} href={'/' + lang + (item.path.length ? '/' + item.path : '')}>{item.label}</Link>)}
                 <Link href={'/' + lang + '/account'}>{c.nav.signin}</Link>
                 <Link href={'/' + lang + '/mydash'}>{c.nav.enter}</Link>
-                <Link href={'/' + other + path} hrefLang={other}>{other.toUpperCase()}</Link>
+                <Link href={'/' + other + safePath} hrefLang={other}>{other.toUpperCase()}</Link>
               </div>
             </details>
           </div>

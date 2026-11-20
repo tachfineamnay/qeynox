@@ -414,4 +414,6 @@ const fr: typeof en = {
   },
 };
 
-export function flowCopy(lang: Locale) { return lang === 'fr' ? fr : en; }
+/** Reviewed catalog shape for the Flow workspace. Future locales must implement this interface. */
+export type FlowCopy = typeof en;
+export function flowCopy(lang: Locale): FlowCopy { return lang === 'fr' ? fr : en; }

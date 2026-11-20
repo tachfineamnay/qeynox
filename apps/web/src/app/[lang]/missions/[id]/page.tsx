@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Fragment, type ReactNode } from 'react';
 import { z } from 'zod';
 import { idSchema } from '@qeynox/contracts';
-import { AppShell, Card, EmptyState, Feedback, SectionHeading, StatusBadge } from '../../../../components/ui';
+import { AppShell, Card, EmptyState, Feedback, PageHeader, SectionHeading, StatusBadge } from '../../../../components/ui';
 import { ChangeForm, RefreshMission } from '../../../../components/mission-controls';
 import { AcceptQuoteForm, ApprovalDecision, ClaimReviewForm, QuoteForm, ReassembleForm, StartMission } from '../../../../components/mission-flow';
 import { FlowHeader, FlowWorkspace } from '../../../../components/flow';
@@ -42,12 +42,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const f = m.flow;
   const flowHeader = flowCopy(lang).header;
   const id = idSchema.safeParse(p.id);
-  if (!id.success) return <AppShell lang={lang} active="missions"><Feedback title={t.missing} error /></AppShell>;
+  if (!id.success) return <AppShell lang={lang} active="missions"><PageHeader eyebrow={t.missions} title={t.missing} /><Feedback title={t.missing} error /></AppShell>;
 
   const base = '/v1/operations/' + id.data;
   const operation = await read(base, detailSchema);
   if (!operation.data) {
-    return <AppShell lang={lang} active="missions"><Link href={'/' + lang + '/mydash'}>← {t.back}</Link><Feedback title={t.missing + ' (' + operation.code + ')'} error /></AppShell>;
+    return <AppShell lang={lang} active="missions"><PageHeader eyebrow={t.missions} title={t.missing} /><Link href={'/' + lang + '/mydash'}>← {t.back}</Link><Feedback title={t.missing + ' (' + operation.code + ')'} error /></AppShell>;
   }
   const op = operation.data;
   const pageSize = 50;

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { SITE_NAME, SITE_URL } from '../../lib/site';
+import { isSupportedLocale } from '../../lib/locales';
 import '../globals.css';
 
 export const metadata: Metadata = {
@@ -12,6 +13,8 @@ export const metadata: Metadata = {
 
 export default async function Layout({ children, params }: { children: React.ReactNode; params: Promise<{ lang: string }> }) {
   const { lang } = await params;
-  if (lang !== 'en' && lang !== 'fr') notFound();
+  // Locale routing is gated by the single registry in lib/locales.ts — adding a locale there is
+  // necessary but not sufficient; the reviewed catalogs must land in the same change.
+  if (!isSupportedLocale(lang)) notFound();
   return <html lang={lang}><body>{children}</body></html>;
 }

@@ -1,0 +1,127 @@
+{
+  "/en/legal/notice": {
+    "switcher": [
+      "/fr/legal/notice",
+      "/fr/legal/notice"
+    ],
+    "rsc404": 0,
+    "consoleErrors": 0
+  },
+  "/fr/legal/privacy": {
+    "switcher": [
+      "/en/legal/privacy",
+      "/en/legal/privacy"
+    ],
+    "rsc404": 0,
+    "consoleErrors": 0
+  },
+  "/en/how-it-works": {
+    "switcher": [
+      "/fr/how-it-works",
+      "/fr/how-it-works"
+    ],
+    "rsc404": 0,
+    "consoleErrors": 0
+  },
+  "/fr/manifesto": {
+    "switcher": [
+      "/en/manifesto",
+      "/en/manifesto"
+    ],
+    "rsc404": 0,
+    "consoleErrors": 0
+  },
+  "/en/contact": {
+    "switcher": [
+      "/fr/contact",
+      "/fr/contact"
+    ],
+    "rsc404": 0,
+    "consoleErrors": 0
+  },
+  "/en/missions/does-not-exist": {
+    "h1": [
+      "Mission could not be loaded."
+    ]
+  },
+  "/en/missions/not-an-id-at-all-!": {
+    "h1": [
+      "Mission could not be loaded."
+    ]
+  },
+  "results-invalid": {
+    "h1": [
+      "This section is unavailable."
+    ]
+  },
+  "mobile-public-menu": {
+    "visible": true,
+    "links": [
+      {
+        "text": "Home",
+        "href": "/en"
+      },
+      {
+        "text": "How it works",
+        "href": "/en/how-it-works"
+      },
+      {
+        "text": "Manifesto",
+        "href": "/en/manifesto"
+      },
+      {
+        "text": "Contact",
+        "href": "/en/contact"
+      },
+      {
+        "text": "Sign in",
+        "href": "/en/account"
+      },
+      {
+        "text": "Open MyDash",
+        "href": "/en/mydash"
+      },
+      {
+        "text": "FR",
+        "href": "/fr"
+      }
+    ]
+  },
+  "mobile-app-menu": {
+    "visible": true,
+    "links": [
+      {
+        "text": "MyDash",
+        "href": "/en/mydash"
+      },
+      {
+        "text": "Missions",
+        "href": "/en/missions"
+      },
+      {
+        "text": "Soul",
+        "href": "/en/soul"
+      },
+      {
+        "text": "Support",
+        "href": "/en/support"
+      },
+      {
+        "text": "Capabilities",
+        "href": "/en/capabilities"
+      },
+      {
+        "text": "Account",
+        "href": "/en/account"
+      }
+    ]
+  },
+  "reduced-motion": {
+    "h1": [
+      "A useful business result, not agent theatre."
+    ],
+    "consoleErrors": 0,
+    "pageErrors": 0
+  },
+  "loading-caption": false
+}
