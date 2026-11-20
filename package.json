@@ -32,7 +32,8 @@
     "qa:runtime-readiness": "pnpm --filter @qeynox/application qa:runtime-readiness",
     "qa:a03-service": "pnpm --filter @qeynox/worker qa:a03-service",
     "qa:identity": "pnpm --filter @qeynox/api qa:identity",
-    "qa:soul-intelligence": "pnpm --filter @qeynox/api qa:soul-intelligence"
+    "qa:soul-intelligence": "pnpm --filter @qeynox/api qa:soul-intelligence",
+    "qa:mission-lifecycle": "pnpm --filter @qeynox/worker qa:mission-lifecycle"
   },
   "devDependencies": {
     "typescript": "5.9.3",

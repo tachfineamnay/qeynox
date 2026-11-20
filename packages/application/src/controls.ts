@@ -44,10 +44,22 @@ export class OperationControlService {
     });
   }
 
+  /**
+   * A06: approval accuracy.
+   *
+   * An approval binds to one plan revision. If the operation moved to a newer revision, the approval
+   * no longer authorises anything and must be refused as STALE rather than as a generic invalid
+   * state, so the customer is told to re-review instead of guessing why the button failed. A
+   * concurrent double-decision is a CONFLICT, and only one of the two can win.
+   */
   async decideApproval(actor:Principal,approvalId:ID,decision:'APPROVED'|'REJECTED',operationId?:ID){
     const approval=await this.store.getApproval(actor,approvalId),op=await this.store.getOperation(actor,approval.operationId);
     if(operationId&&approval.operationId!==operationId)throw new DomainError('DENIED','Approval does not belong to requested operation');
-    if(op.currentRevisionId!==approval.planRevisionId||op.status!=='WAITING_APPROVAL')throw new DomainError('INVALID_STATE','Approval is stale or operation is not waiting');
-    return this.store.decideApproval(actor,approvalId,decision);
+    if(op.currentRevisionId!==approval.planRevisionId)throw new DomainError('INVALID_STATE','STALE_APPROVAL: the plan was revised after this approval was requested');
+    if(op.status!=='WAITING_APPROVAL')throw new DomainError('INVALID_STATE','Approval is stale or operation is not waiting');
+    const decided=await this.store.decideApproval(actor,approvalId,decision);
+    // A decision is not proof the operation moved; record the observed transition attempt.
+    await this.store.writeEvent({workspaceId:actor.workspaceId,operationId:op.id,kind:'APPROVAL_'+decision,actorId:actor.userId,data:{approvalId,planRevisionId:approval.planRevisionId,purpose:approval.purpose},occurredAt:new Date().toISOString()});
+    return decided;
   }
 }

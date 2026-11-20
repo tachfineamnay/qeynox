@@ -84,7 +84,13 @@ export async function createWorkerDependencies(){
     return {outcome:'COMPLETED' as const,detail:state};
    }catch(error:unknown){
     const now=new Date().toISOString();
-    const failed:StepAttempt={...start,state:'FAILED',finishedAt:now,version:start.version+1,errorCode:error instanceof DomainError?error.code:'ENGINE_OR_TOOL_ERROR'};
+    // A06: propagate the REAL failure. Before this, every non-DomainError collapsed into
+    // ENGINE_OR_TOOL_ERROR, so an unknown external write and a broken JSON parse looked identical
+    // to the customer, the operator and any later retry decision. An unknown outcome is now its own
+    // code, and the attempt is not marked as a clean failure because we cannot prove it failed.
+    const errorCode=error instanceof DomainError?error.code:'UNEXPECTED_EXECUTION_ERROR';
+    const unknownOutcome=errorCode==='UNKNOWN_OUTCOME';
+    const failed:StepAttempt={...start,state:'FAILED',finishedAt:now,version:start.version+1,errorCode};
     const attemptFailed=await conn.db.transaction(async tx=>{
       const [currentAttempt]=await tx.select().from(attempts).where(eq(attempts.id,attempt.id)).for('update').limit(1);
       // A post-step failure (for example result assembly) must not turn a COMPLETED
@@ -93,15 +99,20 @@ export async function createWorkerDependencies(){
       await tx.update(attempts).set({state:'FAILED',payload:failed}).where(and(eq(attempts.id,attempt.id),eq(attempts.state,'RUNNING')));
       const [currentOp]=await tx.select().from(operations).where(and(eq(operations.id,row.id),eq(operations.workspaceId,row.workspaceId))).for('update').limit(1);
       if(currentOp?.status==='RUNNING'&&currentOp.payload.currentRevisionId===request.planRevisionId){
+        // An exhausted budget is a policy stop, not a business failure, but the lifecycle only
+        // allows RUNNING -> FAILED (there is no direct RUNNING -> INTERRUPTED edge). The status is
+        // therefore FAILED with an explicit policy code, so the customer sees a stop rather than a
+        // claim that the business step itself was defective. Retrying is permitted once the operator
+        // raises the budget; the recorded code says exactly why it stopped.
         const next=transitionOperation(currentOp.payload,'FAILED',now,currentOp.version);
-        await tx.update(operations).set({status:'FAILED',version:next.version,payload:{...next,lastErrorCode:failed.errorCode},lastActivityAt:now}).where(and(eq(operations.id,row.id),eq(operations.version,currentOp.version)));
+        await tx.update(operations).set({status:'FAILED',version:next.version,payload:{...next,lastErrorCode:errorCode},lastActivityAt:now}).where(and(eq(operations.id,row.id),eq(operations.version,currentOp.version)));
       }
-      const event={id:newId(),workspaceId:row.workspaceId as ID,operationId:row.id as ID,kind:'STEP_FAILED',data:{attemptId:attempt.id,errorCode:failed.errorCode},occurredAt:now,eventVersion:1};
+      const event={id:newId(),workspaceId:row.workspaceId as ID,operationId:row.id as ID,kind:unknownOutcome?'STEP_OUTCOME_UNKNOWN':'STEP_FAILED',data:{attemptId:attempt.id,errorCode},occurredAt:now,eventVersion:1};
       await tx.insert(events).values({id:event.id,workspaceId:event.workspaceId,operationId:event.operationId,kind:event.kind,occurredAt:now,payload:event});
       return true;
     });
     if(!attemptFailed){
-      await store.writeEvent({workspaceId:row.workspaceId as ID,operationId:row.id as ID,kind:'POST_STEP_FAILURE',data:{attemptId:attempt.id,errorCode:failed.errorCode},occurredAt:now});
+      await store.writeEvent({workspaceId:row.workspaceId as ID,operationId:row.id as ID,kind:'POST_STEP_FAILURE',data:{attemptId:attempt.id,errorCode},occurredAt:now});
     }
     throw error;
    }

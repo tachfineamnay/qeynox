@@ -2,6 +2,7 @@ export interface Clock {now():Date}
 export const systemClock:Clock={now:()=>new Date()};
 export * from './operations';
 export * from './controls';
+export * from './interruption';
 export * from './planning';
 export * from './revisions';
 export * from './execution';
@@ -16,6 +17,7 @@ export * from './commerce';
 export * from './payments';
 export * from './budgets';
 export * from './read-models';
+export * from './lifecycle-view';
 export * from './plan-read';
 export * from './runtime-readiness';
 export * from './capability-availability';

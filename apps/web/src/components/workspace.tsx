@@ -41,7 +41,9 @@ export async function Workspace({ lang, listOnly = false }: { lang: Locale; list
   }
 
   const active = rows.filter(row => !finished.includes(row.status));
-  const decisions = rows.filter(row => row.pendingApprovals > 0 || ['APPROVAL', 'REQUIRES_REVIEW', 'FAILED'].includes(row.attention));
+  // A06: an interrupted or ambiguous stop needs a decision too. Before this, INTERRUPTED produced
+  // attention NONE, so the operation silently left the customer's decision list.
+  const decisions = rows.filter(row => row.pendingApprovals > 0 || ['APPROVAL', 'REQUIRES_REVIEW', 'FAILED', 'INTERRUPTION', 'STALLED'].includes(row.attention));
   const withResults = rows.filter(row => row.resultCount > 0);
   const resultTotal = withResults.reduce((total, row) => total + row.resultCount, 0);
   const focus = active.slice(0, 3);
