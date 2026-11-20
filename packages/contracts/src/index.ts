@@ -29,3 +29,4 @@ export type CreateOperationInput=z.infer<typeof createOperationSchema>;
 export * from './planning';
 export * from './configuration';
 export * from './service-catalogue';
+export * from './connections';

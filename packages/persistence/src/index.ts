@@ -7,3 +7,4 @@ export * from './platform-user-store';
 export * from './platform-operations-store';
 export * from './support-link-store';
 export * from './workspace-store';
+export * from './connection-schema';
