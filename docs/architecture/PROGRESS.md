@@ -642,3 +642,60 @@ BLOCKED — NOT VERIFIED, AND NOT CLAIMED:
 - No Hatchet server: live dispatch/cancellation remain NOT VERIFIED (unchanged from A06).
 
 No merge, no deployment, no credential and no real customer data.
+
+---
+
+## MISSION A08 — Stripe commercial integration (branch `arena/91ddb82a-qeynox`)
+
+Scope: secure one-time payments for versioned RaaS offers through the existing `PaymentPort`. No
+subscriptions. Configuration and operating notes: `docs/architecture/STRIPE_PAYMENTS.md`.
+
+DELIVERED:
+- **`StripePaymentProvider`** (`stripe-payments.ts`): test-mode-only adapter, pinned API version, manual
+  capture so authorization and capture are separate auditable steps, amount/currency reconciled against
+  the quote before any state is recorded, no SDK retries (idempotency keys own retries).
+- **`PaymentService`** (`payment-service.ts`): checkout idempotency, single-live-payment enforcement,
+  webhook verification and application, ordered/deduplicated event ledger, capture, capped refunds,
+  reconciliation, and the customer read model.
+- **Webhook route** (`apps/api/src/commerce/payments.controller.ts`): public by signature, raw-body
+  verified, `rawBody: true` enabled in `main.ts`.
+- **Migration `0019_payments.sql`** + Drizzle schema: `raas_payments`, `raas_refunds`, extended
+  `raas_payment_events`, with a partial unique index and CHECK constraints enforcing the money invariants
+  in the database.
+- **Payment UX** (`payment-panel.tsx`): every state named with a next step, checkout button only when the
+  server says checkout is possible, idempotency key stable across retries, `?payment=returned` treated as
+  wording only.
+
+DEFECTS FOUND AND FIXED DURING VERIFICATION:
+- `assertExecutionAllowed` reported an unpaid order as `PAYMENT_NOT_CONFIGURED` — conflating "you have not
+  paid" with "we cannot take money". Now `PAYMENT_REQUIRED`, with `DISPUTED`/`CANCELLED` distinct.
+- `confirmReturn` originally called `reconcileOrder`, which writes state — violating its own rule that a
+  redirect never changes anything. It now performs a read-only provider lookup and returns what the
+  provider says alongside the recorded state.
+- The QA provider double reused one payment-intent id per order; the unique index caught it, and the
+  double was made accurate (real Stripe mints a new intent per session).
+
+VERIFIED IN THIS ENVIRONMENT:
+- `qa:stripe-payments` — **17 groups, 108 assertions PASS** against an isolated PostgreSQL database:
+  fail-closed provider, live-key refusal, real HMAC signature accept/reject (forged, tampered, truncated,
+  wrong-secret, stale), checkout idempotency and concurrent races, unsigned webhook refusal, duplicate and
+  concurrent-duplicate delivery, late/out-of-order events, orphan events, failed/expired/cancelled/disputed
+  states, capture idempotency, refund capping/idempotency/failure, expired-quote and mutated-amount
+  refusal, redirect-is-not-proof, tenant isolation, ledger integrity.
+- `qa:task02` **3695** (was 3399) — the migration/index/constraint declaration guard now covers the A08
+  tables.
+- Web smoke **146** (was 137): a declined payment is named and recoverable, never shown as paid; an
+  unconfigured provider is stated plainly with no checkout button.
+- Regressions: `qa:backend` 28, `qa:agent-runtime` 65, `qa:mission-lifecycle` 88, `qa:atlas-results` 150,
+  `qa:platform-admin` 70, `qa:platform-users` 165, `qa:platform-organizations` 87,
+  `qa:runtime-readiness` 38, `qa:hermes-contract` 57.
+
+BLOCKED — NOT VERIFIED, AND NOT CLAIMED:
+- **Stripe was never contacted.** All provider behaviour comes from a deterministic in-process double.
+  Live test-mode Stripe, real webhook delivery, dashboard configuration and error semantics are NOT
+  VERIFIED. Signatures are real HMAC verified by the Stripe SDK, which is the one part exercised for real.
+- **No browser ran.** The redirect to the hosted checkout page and the card UI are NOT VERIFIED.
+- `qa:raas` fails with a TLS socket disconnect against the World Bank provider. Confirmed pre-existing by
+  reverting the A08 commerce change in place and reproducing the identical failure.
+
+No merge, no deployment, no credential and no real customer data.

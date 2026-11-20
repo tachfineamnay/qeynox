@@ -17,6 +17,8 @@ export * from './artifacts';
 export * from './s3';
 export * from './commerce';
 export * from './payments';
+export * from './stripe-payments';
+export * from './payment-service';
 export * from './budgets';
 export * from './read-models';
 export * from './lifecycle-view';

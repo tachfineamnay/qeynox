@@ -168,6 +168,9 @@ importers:
       pdf-lib:
         specifier: 1.17.1
         version: 1.17.1
+      stripe:
+        specifier: 23.2.0
+        version: 23.2.0(@types/node@22.15.30)
 
   packages/application:
     dependencies:
@@ -204,6 +207,9 @@ importers:
       pg:
         specifier: 8.16.3
         version: 8.16.3
+      stripe:
+        specifier: 23.2.0
+        version: 23.2.0(@types/node@22.15.30)
     devDependencies:
       '@types/pg':
         specifier: 8.15.5
@@ -1654,6 +1660,15 @@ packages:
   strip-ansi@6.0.1:
     resolution: {integrity: sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==}
     engines: {node: '>=8'}
+
+  stripe@23.2.0:
+    resolution: {integrity: sha512-0W0J4yA9qFO2rnF61v8Y62OiO2SmAR+Cv04VJaFUMpCxiq8lG5bxEYbeSMSpMDR9ofFZGd+Z/iUIgSFbOolmUw==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@types/node': '>=20'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
 
   strtok3@10.7.0:
     resolution: {integrity: sha512-iAqrCpp7UXD2FZiHWhLXqdJ6CmNeVzRkkHAyyhhKMVtbVm2KtPX3D/bJNonvtcyLTHS4rwqP2pz9fsjK1K4z0Q==}
@@ -3106,6 +3121,10 @@ snapshots:
   strip-ansi@6.0.1:
     dependencies:
       ansi-regex: 5.0.1
+
+  stripe@23.2.0(@types/node@22.15.30):
+    optionalDependencies:
+      '@types/node': 22.15.30
 
   strtok3@10.7.0:
     dependencies:

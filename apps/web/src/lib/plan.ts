@@ -206,11 +206,35 @@ export const editorStepSchema = z.object({
 export const planPayloadSchema = z.object({ steps: z.array(editorStepSchema).min(1).max(100) });
 export type EditorStep = z.infer<typeof editorStepSchema>;
 
-export function formatMoney(minor: number | null, currency: string | null, lang: 'en' | 'fr'): string {
-  if (minor === null || !currency) return '—';
-  try {
-    return new Intl.NumberFormat(lang, { style: 'currency', currency, maximumFractionDigits: 2 }).format(minor / 100);
-  } catch {
-    return minor / 100 + ' ' + currency;
-  }
-}
+// Re-exported so existing server call sites keep working; the implementation lives in a client-safe
+// module because the payment panel formats amounts too.
+export { formatMoney } from './money';
+
+/**
+ * MIRROR OF `GET /v1/operations/:id/payment` (MISSION A08).
+ *
+ * Every state the customer can see is named explicitly by the server. The page must never infer
+ * "paid" from anything, so there is no boolean here that the UI could misread as success: it reads
+ * `executionAuthorized`, which the server derives from a verified order state.
+ */
+export const paymentViewSchema = z.object({
+  orderId: z.string().nullable(),
+  orderState: z.string().nullable(),
+  payment: z.object({
+    id: z.string(),
+    status: z.enum(['CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'EXPIRED', 'CANCELLED', 'DISPUTED', 'REFUNDED']),
+    amountMinor: z.number().int(),
+    currency: z.string(),
+    capturedMinor: z.number().int(),
+    refundedMinor: z.number().int(),
+    checkoutUrl: z.string().nullable(),
+    expiresAt: z.string().nullable(),
+    failureCode: z.string().nullable(),
+  }).nullable(),
+  refunds: z.array(z.object({ id: z.string(), status: z.string(), amountMinor: z.number().int(), createdAt: z.string() })),
+  executionAuthorized: z.boolean(),
+  canStartCheckout: z.boolean(),
+  blockedReason: z.string().nullable(),
+  providerConfigured: z.boolean(),
+});
+export type PaymentView = z.infer<typeof paymentViewSchema>;

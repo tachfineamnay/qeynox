@@ -101,7 +101,12 @@ export class CommerceService {
   await this.store.getOperation(actor,operationId);
   const [order]=await this.store.db.select().from(commercialOrders).where(and(eq(commercialOrders.workspaceId,actor.workspaceId),eq(commercialOrders.operationId,operationId),eq(commercialOrders.revisionId,revisionId))).limit(1);
   if(!order)throw new DomainError('PAYMENT_REQUIRED','Accepted service scope is required');
-  if(order.state==='PAYMENT_REQUIRED')throw new DomainError('PAYMENT_NOT_CONFIGURED','No payment provider configured');
+  // MISSION A08 — an unpaid order is NOT a configuration failure. Once a payment provider can be
+  // configured, "you have not paid" and "we cannot take money" are different facts and must stay
+  // distinguishable; conflating them hid a real unpaid order behind a 503.
+  if(order.state==='PAYMENT_REQUIRED')throw new DomainError('PAYMENT_REQUIRED','Payment is required before execution; the order is not authorized');
+  if(order.state==='DISPUTED')throw new DomainError('DENIED','Order is disputed and cannot execute');
+  if(order.state==='CANCELLED')throw new DomainError('DENIED','Order was cancelled');
   if(!['AUTHORIZED','FULFILLING'].includes(order.state))throw new DomainError('DENIED','Order is not authorized for execution');
  }
 }

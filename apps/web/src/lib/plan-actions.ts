@@ -6,7 +6,11 @@ import { api, ApiError } from './api';
 import { locale } from './copy';
 import { planPayloadSchema } from './plan';
 
-export type ActionResult = { code: string };
+/**
+ * `checkoutUrl` is present only when a provider actually returned a hosted page. It is a redirect
+ * target, never evidence that money moved.
+ */
+export type ActionResult = { code: string; checkoutUrl?: string };
 
 function failure(error: unknown): ActionResult {
   if (error instanceof ApiError) return { code: error.code };
@@ -111,6 +115,36 @@ export async function acceptQuote(previous: ActionResult, form: FormData): Promi
     await api(`/v1/operations/${operationId}/commercial/quotes/${quoteId}/accept`, 'POST', { idempotencyKey });
     revalidatePath(`/${lang}/missions/${operationId}`);
     return { code: 'OK' };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/**
+ * MISSION A08 — starts (or safely resumes) checkout for an accepted paid order.
+ *
+ * The idempotency key is generated once by the form and kept across retries, so a double submit or a
+ * refresh cannot create a second payment. The success/cancel URLs point back at this mission page; they
+ * are navigation targets, never proof — the server treats the return page as a read.
+ */
+export async function startCheckout(previous: ActionResult, form: FormData): Promise<ActionResult> {
+  try {
+    const operationId = idSchema.parse(form.get('operationId'));
+    const orderId = idSchema.parse(form.get('orderId'));
+    const idempotencyKey = z.string().min(8).max(200).parse(form.get('idempotencyKey'));
+    const lang = locale(String(form.get('locale')));
+    const origin = z.string().url().parse(form.get('origin'));
+    const result = z.object({ checkoutUrl: z.string().nullable(), reused: z.boolean() })
+      .parse(await api(`/v1/operations/${operationId}/payments/checkout`, 'POST', {
+        orderId, idempotencyKey,
+        successUrl: origin + '/' + lang + '/missions/' + operationId + '?payment=returned',
+        cancelUrl: origin + '/' + lang + '/missions/' + operationId + '?payment=cancelled',
+        expiresInSeconds: 1800,
+      }));
+    revalidatePath(`/${lang}/missions/${operationId}`);
+    // The URL is returned to the page, which redirects. A missing URL is a real failure, not a success.
+    if (!result.checkoutUrl) return { code: 'PAYMENT_NOT_CONFIGURED' };
+    return { code: 'OK', checkoutUrl: result.checkoutUrl };
   } catch (error) {
     return failure(error);
   }
