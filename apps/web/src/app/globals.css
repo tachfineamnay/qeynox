@@ -580,3 +580,16 @@
 .pay-form{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .pay-form button{min-height:44px}
 @media print{.pay-form,.pay-panel button{display:none!important}}
+
+/* MISSION A12 — Pilot plan proposal panel (Professional Blue) */
+.qx-proposal { border: 1px solid rgba(70, 93, 150, 0.35); border-radius: 0.75rem; padding: 1rem 1.1rem; margin: 0 0 1.25rem; background: rgba(23, 35, 68, 0.28); }
+.qx-proposal h4 { margin: 0 0 0.4rem; font-size: 1rem; }
+.qx-proposal h5 { margin: 0.85rem 0 0.35rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--qx-accent, #8fb0ff); }
+.qx-proposal-idle p { margin: 0.2rem 0 0.7rem; }
+.qx-proposal-steps { list-style: none; padding: 0; margin: 0.6rem 0; display: grid; gap: 0.5rem; }
+.qx-proposal-question-list { display: grid; gap: 0.7rem; padding-left: 1.2rem; }
+.qx-proposal-question-list input { width: 100%; margin-top: 0.3rem; }
+.qx-proposal-notes { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.3rem; font-size: 0.9rem; }
+.qx-proposal .qx-step-top { display: flex; gap: 0.6rem; }
+.qx-proposal .qx-step-index { opacity: 0.75; font-weight: 600; }
+.qx-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }

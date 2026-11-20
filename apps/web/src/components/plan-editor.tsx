@@ -5,6 +5,7 @@ import { missionCopy } from '../lib/mission-copy';
 import type { Locale } from '../lib/copy';
 import { errorText } from './forms';
 import { Feedback } from './ui';
+import { ProposalPanel, type ProposalApply } from './proposal-panel';
 
 type Intent = 'RESEARCH' | 'ANALYZE' | 'VERIFY' | 'EXTERNAL_ACTION';
 export type DraftStep = {
@@ -29,8 +30,9 @@ function emptyStep(key: string, capabilityId: string): DraftStep {
 }
 
 /**
- * Writes a plan revision from configured capabilities only. The operator is the author and the
- * validator: no proposed plan is generated or simulated here.
+ * Writes a plan revision from configured capabilities only. The customer is the author and the
+ * validator of what is saved: Pilot may draft an advisory proposal (see ProposalPanel), every step
+ * of which can be edited or deleted here before the plan is explicitly confirmed and saved.
  */
 export function PlanEditor({ lang, operationId, version, mode, revisionId, capabilities, initialSteps }: {
   lang: Locale;
@@ -64,6 +66,40 @@ export function PlanEditor({ lang, operationId, version, mode, revisionId, capab
     ...current,
     emptyStep('new-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), capabilities[0]?.id ?? ''),
   ]);
+  // Advisory draft from Pilot: copy into the editor in dependency order. Never persisted here —
+  // the customer reviews and saves the plan explicitly.
+  const applyProposal = (proposal: ProposalApply[]) => {
+    const indegree = proposal.map(step => new Set(step.dependsOnIndices).size);
+    const remaining = new Set(proposal.map((_, index) => index));
+    const order: number[] = [];
+    const position = new Map<number, number>();
+    while (remaining.size > 0) {
+      const next = [...remaining].sort((a, b) => a - b).find(index => indegree[index] === 0);
+      if (next === undefined) break; // defensive: the server rejects cycles, so this cannot loop forever
+      remaining.delete(next);
+      position.set(next, order.length);
+      order.push(next);
+      for (const other of remaining) {
+        if (proposal[other]?.dependsOnIndices.includes(next)) indegree[other] = (indegree[other] ?? 1) - 1;
+      }
+    }
+    if (order.length !== proposal.length) return; // refuse to apply an unorderable draft
+    const keys = order.map((_, i) => 'p-' + Date.now().toString(36) + '-' + i);
+    setSteps(order.map((sourceIndex, i) => {
+      const step = proposal[sourceIndex]!;
+      return {
+        key: keys[i]!,
+        title: step.title,
+        description: step.description,
+        capabilityId: capabilities.some(item => item.id === step.capabilityId) ? step.capabilityId : capabilities[0]!.id,
+        intent: step.intent,
+        dependsOn: step.dependsOnIndices
+          .map(dep => position.get(dep))
+          .filter((value): value is number => value !== undefined)
+          .map(depPosition => keys[depPosition]!),
+      };
+    }));
+  };
 
   if (!capabilities.length) {
     return <Feedback title={f.capabilitiesTitle} error>{f.capabilitiesEmpty}</Feedback>;
@@ -77,6 +113,8 @@ export function PlanEditor({ lang, operationId, version, mode, revisionId, capab
       <input type="hidden" name="mode" value={mode} />
       {mode === 'revise' && revisionId ? <input type="hidden" name="revisionId" value={revisionId} /> : null}
       <input type="hidden" name="steps" value={JSON.stringify(steps)} />
+
+      <ProposalPanel lang={lang} operationId={operationId} onApply={applyProposal} />
 
       {steps.length === 0 ? <p className="muted">{f.planNoneCopy}</p> : null}
 
