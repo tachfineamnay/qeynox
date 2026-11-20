@@ -44,7 +44,8 @@
     "qa:pilot-planner": "pnpm --filter @qeynox/api qa:pilot-planner",
     "qa:mission-lifecycle": "pnpm --filter @qeynox/worker qa:mission-lifecycle",
     "qa:atlas-results": "pnpm --filter @qeynox/worker qa:atlas-results",
-    "qa:stripe-payments": "pnpm --filter @qeynox/worker qa:stripe-payments"
+    "qa:stripe-payments": "pnpm --filter @qeynox/worker qa:stripe-payments",
+    "qa:brave-search": "pnpm --filter @qeynox/worker qa:brave-search"
   },
   "devDependencies": {
     "typescript": "5.9.3",

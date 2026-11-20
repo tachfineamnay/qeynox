@@ -166,7 +166,7 @@ async function main(): Promise<void> {
     const started = await execution.start(owner, operation.id, ready.version, 'qa-raas-start-0001') as { attemptId: ID };
     assert(typeof started.attemptId === 'string', 'research step attempt created');
 
-    const registry = await createConfiguredToolRegistry(db, { worldBankEnabled: true, egress: egressPolicyFromEnv() });
+    const registry = await createConfiguredToolRegistry(db, { worldBankEnabled: true, braveSearchEnabled: false, egress: egressPolicyFromEnv() });
     const broker = new ToolBroker(registry, new PgToolLedger(db));
     const call: ConnectorCall = {
       operationId: operation.id, planRevisionId: plan.revision.id, stepAttemptId: started.attemptId,

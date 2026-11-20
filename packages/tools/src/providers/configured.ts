@@ -5,10 +5,12 @@ import { ToolRegistry } from '../registry';
 import type { ConnectorManifest } from '../manifest';
 import { EgressPolicy, egressPolicyFromEnv } from '../egress';
 import { WorldBankConnector, worldBankManifest } from './world-bank';
+import { BraveSearchConnector, braveSearchManifest } from './brave-search';
 
-export interface ProviderEnvironment { readonly worldBankEnabled: boolean; readonly egress: EgressPolicy }
+export interface ProviderEnvironment { readonly worldBankEnabled: boolean; readonly braveSearchEnabled: boolean; readonly braveSearchApiKey?: string; readonly egress: EgressPolicy }
 export function providerEnvironmentFromEnv(env: NodeJS.ProcessEnv = process.env): ProviderEnvironment {
-  return { worldBankEnabled: env.QEYNOX_WORLD_BANK_ENABLED === 'true', egress: egressPolicyFromEnv(env) };
+  const braveSearchApiKey = (env.QEYNOX_BRAVE_SEARCH_API_KEY ?? '').trim() || undefined;
+  return { worldBankEnabled: env.QEYNOX_WORLD_BANK_ENABLED === 'true', braveSearchEnabled: env.QEYNOX_BRAVE_SEARCH_ENABLED === 'true', braveSearchApiKey, egress: egressPolicyFromEnv(env) };
 }
 function reviewedManifest(configured: ConnectorManifest | undefined, reviewed: ConnectorManifest, connectorId: string, connectorVersion: string): ConnectorManifest {
   if (!configured) throw new DomainError('INVALID_INPUT', 'Configured connector manifest is missing: ' + connectorId);
@@ -38,6 +40,23 @@ export async function createConfiguredToolRegistry(db: QeyNoxDatabase, env: Prov
   if (!configuredRows.length) return registry;
   const capabilityRows = await db.select().from(capabilities).where(eq(capabilities.status, 'ACTIVE'));
   for (const row of configuredRows) {
+    if (row.connectorId === 'brave-search') {
+      if (!env.braveSearchEnabled) throw new DomainError('NOT_CONFIGURED', 'Brave Search connector is configured but QEYNOX_BRAVE_SEARCH_ENABLED is not true');
+      if (!env.braveSearchApiKey) throw new DomainError('NOT_CONFIGURED', 'Brave Search connector is configured but QEYNOX_BRAVE_SEARCH_API_KEY is not set');
+      // A configured provider must have attested egress and an allowlisted host before registration.
+      env.egress.assertAllowed(new URL('https://api.search.brave.com/'));
+      const payload = row.payload as { manifest?: Omit<ConnectorManifest, 'id' | 'version'> };
+      const configuredManifest: ConnectorManifest | undefined = payload.manifest
+        ? { ...payload.manifest, id: row.connectorId, version: row.connectorVersion }
+        : undefined;
+      const manifest = reviewedManifest(configuredManifest, braveSearchManifest, row.connectorId, row.connectorVersion);
+      const toolRefs = new Set(braveSearchManifest.tools.map(tool => row.connectorId + ':' + tool.name + '@' + tool.version));
+      const capabilityIds: ID[] = capabilityRows
+        .filter(capability => (capability.payload as CapabilityDefinition).allowedTools.some(ref => toolRefs.has(ref)))
+        .map(capability => capability.id as ID);
+      registry.registerBundle({ manifest, connector: new BraveSearchConnector(capabilityIds, env.egress, env.braveSearchApiKey) });
+      continue;
+    }
     if (row.connectorId === 'world-bank') {
       if (!env.worldBankEnabled) throw new DomainError('NOT_CONFIGURED', 'World Bank connector is configured but QEYNOX_WORLD_BANK_ENABLED is not true');
       // A configured provider must have attested egress and an allowlisted host before registration.
