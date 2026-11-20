@@ -52,3 +52,34 @@ export function forkRevision(prior: PlanRevision, actor: ID, reason: string, now
     createdAt: now, createdBy: actor, reason, status: 'ACTIVE',
   };
 }
+
+/**
+ * MISSION A12 — pure structural validation for an untrusted draft (no revision semantics).
+ *
+ * Identical DAG rules to validatePlan but usable before any plan exists: indices already mapped to
+ * temporary ids. Duplicate ids, self dependencies, unknown dependency targets and cycles are all
+ * rejected. Error codes match validatePlan so callers see one vocabulary.
+ */
+export function validateDraftDependencies(entries: readonly { id: string; dependsOn: readonly string[] }[]): void {
+  const byId = new Map(entries.map(entry => [entry.id, entry]));
+  if (byId.size !== entries.length) throw new DomainError('INVALID_INPUT', 'Duplicate step IDs');
+  const visited = new Set<string>();
+  const active = new Set<string>();
+  const visit = (id: string): void => {
+    if (active.has(id)) throw new DomainError('INVALID_INPUT', 'Cyclic plan dependencies');
+    if (visited.has(id)) return;
+    const step = byId.get(id);
+    if (!step) throw new DomainError('INVALID_INPUT', 'Invalid plan dependency');
+    active.add(id);
+    for (const dep of step.dependsOn) {
+      if (!byId.has(dep)) throw new DomainError('INVALID_INPUT', 'Invalid plan dependency');
+      visit(dep);
+    }
+    active.delete(id);
+    visited.add(id);
+  };
+  for (const entry of entries) {
+    if (entry.dependsOn.includes(entry.id)) throw new DomainError('INVALID_INPUT', 'Self dependency');
+    visit(entry.id);
+  }
+}

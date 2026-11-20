@@ -96,7 +96,7 @@ function capabilityView(definition: CapabilityDefinition, index: CapabilityAvail
   };
 }
 
-function budgetPolicyPayload(row: { payload: Record<string, unknown> } | undefined) {
+export function budgetPolicyPayload(row: { payload: Record<string, unknown> } | undefined) {
   const policy = row?.payload as { currency?: unknown; maxMoneyMinor?: unknown; unitMaxMinor?: unknown } | undefined;
   if (!policy || typeof policy.currency !== 'string' || !/^[A-Z]{3}$/.test(policy.currency)) return undefined;
   if (typeof policy.maxMoneyMinor !== 'number' || !Number.isSafeInteger(policy.maxMoneyMinor) || policy.maxMoneyMinor < 0) return undefined;

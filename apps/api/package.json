@@ -18,6 +18,7 @@
     "admin:bootstrap": "tsx scripts/platform-admin-bootstrap.ts",
     "qa:identity": "tsx scripts/qa-identity-lifecycle.ts",
     "qa:soul-intelligence": "tsx scripts/qa-soul-intelligence.ts",
+    "qa:pilot-planner": "tsx scripts/qa-pilot-planner.ts",
     "qa:chatwoot": "tsx scripts/qa-chatwoot-http.ts",
     "qa:support-isolation": "tsx scripts/qa-support-isolation.ts",
     "qa:support-private": "tsx scripts/qa-support-private.ts",

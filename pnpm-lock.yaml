@@ -263,6 +263,9 @@ importers:
 
   packages/roles:
     dependencies:
+      '@qeynox/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@qeynox/domain':
         specifier: workspace:*
         version: link:../domain

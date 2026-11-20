@@ -39,6 +39,7 @@
     "qa:a03-service": "pnpm --filter @qeynox/worker qa:a03-service",
     "qa:identity": "pnpm --filter @qeynox/api qa:identity",
     "qa:soul-intelligence": "pnpm --filter @qeynox/api qa:soul-intelligence",
+    "qa:pilot-planner": "pnpm --filter @qeynox/api qa:pilot-planner",
     "qa:mission-lifecycle": "pnpm --filter @qeynox/worker qa:mission-lifecycle",
     "qa:atlas-results": "pnpm --filter @qeynox/worker qa:atlas-results",
     "qa:stripe-payments": "pnpm --filter @qeynox/worker qa:stripe-payments"

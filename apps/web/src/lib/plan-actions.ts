@@ -5,6 +5,7 @@ import { idSchema, planCreateSchema } from '@qeynox/contracts';
 import { api, ApiError } from './api';
 import { locale } from './copy';
 import { planPayloadSchema } from './plan';
+import { planProposalResultSchema, type PlanProposalResult } from './proposal';
 
 /**
  * `checkoutUrl` is present only when a provider actually returned a hosted page. It is a redirect
@@ -34,8 +35,9 @@ function drafts(raw: FormDataEntryValue | null) {
 }
 
 /**
- * Creates the first plan revision or records a new revision. The human writing the steps is the
- * validation step; no AI proposal is generated here.
+ * Creates the first plan revision or records a new revision. The customer validates the steps:
+ * an AI proposal produced elsewhere (see proposePlan below) may pre-fill the editor, but nothing
+ * is persisted until this action runs with the explicit confirmation checkbox checked.
  */
 export async function savePlan(previous: ActionResult, form: FormData): Promise<ActionResult> {
   try {
@@ -200,5 +202,32 @@ export async function deliverResult(previous: ActionResult, form: FormData): Pro
     return { code: 'OK' };
   } catch (error) {
     return failure(error);
+  }
+}
+
+const proposalAnswersSchema = z.array(z.object({ question: z.string().min(1).max(400), answer: z.string().trim().min(1).max(2000) })).max(10);
+const proposalInputSchema = z.object({
+  operationId: idSchema,
+  locale: z.enum(['en', 'fr']),
+  attemptKey: z.string().min(8).max(120),
+  answers: proposalAnswersSchema.default([]),
+});
+export type ProposePlanResult = { code: string; proposal?: PlanProposalResult };
+
+/**
+ * Asks Pilot for a structured plan PROPOSAL for this mission. Nothing is persisted: the response is
+ * advisory data for the editor, which stays the only way to create or revise a plan. When the engine
+ * is not configured, unreachable, timed-out, refusing, or returns an invalid draft, the result states
+ * the reason and carries no steps — a fallback never fabricates a plan.
+ */
+export async function proposePlan(input: unknown): Promise<ProposePlanResult> {
+  try {
+    const { operationId, locale: lang, attemptKey, answers } = proposalInputSchema.parse(input);
+    const value = await api(`/v1/pilot/operations/${operationId}/plan-proposal`, 'POST', { attemptKey, locale: lang, answers });
+    return { code: 'OK', proposal: planProposalResultSchema.parse(value) };
+  } catch (error) {
+    if (error instanceof ApiError) return { code: error.code };
+    if (error instanceof z.ZodError) return { code: 'INVALID_INPUT' };
+    return { code: 'UNAVAILABLE' };
   }
 }
