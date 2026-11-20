@@ -9,3 +9,5 @@ export * from './support-link-store';
 export * from './workspace-store';
 export * from './connection-schema';
 export * from './document-schema';
+export * from './account-schema';
+export * from './account-store';

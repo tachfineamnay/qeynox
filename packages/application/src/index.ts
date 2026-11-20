@@ -50,3 +50,5 @@ export * from './pagination';
 export * from './connection-providers';
 export * from './connection-vault';
 export * from './connections';
+export * from './workspace-team';
+export * from './account-settings';

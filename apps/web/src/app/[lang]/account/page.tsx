@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { AppShell, Card, Feedback, StatusBadge } from '../../../components/ui';
 import { LoginForm, ResendVerification } from '../../../components/forms';
 import { copy, locale } from '../../../lib/copy';
@@ -15,6 +16,8 @@ import { logout } from '../../../lib/actions';
 export default async function Page({ params, searchParams }: { params: Promise<{ lang: string }>; searchParams: Promise<{ revocation?: string; reset?: string }> }) {
   const lang = locale((await params).lang); const t = copy[lang]; const current = await session();
   const query = await searchParams;
+  const settingsLink = lang === 'fr' ? 'Paramètres du compte, sécurité et confidentialité' : 'Account settings, security & privacy';
+  const workspacesLink = lang === 'fr' ? 'Espaces de travail et équipe' : 'Workspaces & team';
 
   let identity: { verified: boolean; delivery: 'CONFIGURED' | 'NOT_CONFIGURED' } | null = null;
   if (current && process.env.QEYNOX_API_URL) {
@@ -33,6 +36,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
             ? <ResendVerification lang={lang}/>
             : <Feedback title={t.deliveryNotConfigured}/>)}
         </>}
+        <p><Link href={'/' + lang + '/account/settings'}>{settingsLink} →</Link></p>
+        <p><Link href={'/' + lang + '/workspaces'}>{workspacesLink} →</Link></p>
         <form action={logout}><input type="hidden" name="locale" value={lang}/><button>{t.signout}</button></form>
       </> : process.env.QEYNOX_API_URL
         ? <><LoginForm lang={lang}/><p className="muted"><a href={'/' + lang + '/account/recover'}>{t.forgotPassword}</a></p><p className="muted"><a href={'/' + lang + '/account/register'}>{t.noAccount}</a></p></>
