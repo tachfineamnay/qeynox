@@ -1,6 +1,6 @@
 import { Body,Controller,Get,Inject,Param,Post,Req } from '@nestjs/common';
 import { DomainError,requireId,type Principal } from '@qeynox/domain';
-import { ResultAssembler,ArtifactDelivery,ResultDeliveryService,exportHtml,exportJson } from '@qeynox/application';
+import { ResultAssembler,ArtifactDelivery,ResultDeliveryService,exportHtml,exportJson,exportPdf,classifyDocument,documentVerdict } from '@qeynox/application';
 import { RESULT_ASSEMBLER,ARTIFACT_DELIVERY,RESULT_DELIVERY } from './results.tokens';
 interface Request {principal?:Principal}
 @Controller('v1/operations/:operationId/documents')
@@ -32,13 +32,40 @@ export class ResultsController {
   if(!req.principal)throw new DomainError('DENIED','Workspace required');
   return {url:await this.artifacts.readGrant(req.principal,requireId(operationId),requireId(documentId),requireId(artifactId))};
  }
+ /**
+  * Renders one document into json, html or pdf and stores it as a private artifact.
+  *
+  * The three formats share one classification, so a finding printed as "unresolved" on screen cannot
+  * be printed as a conclusion in the PDF. PDF re-derivation is deterministic, which keeps the
+  * artifact digest meaningful for reconciliation.
+  */
  @Post(':documentId/export/:format')
  async exportArtifact(@Req()req:Request,@Param('operationId')operationId:string,@Param('documentId')documentId:string,@Param('format')format:string){
   if(!req.principal)throw new DomainError('DENIED','Workspace required');
-  if(format!=='json'&&format!=='html')throw new DomainError('UNSUPPORTED','Only JSON/HTML exports implemented');
+  if(format!=='json'&&format!=='html'&&format!=='pdf')throw new DomainError('UNSUPPORTED','Supported exports are json, html and pdf');
   const doc=await this.docs.get(req.principal,requireId(operationId),requireId(documentId));
-  const data=format==='json'?exportJson(doc):exportHtml(doc);
-  return this.artifacts.save(req.principal,doc,format,data);
+  const data=format==='json'?exportJson(doc):format==='html'?exportHtml(doc):await exportPdf(doc);
+  const saved=await this.artifacts.save(req.principal,doc,format,data);
+  return {...saved,format,contentType:format==='json'?'application/json':format==='html'?'text/html':'application/pdf'};
+ }
+ /**
+  * Review-facing view of one document: what is verified, what is interpretation and what is
+  * unresolved, with the single document verdict. Derived on read, never stored, so it cannot drift
+  * from the document a reviewer actually sees.
+  */
+ @Get(':documentId/atlas')
+ async atlas(@Req()req:Request,@Param('operationId')operationId:string,@Param('documentId')documentId:string){
+  if(!req.principal)throw new DomainError('DENIED','Workspace required');
+  const doc=await this.docs.get(req.principal,requireId(operationId),requireId(documentId));
+  const c=classifyDocument(doc);
+  return {
+   documentId:doc.id,version:doc.version,status:doc.status,verdict:documentVerdict(doc,c),
+   counts:c.counts,deliverable:c.deliverable,
+   verified:c.verified.map(f=>({claimId:f.finding.claimId,statement:f.finding.statement,citations:f.verifiableCitations})),
+   unresolved:c.unresolved.map(f=>({claimId:f.finding.claimId,statement:f.finding.statement,blockers:f.blockers})),
+   awaitingAssessment:c.awaitingAssessment.map(f=>({claimId:f.finding.claimId,statement:f.finding.statement,blockers:f.blockers})),
+   interpretations:c.interpretations.map(f=>({claimId:f.finding.claimId,statement:f.finding.statement})),
+  };
  }
  @Post(':documentId/deliver')
  deliverResult(@Req()req:Request,@Param('operationId')operationId:string,@Param('documentId')documentId:string,@Body()body:unknown){
