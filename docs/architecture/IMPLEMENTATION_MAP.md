@@ -125,11 +125,15 @@ Source implemented: server-only Chatwoot REST adapter, `/v1/support/*` customer 
 `/v1/platform/support/*` platform endpoints restricted by the existing SUPPORT permission,
 mapping-only migration 0017, MyDash support entry, `/[lang]/support` history/reply screens and the
 QeyNox Control Support inbox (list, status, priority, history, reply, status update, audit).
-NOT_CONFIGURED is the default when Chatwoot variables are absent; no token reaches the browser and no
-support message is stored in PostgreSQL. Chatwoot webhooks are not needed for this read-live design
-(any future webhook must be secret-verified before writes). NOT VERIFIED: no tests, build, migration
-run, provisioning or visual certification was executed. No Coolify resource created; no push/merge/
-deployment.
+NOT_CONFIGURED is the default when Chatwoot variables are absent or the operator has not completed the
+live-verification procedure (`QEYNOX_CHATWOOT_LIVE_VERIFIED`, see
+[CHATWOOT_SUPPORT.md](CHATWOOT_SUPPORT.md)); no token reaches the browser and no support message is
+stored in PostgreSQL. Chatwoot webhooks are not needed for this read-live design (any future webhook
+must be secret-verified before writes). A10 (2026-11-19) added the source_id reconciliation design
+(durable `support_intents`, tenant-scoped idempotency, orphan/duplicate fail-closed) and its fixture /
+disposable-PostgreSQL suites; migration 0020. No live Chatwoot integration is claimed; the capability
+fails closed until the documented live-verification procedure is executed. No Coolify resource created;
+no push/merge/deployment (draft PR only).
 
 ## Operations desk — read-only supervision (Mission 07, code-only)
 
@@ -169,4 +173,4 @@ No push, merge or deployment.
 
 ## Final closeout continuation (2026-11-14)
 
-The latest targeted tests and outstanding release gates are recorded in [FINAL_CLOSEOUT_2026-11-14.md](FINAL_CLOSEOUT_2026-11-14.md). MAIN and PREPRODUCTION remain **NO-GO**; Chatwoot is intentionally NOT_CONFIGURED pending safe reconciliation.
+The latest targeted tests and outstanding release gates are recorded in [FINAL_CLOSEOUT_2026-11-14.md](FINAL_CLOSEOUT_2026-11-14.md). MAIN and PREPRODUCTION remain **NO-GO**; Chatwoot carries the verified A10 reconciliation design but remains intentionally NOT_CONFIGURED pending the documented live-verification procedure.

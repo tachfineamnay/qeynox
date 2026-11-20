@@ -4,7 +4,7 @@ import { api, ApiError, session } from '../../../../lib/api';
 import { copy, locale, supportCopy } from '../../../../lib/copy';
 import { replySupportConversation } from '../../../../lib/support-actions';
 
-interface Message { id: string; content: string; messageType: string; private: boolean; createdAt: string; sender: { name: string | null; type: string | null } | null }
+interface Message { id: string; content: string; messageType: string; private: boolean; sourceId: string | null; createdAt: string; sender: { name: string | null; type: string | null } | null }
 interface ConversationDetail { conversation: { id: string; status: string; priority: string | null; contact: { name: string | null; email: string | null } }; messages: readonly Message[] }
 
 export const dynamic = 'force-dynamic';
@@ -56,6 +56,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
             <form action={replySupportConversation}>
               <input type="hidden" name="locale" value={lang} />
               <input type="hidden" name="conversationId" value={detail.conversation.id} />
+              <input type="hidden" name="requestId" value={crypto.randomUUID()} />
               <label htmlFor="content">{c.reply}</label>
               <textarea id="content" name="content" minLength={2} maxLength={5000} rows={3} required />
               <div className="form-bottom"><button>{c.replySend}</button></div>

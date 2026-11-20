@@ -7,12 +7,18 @@ import { locale, type Locale } from './copy';
 function langOf(form: FormData): Locale { return locale(String(form.get('locale') ?? 'en')); }
 function codeOf(error: unknown): string { return error instanceof ApiError ? error.code : 'UNKNOWN_OUTCOME'; }
 
+function requestIdOf(form: FormData): string | undefined {
+  const value = String(form.get('requestId') ?? '').trim();
+  return value.length >= 8 ? value : undefined;
+}
+
 export async function openSupportConversation(form: FormData): Promise<void> {
   const lang = langOf(form);
   const message = String(form.get('message') ?? '').trim();
+  const requestId = requestIdOf(form);
   let destination: string;
   try {
-    const detail = await api('/v1/support/conversations', 'POST', { message }) as { conversation?: { id?: string } };
+    const detail = await api('/v1/support/conversations', 'POST', { message, requestId }) as { conversation?: { id?: string } };
     const id = detail.conversation?.id;
     if (!id) throw new ApiError('UNKNOWN_OUTCOME');
     destination = '/' + lang + '/support/' + encodeURIComponent(id) + '?done=1';
@@ -25,7 +31,8 @@ export async function replySupportConversation(form: FormData): Promise<void> {
   const lang = langOf(form);
   const conversationId = String(form.get('conversationId') ?? '');
   const content = String(form.get('content') ?? '').trim();
-  try { await api('/v1/support/conversations/' + encodeURIComponent(conversationId) + '/messages', 'POST', { content }); }
+  const requestId = requestIdOf(form);
+  try { await api('/v1/support/conversations/' + encodeURIComponent(conversationId) + '/messages', 'POST', { content, requestId }); }
   catch (error) { redirect('/' + lang + '/support/' + encodeURIComponent(conversationId) + '?error=' + encodeURIComponent(codeOf(error))); }
   revalidatePath('/' + lang + '/support/' + conversationId);
   redirect('/' + lang + '/support/' + encodeURIComponent(conversationId) + '?done=1');

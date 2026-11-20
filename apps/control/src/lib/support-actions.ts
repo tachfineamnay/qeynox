@@ -7,6 +7,11 @@ import { locale, type Locale } from './copy';
 function langOf(form: FormData): Locale { return locale(String(form.get('lang') ?? 'en')); }
 function detailPath(lang: Locale, id: string): string { return '/' + lang + '/support/' + encodeURIComponent(id); }
 function codeOf(error: unknown): string { return error instanceof ApiError ? error.code : 'UNKNOWN_OUTCOME'; }
+function reasonOf(form: FormData): string { return String(form.get('reason') ?? '').trim(); }
+function requestIdOf(form: FormData): string | undefined {
+  const value = String(form.get('requestId') ?? '').trim();
+  return value.length >= 8 ? value : undefined;
+}
 function revalidateDetail(lang: Locale, id: string): void {
   revalidatePath(detailPath(lang, id));
   revalidatePath('/admin' + detailPath(lang, id));
@@ -16,9 +21,11 @@ export async function replySupportAction(form: FormData): Promise<void> {
   const lang = langOf(form);
   const id = String(form.get('conversationId') ?? '');
   const content = String(form.get('content') ?? '').trim();
+  const reason = reasonOf(form);
+  const requestId = requestIdOf(form);
   let code: string | null = null;
   try {
-    await api('/v1/platform/support/conversations/' + encodeURIComponent(id) + '/messages', 'POST', { content });
+    await api('/v1/platform/support/conversations/' + encodeURIComponent(id) + '/messages', 'POST', { content, reason, requestId });
   } catch (error) { code = codeOf(error); }
   if (code) redirect(detailPath(lang, id) + '?error=' + encodeURIComponent(code));
   revalidateDetail(lang, id);
@@ -29,9 +36,10 @@ export async function updateSupportStatusAction(form: FormData): Promise<void> {
   const lang = langOf(form);
   const id = String(form.get('conversationId') ?? '');
   const status = String(form.get('status') ?? '');
+  const reason = reasonOf(form);
   let code: string | null = null;
   try {
-    await api('/v1/platform/support/conversations/' + encodeURIComponent(id) + '/status', 'POST', { status });
+    await api('/v1/platform/support/conversations/' + encodeURIComponent(id) + '/status', 'POST', { status, reason });
   } catch (error) { code = codeOf(error); }
   if (code) redirect(detailPath(lang, id) + '?error=' + encodeURIComponent(code));
   revalidateDetail(lang, id);
