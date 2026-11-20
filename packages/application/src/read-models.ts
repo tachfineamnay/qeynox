@@ -1,7 +1,14 @@
 import { and,desc,eq,gt,sql } from 'drizzle-orm';
 import { DomainError,newId,type ID,type Principal } from '@qeynox/domain';
 import { QeyNoxStore,operations,events,attempts,approvals,claims,resultDocuments,eventEnvelopes,operationViews,projectionCursors,steps } from '@qeynox/persistence';
-export type NeedsAttention='NONE'|'APPROVAL'|'FAILED'|'INCOMPLETE'|'REQUIRES_REVIEW';
+import { lifecycleView, type LifecycleAttention } from './lifecycle-view';
+/**
+ * A06: the attention vocabulary now includes INTERRUPTION (a stop was requested but the executor has
+ * not confirmed it) and STALLED (the last attempt is over and nothing was resumed). The previous set
+ * could not express either, so an interrupted operation silently reported NONE and disappeared from
+ * the customer's attention list.
+ */
+export type NeedsAttention=LifecycleAttention;
 export class OperationReadModels{
  constructor(private readonly store:QeyNoxStore){}
  async sync(actor:Principal,operationId:ID){
@@ -36,11 +43,18 @@ export class OperationReadModels{
    const waiting=(await tx.select().from(approvals).where(and(eq(approvals.workspaceId,actor.workspaceId),eq(approvals.operationId,operationId),eq(approvals.status,'PENDING')))).length;
    const resultCount=(await tx.select({n:sql<number>`count(*)::int`}).from(resultDocuments).where(and(eq(resultDocuments.workspaceId,actor.workspaceId),eq(resultDocuments.operationId,operationId))))[0]?.n??0;
    const evidenceCount=(await tx.select({n:sql<number>`count(*)::int`}).from(claims).where(and(eq(claims.workspaceId,actor.workspaceId),eq(claims.operationId,operationId))))[0]?.n??0;
-   const attention:NeedsAttention=waiting>0?'APPROVAL':latest.status==='FAILED'?'FAILED':latest.status==='WAITING_APPROVAL'?'REQUIRES_REVIEW':latest.status==='RUNNING'?'INCOMPLETE':'NONE';
+   // One derivation for the whole product: the view cannot disagree with the persisted status.
+   const derived=lifecycleView(latest.status,waiting);
+   const attention:NeedsAttention=derived.attention;
    const view={operationId,workspaceId:actor.workspaceId,title:latest.title,status:latest.status,revisionId:latest.currentRevisionId,attention,lastActivityAt:latest.lastActivityAt,stepCount:allSteps.length,completedSteps:complete.size,pendingApprovals:waiting,resultCount,evidenceCount,lastSequence:sequence};
    await tx.insert(operationViews).values(view).onConflictDoUpdate({target:operationViews.operationId,set:view});
   });
-  return this.store.db.select().from(operationViews).where(and(eq(operationViews.operationId,operationId),eq(operationViews.workspaceId,actor.workspaceId))).limit(1).then(xs=>xs[0]);
+  const [stored]=await this.store.db.select().from(operationViews).where(and(eq(operationViews.operationId,operationId),eq(operationViews.workspaceId,actor.workspaceId))).limit(1);
+  // A06: milestone and provisionality are pure functions of persisted status, so they are derived on
+  // read instead of stored. A projection column could drift; a derivation cannot.
+  if(!stored)return undefined;
+  const projected=lifecycleView(stored.status as Parameters<typeof lifecycleView>[0],stored.pendingApprovals);
+  return {...stored,milestones:projected.milestones,currentMilestone:projected.currentMilestone,provisional:projected.provisional};
  }
  async activity(actor:Principal,operationId:ID,afterSequence=0,limit=50){
   await this.sync(actor,operationId);

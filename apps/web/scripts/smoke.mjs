@@ -64,6 +64,9 @@ const backend = createServer((req, res) => {
   assert.equal(req.url, '/v1/mydash/recent?limit=30');
   if (mode === 'denied') { res.statusCode = 403; res.end(JSON.stringify({ error: { code: 'DENIED' } })); }
   else if (mode === 'malformed') res.end(JSON.stringify([{ operationId: 'invalid' }]));
+  // A06: an interrupted operation now carries attention STALLED and must appear in the decision list
+  // instead of silently disappearing with attention NONE.
+  else if (mode === 'interrupted') res.end(JSON.stringify([{ operationId: 'operation_qa', title: 'QA interrupted fixture', status: 'INTERRUPTED', attention: 'STALLED', lastActivityAt: '2026-01-01T12:00:00.000Z' }]));
   else res.end(JSON.stringify(mode === 'empty' ? [] : [{ operationId: 'operation_qa', title: 'QA contract fixture', status: 'DRAFT', lastActivityAt: '2026-01-01T12:00:00.000Z' }]));
 });
 backend.listen(0, '127.0.0.1');
@@ -147,6 +150,9 @@ try {
   assert.doesNotMatch(malformedCapabilities, /QA evidence research/); assertions++;
   mode = 'empty';
   assert.match(await page('/en/mydash', true), /No recorded operations were returned/); assertions++;
+  mode = 'interrupted';
+  const interruptedDash = await page('/en/mydash', true);
+  assert.match(interruptedDash, /Interrupted — needs a decision/); assertions++;
   mode = 'loaded';
   const loaded = await page('/en/mydash', true);
   assert.match(loaded, /QA contract fixture/); assertions++;

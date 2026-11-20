@@ -515,3 +515,70 @@ BLOCKED — NOT VERIFIED, AND NOT CLAIMED:
   BLOCKED (no reference image in the checkout).
 
 No merge, no deployment, no credential and no real customer data.
+
+## 2026-11-19 — End-to-end mission execution (Mission A06)
+
+Closed the mission lifecycle `GOAL → PLAN → APPROVAL → EXECUTION → TOOL EVIDENCE → HUMAN REVIEW →
+RESULT` using the existing architecture: Hatchet stays the single durable executor, PostgreSQL stays
+canonical truth, no second workflow engine and no new table. Rationale and rejected alternatives:
+[ADR-025-mission-lifecycle.md](ADR-025-mission-lifecycle.md).
+
+Four real defects were found and fixed (all caught by tests, not by review):
+
+1. **`INTERRUPT_REQUESTED` was a terminal trap.** Nothing ever left it, and the read model mapped it to
+   attention `NONE`, so a stopped mission silently vanished from the customer's screen.
+2. **`FAILED`/`INTERRUPTED` had no retry path at all.**
+3. **The worker collapsed every failure into `ENGINE_OR_TOOL_ERROR`**, so an unknown external write was
+   indistinguishable from a clean failure — the exact confusion that duplicates side effects.
+4. **Progress was derived ad hoc in several places** and could disagree with the persisted status.
+
+What changed:
+- `InterruptionService` (new): `reconcile` confirms a stop only when no attempt, dispatch intent or
+  tool write is unresolved, reporting the specific blocker otherwise; `retry` re-dispatches a failed
+  attempt reusing its existing identity, and refuses outright when a tool write or dispatch outcome is
+  `UNKNOWN`. Both are transactional with row locks and status guards.
+- `POST /v1/operations/:id/interrupt/reconcile` and `POST /v1/operations/:id/retry` (operator-gated;
+  the role check runs before any status read).
+- `lifecycle-view.ts` (new): one pure derivation of attention, milestone and provisionality from
+  persisted status, consumed by `OperationReadModels` and the MyDash decision list. Milestones are
+  complete only when the status proves them; `RUNNING` and `INTERRUPT_REQUESTED` are flagged
+  `provisional`; `INTERRUPTED` is now attention `STALLED` and reaches the customer's decision list.
+- Worker: real error codes propagate, unknown outcomes emit `STEP_OUTCOME_UNKNOWN`, and
+  `DomainErrorCode` gained `UNEXPECTED_EXECUTION_ERROR` (500) so the generic bucket is explicit.
+- `controls.decideApproval` now reports a superseded plan as `STALE_APPROVAL` and records the decision.
+
+VERIFIED — configuration and contract:
+- `pnpm typecheck` 4/4, `pnpm build` 4/4.
+
+VERIFIED — integration against a disposable PostgreSQL 16.2 cluster:
+- **`pnpm qa:mission-lifecycle` (new) — 14 groups, 88 assertions PASS.** Three-step plan executed in
+  strict dependency order with one output and one dispatch intent per step and no duplicate dispatch;
+  durable attempt/execution-link tracking; concurrent approval decision with exactly one winner
+  (`CONFLICT` for the loser); approval for a superseded revision refused after interrupt → reconcile →
+  revise; result document attributed to claims with delivery refused for unverified evidence;
+  lifecycle derivation checked against every status (only `COMPLETED` shows all milestones complete);
+  stop requested while work is outstanding stays unresolved with a named reason, is refused by the
+  worker, then reconciles to `INTERRUPTED` once the attempt is terminal; retry reuses the attempt
+  identity, concurrent retries yield one intent, and retry is refused after an unknown tool write or an
+  ambiguous dispatch; worker failure propagates its real code as `STEP_FAILED`; budget exhaustion ends
+  terminally with the policy cause recorded; timed-out workflow ends in a recoverable state with the
+  timeout recorded; tenant isolation of operation, projection and interruption control.
+- Regressions on the same cluster: `qa:task02` **3399**, `qa:identity` **57**, `qa:backend` **28**,
+  `qa:agent-runtime` **65**.
+- Web smoke **121** (was 118): an interrupted mission is asserted to appear in the decision list.
+
+BLOCKED — NOT VERIFIED, AND NOT CLAIMED:
+- **No Hatchet server ran.** This environment has no container runtime and cannot reach `ghcr.io`, so
+  `hatchet-lite` cannot be started. Dispatch was exercised through a recording `OrchestratorPort`
+  double, which proves the dispatch *decision logic* (leasing, single intent per step, `SENT`/`UNKNOWN`
+  recording, no blind replay) and proves nothing about live Hatchet scheduling, its own retry
+  semantics, gRPC cancellation acknowledgement or `runs.getDetails` observation.
+  **Live dispatch, live cancellation and live run observation remain NOT VERIFIED.**
+- `qa:connectors` and `qa:raas` fail in this sandbox with a TLS socket disconnect against a live
+  provider. The same failure reproduces on the untouched baseline, so it is an environment gap, not a
+  regression from this lot; both remain NOT VERIFIED here.
+- Hermes was a deterministic local HTTP fixture, not a model. No business result, citation or price is
+  claimed anywhere; every fixture answer is labelled QA-only.
+- Screenshot comparison remains BLOCKED (no reference image in the checkout).
+
+No merge, no deployment, no credential and no real customer data.

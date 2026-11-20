@@ -1,9 +1,9 @@
 import { Body,Controller,Get,Inject,Param,Post,Query,Req } from '@nestjs/common';
 import { z } from 'zod';
-import { OperationService,OperationExecutionService,PlanningService,OperationControlService,PlanRevisionService,PlanReadService } from '@qeynox/application';
+import { OperationService,OperationExecutionService,PlanningService,OperationControlService,PlanRevisionService,PlanReadService,InterruptionService } from '@qeynox/application';
 import { DomainError,requireId,type Principal,type ID } from '@qeynox/domain';
 import { createOperationSchema,operationActionSchema,planCreateSchema,revisionRequestSchema } from '@qeynox/contracts';
-import { OPERATIONS_SERVICE,EXECUTION_SERVICE,PLANNING_SERVICE,CONTROLS_SERVICE,REVISIONS_SERVICE,PLAN_READ_SERVICE } from './operations.provider';
+import { OPERATIONS_SERVICE,EXECUTION_SERVICE,PLANNING_SERVICE,CONTROLS_SERVICE,REVISIONS_SERVICE,PLAN_READ_SERVICE,INTERRUPTION_SERVICE } from './operations.provider';
 interface AuthedRequest {principal?:Principal}
 const decideSchema=z.object({decision:z.enum(['APPROVED','REJECTED'])});
 const reviseSchema=z.object({expectedVersion:z.number().int().positive(),reason:z.string().min(3),steps:planCreateSchema.shape.steps});
@@ -18,7 +18,8 @@ export class OperationsController {
  @Inject(PLANNING_SERVICE)private readonly planning:PlanningService,
  @Inject(CONTROLS_SERVICE)private readonly controls:OperationControlService,
  @Inject(REVISIONS_SERVICE)private readonly revisions:PlanRevisionService,
- @Inject(PLAN_READ_SERVICE)private readonly planRead:PlanReadService){}
+ @Inject(PLAN_READ_SERVICE)private readonly planRead:PlanReadService,
+ @Inject(INTERRUPTION_SERVICE)private readonly interruptions:InterruptionService){}
  @Get()
  list(@Req()req:AuthedRequest,@Query('limit')limit?:string){return this.ops.list(principal(req),limit?Number(limit):30);}
  @Post()
@@ -49,6 +50,22 @@ export class OperationsController {
  interrupt(@Req()req:AuthedRequest,@Param('id')id:string,@Body()body:unknown){
   const x=z.object({expectedVersion:z.number().int().positive()}).parse(body);
   return this.controls.interrupt(principal(req),requireId(id),x.expectedVersion);
+ }
+ /**
+  * A06: decides whether a requested stop can be CONFIRMED from persisted state. It only reports
+  * INTERRUPTED when no attempt, dispatch intent or tool write is unresolved; otherwise it returns
+  * STILL_ACTIVE with the reasons and leaves the operation unresolved on purpose.
+  */
+ @Post(':id/interrupt/reconcile')
+ reconcileInterrupt(@Req()req:AuthedRequest,@Param('id')id:string,@Body()body:unknown){
+  const x=z.object({expectedVersion:z.number().int().positive().optional()}).parse(body??{});
+  return this.interruptions.reconcile(principal(req),requireId(id),x.expectedVersion);
+ }
+ /** A06: re-dispatches the failed attempt, refusing whenever a prior side effect is uncertain. */
+ @Post(':id/retry')
+ retry(@Req()req:AuthedRequest,@Param('id')id:string,@Body()body:unknown){
+  const x=z.object({expectedVersion:z.number().int().positive(),idempotencyKey:z.string().min(8).max(120)}).parse(body);
+  return this.interruptions.retry(principal(req),requireId(id),x.expectedVersion,x.idempotencyKey);
  }
  @Post(':id/attempts/:attemptId/redo')
  redo(@Req()req:AuthedRequest,@Param('id')id:string,@Param('attemptId')attemptId:string,@Body()body:unknown){
