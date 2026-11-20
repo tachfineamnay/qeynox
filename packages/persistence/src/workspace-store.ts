@@ -78,6 +78,48 @@ const memberSelection = {
 export class WorkspaceStore {
   constructor(private readonly db: QeyNoxDatabase) {}
 
+  /**
+   * MISSION A18 — self-service workspace creation. Atomically creates the workspace, an ACTIVE OWNER
+   * membership for the creator and the audit row. Name uniqueness is intentionally not enforced
+   * (friendly labels); the id is the identity.
+   */
+  /** Append-only audit write used for self-service refusals and grants. */
+  async insertPlatformAudit(record: PlatformAuditRecord): Promise<void> {
+    await this.db.insert(platformAdminAudit).values(platformAuditValues(record));
+  }
+
+  async createWorkspaceWithOwner(input: {
+    readonly name: string;
+    readonly userId: string;
+    readonly at: Date;
+    readonly buildAudit: (workspaceId: string) => PlatformAuditRecord;
+  }): Promise<{ readonly workspaceId: string }> {
+    const workspaceId = randomUUID();
+    return this.db.transaction(async tx => {
+      await tx.insert(identityWorkspaces).values({ id: workspaceId, name: input.name, createdBy: input.userId, createdAt: input.at });
+      await tx.insert(identityMemberships).values({
+        id: randomUUID(), userId: input.userId, workspaceId, role: 'OWNER', status: 'ACTIVE',
+        invitedBy: null, invitedAt: null, joinedAt: input.at, updatedAt: input.at,
+        invitationTokenHash: null, invitationExpiresAt: null,
+      });
+      await tx.insert(platformAdminAudit).values(platformAuditValues(input.buildAudit(workspaceId)));
+      return { workspaceId };
+    });
+  }
+
+  /** Active memberships of one identity, joined to workspace names — the self-service switcher list. */
+  async listMine(userId: string): Promise<readonly { workspaceId: string; name: string; role: string }[]> {
+    return this.db.select({
+      workspaceId: identityWorkspaces.id,
+      name: identityWorkspaces.name,
+      role: identityMemberships.role,
+    })
+      .from(identityMemberships)
+      .innerJoin(identityWorkspaces, eq(identityWorkspaces.id, identityMemberships.workspaceId))
+      .where(and(eq(identityMemberships.userId, userId), eq(identityMemberships.status, 'ACTIVE')))
+      .orderBy(identityWorkspaces.name);
+  }
+
   async listWorkspaces(input: {
     readonly query?: string | undefined;
     readonly before?: { readonly at: Date; readonly id: string } | undefined;

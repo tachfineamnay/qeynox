@@ -46,6 +46,7 @@
     "qa:atlas-results": "pnpm --filter @qeynox/worker qa:atlas-results",
     "qa:stripe-payments": "pnpm --filter @qeynox/worker qa:stripe-payments",
     "qa:brave-search": "pnpm --filter @qeynox/worker qa:brave-search",
+    "qa:workspace-management": "pnpm --filter @qeynox/worker qa:workspace-management",
     "qa:documents": "pnpm --filter @qeynox/worker qa:documents"
   },
   "devDependencies": {

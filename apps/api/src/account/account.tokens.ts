@@ -1,0 +1,1 @@
+export const ACCOUNT_SETTINGS = Symbol('QEYNOX_ACCOUNT_SETTINGS');
