@@ -448,4 +448,6 @@ const fr: typeof en = {
   },
 };
 
-export function missionCopy(lang: Locale) { return lang === 'fr' ? fr : en; }
+/** Reviewed catalog shape for mission-workspace copy. Future locales must implement this interface. */
+export type MissionCopy = typeof en;
+export function missionCopy(lang: Locale): MissionCopy { return lang === 'fr' ? fr : en; }

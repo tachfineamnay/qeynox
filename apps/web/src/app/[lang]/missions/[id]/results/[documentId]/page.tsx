@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { idSchema } from '@qeynox/contracts';
-import { AppShell, Card, Feedback, SectionHeading, StatusBadge } from '../../../../../../components/ui';
+import { AppShell, Card, Feedback, PageHeader, SectionHeading, StatusBadge } from '../../../../../../components/ui';
 import { AtlasResult, type AtlasDocument } from '../../../../../../components/atlas';
 import { DeliverForm } from '../../../../../../components/mission-flow';
 import { ExportForm } from '../../../../../../components/mission-controls';
@@ -26,14 +26,14 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
   const id = idSchema.safeParse(p.id);
   const docId = idSchema.safeParse(p.documentId);
   if (!id.success || !docId.success) {
-    return <AppShell lang={lang} active="missions"><Feedback title={`${m.unavailable} (INVALID_INPUT)`} error /></AppShell>;
+    return <AppShell lang={lang} active="missions"><PageHeader eyebrow={t.missions} title={m.unavailable} /><Feedback title={`${m.unavailable} (INVALID_INPUT)`} error /></AppShell>;
   }
 
   const result = await read(`/v1/operations/${id.data}/documents/${docId.data}`, documentSchema);
   const doc = result.data;
   // A document that belongs to another operation is refused rather than rendered under this URL.
   if (!doc || doc.operationId !== id.data || doc.id !== docId.data) {
-    return <AppShell lang={lang} active="missions"><Feedback title={`${m.unavailable} (${result.code ?? 'INVALID_RESPONSE'})`} error /></AppShell>;
+    return <AppShell lang={lang} active="missions"><PageHeader eyebrow={t.missions} title={m.unavailable} /><Feedback title={`${m.unavailable} (${result.code ?? 'INVALID_RESPONSE'})`} error /></AppShell>;
   }
 
   // The reader must still work when the operation/plan cannot be read: only delivery depends on them.

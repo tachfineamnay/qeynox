@@ -1,0 +1,2828 @@
+[
+  {
+    "path": "/en",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=ry-B8umWgNEV4JR9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "A useful business result, not agent theatre."
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Business intelligence, evidenced results",
+    "url": "/en"
+  },
+  {
+    "path": "/fr",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Un résultat métier utile, pas du théâtre d’agents."
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — intelligence métier, résultats étayés",
+    "url": "/fr"
+  },
+  {
+    "path": "/en/how-it-works",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_how-it-works-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "How QeyNox works"
+    ],
+    "htmlLang": "en",
+    "title": "How QeyNox works — objective, governed work, evidenced result",
+    "url": "/en/how-it-works"
+  },
+  {
+    "path": "/fr/how-it-works",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_how-it-works-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=DrD8kDF_UeiJzHzj :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Le fonctionnement de QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Fonctionnement de QeyNox — objectif, travail encadré, résultat étayé",
+    "url": "/fr/how-it-works"
+  },
+  {
+    "path": "/en/manifesto",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_manifesto-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=WG17F8uMCAOUY9Dn :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Business intelligence for everyday use"
+    ],
+    "htmlLang": "en",
+    "title": "The QeyNox manifesto — results over agent theatre",
+    "url": "/en/manifesto"
+  },
+  {
+    "path": "/fr/manifesto",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_manifesto-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=2-askmkTfYB5JkZJ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "L’intelligence métier au quotidien"
+    ],
+    "htmlLang": "fr",
+    "title": "Le manifeste QeyNox — des résultats, pas du théâtre d’agents",
+    "url": "/fr/manifesto"
+  },
+  {
+    "path": "/en/contact",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_contact-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Contact"
+    ],
+    "htmlLang": "en",
+    "title": "Contact QeyNox",
+    "url": "/en/contact"
+  },
+  {
+    "path": "/fr/contact",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_contact-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=sRx10msAaGd9zbdA :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Contact"
+    ],
+    "htmlLang": "fr",
+    "title": "Contacter QeyNox",
+    "url": "/fr/contact"
+  },
+  {
+    "path": "/en/legal/notice",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_legal_notice-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=clXb3pHdC-iL8K13 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Legal notice — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Legal notice — QeyNox",
+    "url": "/en/legal/notice"
+  },
+  {
+    "path": "/en/legal/privacy",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_legal_privacy-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Privacy — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Privacy — QeyNox",
+    "url": "/en/legal/privacy"
+  },
+  {
+    "path": "/en/legal/terms",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_legal_terms-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Terms of use — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Terms of use — QeyNox",
+    "url": "/en/legal/terms"
+  },
+  {
+    "path": "/en/legal/cookies",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_legal_cookies-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Cookies and local storage — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Cookies and local storage — QeyNox",
+    "url": "/en/legal/cookies"
+  },
+  {
+    "path": "/fr/legal/notice",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_notice-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Mentions légales — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Mentions légales — QeyNox",
+    "url": "/fr/legal/notice"
+  },
+  {
+    "path": "/fr/legal/privacy",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_privacy-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Confidentialité — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Confidentialité — QeyNox",
+    "url": "/fr/legal/privacy"
+  },
+  {
+    "path": "/fr/legal/terms",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_terms-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Conditions générales d’utilisation — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Conditions générales d’utilisation — QeyNox",
+    "url": "/fr/legal/terms"
+  },
+  {
+    "path": "/fr/legal/cookies",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_cookies-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Cookies et stockage local — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Cookies et stockage local — QeyNox",
+    "url": "/fr/legal/cookies"
+  },
+  {
+    "path": "/en/account",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_account-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=6zelOB3tdQLme9dx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=XLmwGXvfVhkBMJRg :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Account"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account"
+  },
+  {
+    "path": "/fr/account",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_account-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=J51iPQWCWVi7TiKO :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Compte"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/account"
+  },
+  {
+    "path": "/en/account/register",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_account_register-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=rTpSt8dSoBeW1Ggt :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=emNE2bhp9bqnYfPj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=rTpSt8dSoBeW1Ggt :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Create an account"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/register"
+  },
+  {
+    "path": "/fr/account/register",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_account_register-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=7RfZNzFv-7vB6rfU :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Créer un compte"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/account/register"
+  },
+  {
+    "path": "/en/account/recover",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_account_recover-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=mXIpcQxBw1L-NDf4 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Reset your password"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/recover"
+  },
+  {
+    "path": "/fr/account/recover",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_account_recover-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=XrhVUdQ0BovCQk7C :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Réinitialiser votre mot de passe"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/account/recover"
+  },
+  {
+    "path": "/en/account/reset",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_account_reset-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=jFgWcT_MzUgk-AJ7 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Choose a new password"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/reset"
+  },
+  {
+    "path": "/en/account/verify",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_account_verify-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Confirm your e-mail address"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/verify"
+  },
+  {
+    "path": "/en/mydash",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_mydash-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/account?_rsc=Vhe5IB25htGChhHr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=PmMp4ZNF3bd7KP3O :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "What result do you need next?"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/mydash"
+  },
+  {
+    "path": "/fr/mydash",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_mydash-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=G1lgepFCP5gBpm2t :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Quel résultat souhaitez-vous obtenir ?"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/mydash"
+  },
+  {
+    "path": "/en/missions",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_missions-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=cT5KOP4C143Szs0i :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=cT5KOP4C143Szs0i :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=-mMYUmJpL-QEwCcU :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=yFSvA-7eHvRihlSo :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=yFSvA-7eHvRihlSo :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Missions"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/missions"
+  },
+  {
+    "path": "/fr/missions",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_missions-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=zwdWiz0kHefTvz6s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=zwdWiz0kHefTvz6s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=LzNyWw63C9770Uw6 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Missions"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/missions"
+  },
+  {
+    "path": "/en/soul",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_soul-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=tGhfTgm9DHg3Hm2K :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=fYGb3depODqNQBnh :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "A short guided start"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/soul"
+  },
+  {
+    "path": "/fr/soul",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_soul-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=aGvOgRB6DVINwoso :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=aGvOgRB6DVINwoso :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=XGjeog_8Ikxx-Qnm :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=hTnOGUb0avoN-uwn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=hTnOGUb0avoN-uwn :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Un démarrage guidé, court"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/soul"
+  },
+  {
+    "path": "/en/support",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_support-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=WpS0VQnyjLtgTFxr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Support"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/support"
+  },
+  {
+    "path": "/fr/support",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_support-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=_AH7PJPV0u7xRUCv :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=_AH7PJPV0u7xRUCv :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=iRuknZ6pVMdRLMLx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=Jjqf7pXQExLYVEv8 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=Jjqf7pXQExLYVEv8 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Support"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/support"
+  },
+  {
+    "path": "/en/capabilities",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_capabilities-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=QG3o1D30dSayj4GI :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=QG3o1D30dSayj4GI :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=ASXIOhZM6TW4t35y :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Business capabilities"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/capabilities"
+  },
+  {
+    "path": "/fr/capabilities",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_capabilities-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=wIX0s1ZRpWBcLb81 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=f8zh8RCH3ePXB6qY :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=f8zh8RCH3ePXB6qY :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Capacités métier"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/capabilities"
+  },
+  {
+    "path": "/en/missions/does-not-exist",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-en_missions_does-not-exist-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/missions?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=hSEm1rbwQnq8rRqD :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Mission could not be loaded."
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/missions/does-not-exist"
+  },
+  {
+    "path": "/fr/missions/does-not-exist",
+    "viewport": "390",
+    "status": 200,
+    "screenshot": "crawl-fr_missions_does-not-exist-390.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=yIJlMRjRam3sykvv :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "La mission n’a pas pu être chargée."
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/missions/does-not-exist"
+  },
+  {
+    "path": "/en",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=ry-B8umWgNEV4JR9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=ry-B8umWgNEV4JR9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=ry-B8umWgNEV4JR9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=ry-B8umWgNEV4JR9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=ry-B8umWgNEV4JR9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=ILsbqvJmfHvW5Mob :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "A useful business result, not agent theatre."
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Business intelligence, evidenced results",
+    "url": "/en"
+  },
+  {
+    "path": "/fr",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=oha7wOavRa0TMuU_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Un résultat métier utile, pas du théâtre d’agents."
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — intelligence métier, résultats étayés",
+    "url": "/fr"
+  },
+  {
+    "path": "/en/how-it-works",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_how-it-works-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=Chv3J-V9meG_uHE0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=Chv3J-V9meG_uHE0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=Chv3J-V9meG_uHE0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=Chv3J-V9meG_uHE0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=Chv3J-V9meG_uHE0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=W0bck8Wi5ejVeXM9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=W0bck8Wi5ejVeXM9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=W0bck8Wi5ejVeXM9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=W0bck8Wi5ejVeXM9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=0hyGTZfIcK6LCXvg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=W0bck8Wi5ejVeXM9 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "How QeyNox works"
+    ],
+    "htmlLang": "en",
+    "title": "How QeyNox works — objective, governed work, evidenced result",
+    "url": "/en/how-it-works"
+  },
+  {
+    "path": "/fr/how-it-works",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_how-it-works-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=FVoHCnaWTPU21HpS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=FVoHCnaWTPU21HpS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=FVoHCnaWTPU21HpS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=FVoHCnaWTPU21HpS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=FVoHCnaWTPU21HpS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=DrD8kDF_UeiJzHzj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=DrD8kDF_UeiJzHzj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=DrD8kDF_UeiJzHzj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=-_wZpuTfUHmjRVQk :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=DrD8kDF_UeiJzHzj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=DrD8kDF_UeiJzHzj :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Le fonctionnement de QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Fonctionnement de QeyNox — objectif, travail encadré, résultat étayé",
+    "url": "/fr/how-it-works"
+  },
+  {
+    "path": "/en/manifesto",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_manifesto-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=WG17F8uMCAOUY9Dn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=WG17F8uMCAOUY9Dn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=WG17F8uMCAOUY9Dn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=WG17F8uMCAOUY9Dn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=WG17F8uMCAOUY9Dn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=6pdJWGxa7K1ZuOqJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=6pdJWGxa7K1ZuOqJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=6pdJWGxa7K1ZuOqJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=VIpb4pHdh3uFfaW9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=6pdJWGxa7K1ZuOqJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=6pdJWGxa7K1ZuOqJ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Business intelligence for everyday use"
+    ],
+    "htmlLang": "en",
+    "title": "The QeyNox manifesto — results over agent theatre",
+    "url": "/en/manifesto"
+  },
+  {
+    "path": "/fr/manifesto",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_manifesto-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=pwzbwr0lzHun4UqT :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=pwzbwr0lzHun4UqT :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=pwzbwr0lzHun4UqT :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=pwzbwr0lzHun4UqT :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=pwzbwr0lzHun4UqT :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=2-askmkTfYB5JkZJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=2-askmkTfYB5JkZJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=2-askmkTfYB5JkZJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=2-askmkTfYB5JkZJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=2-askmkTfYB5JkZJ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "L’intelligence métier au quotidien"
+    ],
+    "htmlLang": "fr",
+    "title": "Le manifeste QeyNox — des résultats, pas du théâtre d’agents",
+    "url": "/fr/manifesto"
+  },
+  {
+    "path": "/en/contact",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_contact-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/manifesto?_rsc=0jGZgW6Ln_bTiVd1 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=0jGZgW6Ln_bTiVd1 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=0jGZgW6Ln_bTiVd1 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=0jGZgW6Ln_bTiVd1 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=0jGZgW6Ln_bTiVd1 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=bQfaZETtmDBiuz93 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=bQfaZETtmDBiuz93 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=bQfaZETtmDBiuz93 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=jSalsfQ1qg2lALOQ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=bQfaZETtmDBiuz93 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=bQfaZETtmDBiuz93 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Contact"
+    ],
+    "htmlLang": "en",
+    "title": "Contact QeyNox",
+    "url": "/en/contact"
+  },
+  {
+    "path": "/fr/contact",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_contact-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=fKo3VnWhlmysYbCJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=fKo3VnWhlmysYbCJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=fKo3VnWhlmysYbCJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=fKo3VnWhlmysYbCJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=fKo3VnWhlmysYbCJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=sRx10msAaGd9zbdA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=sRx10msAaGd9zbdA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=sRx10msAaGd9zbdA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=sRx10msAaGd9zbdA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=jm10SHOGqOL8gztF :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Contact"
+    ],
+    "htmlLang": "fr",
+    "title": "Contacter QeyNox",
+    "url": "/fr/contact"
+  },
+  {
+    "path": "/en/legal/notice",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_legal_notice-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=clXb3pHdC-iL8K13 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=clXb3pHdC-iL8K13 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=clXb3pHdC-iL8K13 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=clXb3pHdC-iL8K13 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=clXb3pHdC-iL8K13 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=clXb3pHdC-iL8K13 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=73rIA9AxC0h3cjXn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=73rIA9AxC0h3cjXn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=73rIA9AxC0h3cjXn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/legal/notice?_rsc=y_bXP6dUw2qGg0-Q :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=73rIA9AxC0h3cjXn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=73rIA9AxC0h3cjXn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=73rIA9AxC0h3cjXn :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Legal notice — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Legal notice — QeyNox",
+    "url": "/en/legal/notice"
+  },
+  {
+    "path": "/en/legal/privacy",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_legal_privacy-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/legal/privacy?_rsc=zpzcweFdBIPCdAaN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Privacy — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Privacy — QeyNox",
+    "url": "/en/legal/privacy"
+  },
+  {
+    "path": "/en/legal/terms",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_legal_terms-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/legal/terms?_rsc=NYvldW52go5wLKpP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Terms of use — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Terms of use — QeyNox",
+    "url": "/en/legal/terms"
+  },
+  {
+    "path": "/en/legal/cookies",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_legal_cookies-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Cookies and local storage — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Cookies and local storage — QeyNox",
+    "url": "/en/legal/cookies"
+  },
+  {
+    "path": "/fr/legal/notice",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_notice-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=xD3n9bC6bRA5_3l4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=xD3n9bC6bRA5_3l4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=xD3n9bC6bRA5_3l4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=xD3n9bC6bRA5_3l4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=xD3n9bC6bRA5_3l4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/legal/notice?_rsc=ZlykY2WpYLSdEDHs :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=xD3n9bC6bRA5_3l4 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Mentions légales — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Mentions légales — QeyNox",
+    "url": "/fr/legal/notice"
+  },
+  {
+    "path": "/fr/legal/privacy",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_privacy-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=EzpMVvw460h5nwFx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=EzpMVvw460h5nwFx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=EzpMVvw460h5nwFx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=EzpMVvw460h5nwFx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=EzpMVvw460h5nwFx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=EzpMVvw460h5nwFx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/legal/privacy?_rsc=dCfF9Aog0KyAOyQ4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Confidentialité — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Confidentialité — QeyNox",
+    "url": "/fr/legal/privacy"
+  },
+  {
+    "path": "/fr/legal/terms",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_terms-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/account?_rsc=H5dnNhQ47EjBTBUU :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=H5dnNhQ47EjBTBUU :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/legal/terms?_rsc=S0RFvPArsqVfKoJY :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Conditions générales d’utilisation — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Conditions générales d’utilisation — QeyNox",
+    "url": "/fr/legal/terms"
+  },
+  {
+    "path": "/fr/legal/cookies",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_cookies-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Cookies et stockage local — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Cookies et stockage local — QeyNox",
+    "url": "/fr/legal/cookies"
+  },
+  {
+    "path": "/en/account",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_account-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=6zelOB3tdQLme9dx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=6zelOB3tdQLme9dx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=6zelOB3tdQLme9dx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=6zelOB3tdQLme9dx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=XLmwGXvfVhkBMJRg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=XLmwGXvfVhkBMJRg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=XLmwGXvfVhkBMJRg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=XLmwGXvfVhkBMJRg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=XLmwGXvfVhkBMJRg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=F0KEB2f8rKG0Wiuz :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Account"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account"
+  },
+  {
+    "path": "/fr/account",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_account-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/soul?_rsc=J51iPQWCWVi7TiKO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=J51iPQWCWVi7TiKO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=J51iPQWCWVi7TiKO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=J51iPQWCWVi7TiKO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=J51iPQWCWVi7TiKO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=3-qTSg_nyFezNX6F :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=3-qTSg_nyFezNX6F :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=3-qTSg_nyFezNX6F :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=3-qTSg_nyFezNX6F :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=3-qTSg_nyFezNX6F :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=zw41hc8QLBy9qXm_ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Compte"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/account"
+  },
+  {
+    "path": "/en/account/register",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_account_register-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=rTpSt8dSoBeW1Ggt :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=rTpSt8dSoBeW1Ggt :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=rTpSt8dSoBeW1Ggt :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=rTpSt8dSoBeW1Ggt :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Create an account"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/register"
+  },
+  {
+    "path": "/fr/account/register",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_account_register-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=7RfZNzFv-7vB6rfU :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Créer un compte"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/account/register"
+  },
+  {
+    "path": "/en/account/recover",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_account_recover-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=mXIpcQxBw1L-NDf4 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Reset your password"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/recover"
+  },
+  {
+    "path": "/fr/account/recover",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_account_recover-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/missions?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=XrhVUdQ0BovCQk7C :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Réinitialiser votre mot de passe"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/account/recover"
+  },
+  {
+    "path": "/en/account/reset",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_account_reset-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=jFgWcT_MzUgk-AJ7 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Choose a new password"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/reset"
+  },
+  {
+    "path": "/en/account/verify",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_account_verify-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=6Z2FRqFV0uKc0TFT :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Confirm your e-mail address"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/verify"
+  },
+  {
+    "path": "/en/mydash",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_mydash-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/missions?_rsc=Vhe5IB25htGChhHr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=Vhe5IB25htGChhHr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=Vhe5IB25htGChhHr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=Vhe5IB25htGChhHr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=Vhe5IB25htGChhHr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=PmMp4ZNF3bd7KP3O :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=PmMp4ZNF3bd7KP3O :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=PmMp4ZNF3bd7KP3O :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=PmMp4ZNF3bd7KP3O :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=PmMp4ZNF3bd7KP3O :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=KSlSI4xcUoMTukAZ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "What result do you need next?"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/mydash"
+  },
+  {
+    "path": "/fr/mydash",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_mydash-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/missions?_rsc=zuIiTaODATkh6r-K :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=zuIiTaODATkh6r-K :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=zuIiTaODATkh6r-K :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=zuIiTaODATkh6r-K :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=zuIiTaODATkh6r-K :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=r8ESLATOsGbmM6Fl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=r8ESLATOsGbmM6Fl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=r8ESLATOsGbmM6Fl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=r8ESLATOsGbmM6Fl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=r8ESLATOsGbmM6Fl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=G1lgepFCP5gBpm2t :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Quel résultat souhaitez-vous obtenir ?"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/mydash"
+  },
+  {
+    "path": "/en/missions",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_missions-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=cT5KOP4C143Szs0i :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=cT5KOP4C143Szs0i :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=cT5KOP4C143Szs0i :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=cT5KOP4C143Szs0i :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=cT5KOP4C143Szs0i :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=yFSvA-7eHvRihlSo :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=yFSvA-7eHvRihlSo :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=yFSvA-7eHvRihlSo :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=yFSvA-7eHvRihlSo :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=yFSvA-7eHvRihlSo :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=-mMYUmJpL-QEwCcU :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Missions"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/missions"
+  },
+  {
+    "path": "/fr/missions",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_missions-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=zwdWiz0kHefTvz6s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=zwdWiz0kHefTvz6s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=zwdWiz0kHefTvz6s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=zwdWiz0kHefTvz6s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=zwdWiz0kHefTvz6s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=LzNyWw63C9770Uw6 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Missions"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/missions"
+  },
+  {
+    "path": "/en/soul",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_soul-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=fYGb3depODqNQBnh :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=fYGb3depODqNQBnh :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=fYGb3depODqNQBnh :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=fYGb3depODqNQBnh :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=fYGb3depODqNQBnh :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=tGhfTgm9DHg3Hm2K :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "A short guided start"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/soul"
+  },
+  {
+    "path": "/fr/soul",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_soul-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=aGvOgRB6DVINwoso :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=aGvOgRB6DVINwoso :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=aGvOgRB6DVINwoso :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=aGvOgRB6DVINwoso :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=aGvOgRB6DVINwoso :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=hTnOGUb0avoN-uwn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=hTnOGUb0avoN-uwn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=hTnOGUb0avoN-uwn :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Un démarrage guidé, court"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/soul"
+  },
+  {
+    "path": "/en/support",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_support-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=WpS0VQnyjLtgTFxr :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Support"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/support"
+  },
+  {
+    "path": "/fr/support",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_support-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/soul?_rsc=_AH7PJPV0u7xRUCv :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=_AH7PJPV0u7xRUCv :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=_AH7PJPV0u7xRUCv :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=_AH7PJPV0u7xRUCv :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=_AH7PJPV0u7xRUCv :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=Jjqf7pXQExLYVEv8 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=Jjqf7pXQExLYVEv8 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=Jjqf7pXQExLYVEv8 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=iRuknZ6pVMdRLMLx :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Support"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/support"
+  },
+  {
+    "path": "/en/capabilities",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_capabilities-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=QG3o1D30dSayj4GI :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=QG3o1D30dSayj4GI :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=QG3o1D30dSayj4GI :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=QG3o1D30dSayj4GI :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=ASXIOhZM6TW4t35y :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=ASXIOhZM6TW4t35y :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=ASXIOhZM6TW4t35y :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Business capabilities"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/capabilities"
+  },
+  {
+    "path": "/fr/capabilities",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_capabilities-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=f8zh8RCH3ePXB6qY :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=f8zh8RCH3ePXB6qY :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=f8zh8RCH3ePXB6qY :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=f8zh8RCH3ePXB6qY :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Capacités métier"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/capabilities"
+  },
+  {
+    "path": "/en/missions/does-not-exist",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-en_missions_does-not-exist-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=hSEm1rbwQnq8rRqD :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Mission could not be loaded."
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/missions/does-not-exist"
+  },
+  {
+    "path": "/fr/missions/does-not-exist",
+    "viewport": "1024",
+    "status": 200,
+    "screenshot": "crawl-fr_missions_does-not-exist-1024.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=MUOmjAc-S5K_uB2J :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=MUOmjAc-S5K_uB2J :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=MUOmjAc-S5K_uB2J :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=MUOmjAc-S5K_uB2J :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=MUOmjAc-S5K_uB2J :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=MUOmjAc-S5K_uB2J :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=yIJlMRjRam3sykvv :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "La mission n’a pas pu être chargée."
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/missions/does-not-exist"
+  },
+  {
+    "path": "/en",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=ry-B8umWgNEV4JR9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=ry-B8umWgNEV4JR9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=ry-B8umWgNEV4JR9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=ry-B8umWgNEV4JR9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=ry-B8umWgNEV4JR9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=1vwYfVB7_E9t4fEj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=ILsbqvJmfHvW5Mob :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "A useful business result, not agent theatre."
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Business intelligence, evidenced results",
+    "url": "/en"
+  },
+  {
+    "path": "/fr",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=EylmaytQesAzsSpi :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=-FKW1KsA7p7dueVx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=oha7wOavRa0TMuU_ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Un résultat métier utile, pas du théâtre d’agents."
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — intelligence métier, résultats étayés",
+    "url": "/fr"
+  },
+  {
+    "path": "/en/how-it-works",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_how-it-works-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=Chv3J-V9meG_uHE0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=Chv3J-V9meG_uHE0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=Chv3J-V9meG_uHE0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=Chv3J-V9meG_uHE0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=Chv3J-V9meG_uHE0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=0hyGTZfIcK6LCXvg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=W0bck8Wi5ejVeXM9 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "How QeyNox works"
+    ],
+    "htmlLang": "en",
+    "title": "How QeyNox works — objective, governed work, evidenced result",
+    "url": "/en/how-it-works"
+  },
+  {
+    "path": "/fr/how-it-works",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_how-it-works-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/account?_rsc=FVoHCnaWTPU21HpS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=FVoHCnaWTPU21HpS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=FVoHCnaWTPU21HpS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=FVoHCnaWTPU21HpS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=FVoHCnaWTPU21HpS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=DrD8kDF_UeiJzHzj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=DrD8kDF_UeiJzHzj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=DrD8kDF_UeiJzHzj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=DrD8kDF_UeiJzHzj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=DrD8kDF_UeiJzHzj :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=-_wZpuTfUHmjRVQk :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Le fonctionnement de QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Fonctionnement de QeyNox — objectif, travail encadré, résultat étayé",
+    "url": "/fr/how-it-works"
+  },
+  {
+    "path": "/en/manifesto",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_manifesto-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=WG17F8uMCAOUY9Dn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=WG17F8uMCAOUY9Dn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=WG17F8uMCAOUY9Dn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=WG17F8uMCAOUY9Dn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=WG17F8uMCAOUY9Dn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=6pdJWGxa7K1ZuOqJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=6pdJWGxa7K1ZuOqJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=6pdJWGxa7K1ZuOqJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=VIpb4pHdh3uFfaW9 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=6pdJWGxa7K1ZuOqJ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Business intelligence for everyday use"
+    ],
+    "htmlLang": "en",
+    "title": "The QeyNox manifesto — results over agent theatre",
+    "url": "/en/manifesto"
+  },
+  {
+    "path": "/fr/manifesto",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_manifesto-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=pwzbwr0lzHun4UqT :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=pwzbwr0lzHun4UqT :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=pwzbwr0lzHun4UqT :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=pwzbwr0lzHun4UqT :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=pwzbwr0lzHun4UqT :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=2-askmkTfYB5JkZJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=2-askmkTfYB5JkZJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=2-askmkTfYB5JkZJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=AU8k83PYr-Hkro4w :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=2-askmkTfYB5JkZJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=2-askmkTfYB5JkZJ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "L’intelligence métier au quotidien"
+    ],
+    "htmlLang": "fr",
+    "title": "Le manifeste QeyNox — des résultats, pas du théâtre d’agents",
+    "url": "/fr/manifesto"
+  },
+  {
+    "path": "/en/contact",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_contact-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=0jGZgW6Ln_bTiVd1 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=0jGZgW6Ln_bTiVd1 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=0jGZgW6Ln_bTiVd1 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=0jGZgW6Ln_bTiVd1 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=0jGZgW6Ln_bTiVd1 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=bQfaZETtmDBiuz93 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=bQfaZETtmDBiuz93 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=bQfaZETtmDBiuz93 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=jSalsfQ1qg2lALOQ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=bQfaZETtmDBiuz93 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=bQfaZETtmDBiuz93 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Contact"
+    ],
+    "htmlLang": "en",
+    "title": "Contact QeyNox",
+    "url": "/en/contact"
+  },
+  {
+    "path": "/fr/contact",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_contact-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=fKo3VnWhlmysYbCJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=fKo3VnWhlmysYbCJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=fKo3VnWhlmysYbCJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=fKo3VnWhlmysYbCJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=fKo3VnWhlmysYbCJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=sRx10msAaGd9zbdA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=sRx10msAaGd9zbdA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=sRx10msAaGd9zbdA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=sRx10msAaGd9zbdA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=sRx10msAaGd9zbdA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=jm10SHOGqOL8gztF :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Contact"
+    ],
+    "htmlLang": "fr",
+    "title": "Contacter QeyNox",
+    "url": "/fr/contact"
+  },
+  {
+    "path": "/en/legal/notice",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_legal_notice-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=clXb3pHdC-iL8K13 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=clXb3pHdC-iL8K13 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=clXb3pHdC-iL8K13 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=73rIA9AxC0h3cjXn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=73rIA9AxC0h3cjXn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=73rIA9AxC0h3cjXn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=73rIA9AxC0h3cjXn :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Legal notice — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Legal notice — QeyNox",
+    "url": "/en/legal/notice"
+  },
+  {
+    "path": "/en/legal/privacy",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_legal_privacy-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=3NCYqwvUPcw2kzCl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/legal/privacy?_rsc=zpzcweFdBIPCdAaN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=idE-8O4-RsfQytkS :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Privacy — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Privacy — QeyNox",
+    "url": "/en/legal/privacy"
+  },
+  {
+    "path": "/en/legal/terms",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_legal_terms-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=HAYMu6YMnS1ZhwFO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/legal/terms?_rsc=NYvldW52go5wLKpP :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=aThPfsXdSi6bmLbP :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Terms of use — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Terms of use — QeyNox",
+    "url": "/en/legal/terms"
+  },
+  {
+    "path": "/en/legal/cookies",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_legal_cookies-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=K3Cxwqv-wS93pnAD :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/how-it-works?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/manifesto?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/contact?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/legal/cookies?_rsc=HCd9ikIBaDVWGSMo :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=BHXsY0OslGTIsrD4 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Cookies and local storage — QeyNox"
+    ],
+    "htmlLang": "en",
+    "title": "Cookies and local storage — QeyNox",
+    "url": "/en/legal/cookies"
+  },
+  {
+    "path": "/fr/legal/notice",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_notice-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=6vazH9lseMxSaFW2 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=xD3n9bC6bRA5_3l4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=xD3n9bC6bRA5_3l4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=xD3n9bC6bRA5_3l4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=xD3n9bC6bRA5_3l4 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/legal/notice?_rsc=ZlykY2WpYLSdEDHs :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Mentions légales — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Mentions légales — QeyNox",
+    "url": "/fr/legal/notice"
+  },
+  {
+    "path": "/fr/legal/privacy",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_privacy-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=EzpMVvw460h5nwFx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=EzpMVvw460h5nwFx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=EzpMVvw460h5nwFx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=EzpMVvw460h5nwFx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=EzpMVvw460h5nwFx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=FGzcgMZann6zfmfJ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/legal/privacy?_rsc=dCfF9Aog0KyAOyQ4 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Confidentialité — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Confidentialité — QeyNox",
+    "url": "/fr/legal/privacy"
+  },
+  {
+    "path": "/fr/legal/terms",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_terms-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=H5dnNhQ47EjBTBUU :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=H5dnNhQ47EjBTBUU :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=H5dnNhQ47EjBTBUU :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=H5dnNhQ47EjBTBUU :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=H5dnNhQ47EjBTBUU :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=H5dnNhQ47EjBTBUU :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/legal/terms?_rsc=S0RFvPArsqVfKoJY :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=XxvnqMN5wAXHM2iA :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Conditions générales d’utilisation — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Conditions générales d’utilisation — QeyNox",
+    "url": "/fr/legal/terms"
+  },
+  {
+    "path": "/fr/legal/cookies",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_legal_cookies-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=D8Iah9C98owIv8PO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/how-it-works?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/manifesto?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/contact?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/legal/cookies?_rsc=tpnoAHimEFIqCh94 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=p7KivM59D_Rqvx4Z :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Cookies et stockage local — QeyNox"
+    ],
+    "htmlLang": "fr",
+    "title": "Cookies et stockage local — QeyNox",
+    "url": "/fr/legal/cookies"
+  },
+  {
+    "path": "/en/account",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_account-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=6zelOB3tdQLme9dx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=6zelOB3tdQLme9dx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=6zelOB3tdQLme9dx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=6zelOB3tdQLme9dx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=6zelOB3tdQLme9dx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=XLmwGXvfVhkBMJRg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=XLmwGXvfVhkBMJRg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=XLmwGXvfVhkBMJRg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=XLmwGXvfVhkBMJRg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=XLmwGXvfVhkBMJRg :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=F0KEB2f8rKG0Wiuz :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Account"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account"
+  },
+  {
+    "path": "/fr/account",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_account-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=J51iPQWCWVi7TiKO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=J51iPQWCWVi7TiKO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=J51iPQWCWVi7TiKO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=J51iPQWCWVi7TiKO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=J51iPQWCWVi7TiKO :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=3-qTSg_nyFezNX6F :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=3-qTSg_nyFezNX6F :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=3-qTSg_nyFezNX6F :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=3-qTSg_nyFezNX6F :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=3-qTSg_nyFezNX6F :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=zw41hc8QLBy9qXm_ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Compte"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/account"
+  },
+  {
+    "path": "/en/account/register",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_account_register-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=89Hisum5K4rFqLc0 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=rTpSt8dSoBeW1Ggt :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=rTpSt8dSoBeW1Ggt :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=emNE2bhp9bqnYfPj :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Create an account"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/register"
+  },
+  {
+    "path": "/fr/account/register",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_account_register-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=BlroD6fZu12W3US3 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=eimQd27rF-SUeUir :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=7RfZNzFv-7vB6rfU :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Créer un compte"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/account/register"
+  },
+  {
+    "path": "/en/account/recover",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_account_recover-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=wWAw9_Wm-i4sRl3r :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=vMnNck9Sd3t3Vsda :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=mXIpcQxBw1L-NDf4 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Reset your password"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/recover"
+  },
+  {
+    "path": "/fr/account/recover",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_account_recover-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=ZP-2cdIYRZdV9m3m :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=wUrsoNQyN9tHIEkN :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=XrhVUdQ0BovCQk7C :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Réinitialiser votre mot de passe"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/account/recover"
+  },
+  {
+    "path": "/en/account/reset",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_account_reset-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=txKWEJpMMTkRrLXL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=717CdacEnOmpuEwp :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Choose a new password"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/reset"
+  },
+  {
+    "path": "/en/account/verify",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_account_verify-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/missions?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=UxgFnbXuIJhdWDWL :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=ySeYu1SL_yD355-k :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=6Z2FRqFV0uKc0TFT :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Confirm your e-mail address"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/account/verify"
+  },
+  {
+    "path": "/en/mydash",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_mydash-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/missions?_rsc=Vhe5IB25htGChhHr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=Vhe5IB25htGChhHr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=Vhe5IB25htGChhHr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=Vhe5IB25htGChhHr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=Vhe5IB25htGChhHr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=PmMp4ZNF3bd7KP3O :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=PmMp4ZNF3bd7KP3O :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=PmMp4ZNF3bd7KP3O :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=PmMp4ZNF3bd7KP3O :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=PmMp4ZNF3bd7KP3O :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=KSlSI4xcUoMTukAZ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "What result do you need next?"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/mydash"
+  },
+  {
+    "path": "/fr/mydash",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_mydash-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/missions?_rsc=zuIiTaODATkh6r-K :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=zuIiTaODATkh6r-K :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=zuIiTaODATkh6r-K :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=zuIiTaODATkh6r-K :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=zuIiTaODATkh6r-K :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=r8ESLATOsGbmM6Fl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=r8ESLATOsGbmM6Fl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=r8ESLATOsGbmM6Fl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=r8ESLATOsGbmM6Fl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=r8ESLATOsGbmM6Fl :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=G1lgepFCP5gBpm2t :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Quel résultat souhaitez-vous obtenir ?"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/mydash"
+  },
+  {
+    "path": "/en/missions",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_missions-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/account?_rsc=cT5KOP4C143Szs0i :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=yFSvA-7eHvRihlSo :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=yFSvA-7eHvRihlSo :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=yFSvA-7eHvRihlSo :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=yFSvA-7eHvRihlSo :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=-mMYUmJpL-QEwCcU :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Missions"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/missions"
+  },
+  {
+    "path": "/fr/missions",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_missions-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=qD7hib60T3_yzTKr :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=LzNyWw63C9770Uw6 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Missions"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/missions"
+  },
+  {
+    "path": "/en/soul",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_soul-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=NyHV-C4x4wxh4z0s :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=fYGb3depODqNQBnh :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=fYGb3depODqNQBnh :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "A short guided start"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/soul"
+  },
+  {
+    "path": "/fr/soul",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_soul-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=aGvOgRB6DVINwoso :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=aGvOgRB6DVINwoso :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=hTnOGUb0avoN-uwn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=hTnOGUb0avoN-uwn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=hTnOGUb0avoN-uwn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=hTnOGUb0avoN-uwn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=hTnOGUb0avoN-uwn :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=XGjeog_8Ikxx-Qnm :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Un démarrage guidé, court"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/soul"
+  },
+  {
+    "path": "/en/support",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_support-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=vLw_4k39KLDebKZF :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=eLxWTYSKdhbOtNR7 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=WpS0VQnyjLtgTFxr :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Support"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/support"
+  },
+  {
+    "path": "/fr/support",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_support-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=_AH7PJPV0u7xRUCv :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=_AH7PJPV0u7xRUCv :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=_AH7PJPV0u7xRUCv :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=Jjqf7pXQExLYVEv8 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=Jjqf7pXQExLYVEv8 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=Jjqf7pXQExLYVEv8 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=Jjqf7pXQExLYVEv8 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=Jjqf7pXQExLYVEv8 :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=iRuknZ6pVMdRLMLx :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Support"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/support"
+  },
+  {
+    "path": "/en/capabilities",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_capabilities-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=QG3o1D30dSayj4GI :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=QG3o1D30dSayj4GI :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=QG3o1D30dSayj4GI :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=QG3o1D30dSayj4GI :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=ASXIOhZM6TW4t35y :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=ASXIOhZM6TW4t35y :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=ASXIOhZM6TW4t35y :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=ASXIOhZM6TW4t35y :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=ASXIOhZM6TW4t35y :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=2-xNnxPI0M-XnayC :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Business capabilities"
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/capabilities"
+  },
+  {
+    "path": "/fr/capabilities",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_capabilities-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/mydash?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=hjLWyPytFZfSCHTx :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=f8zh8RCH3ePXB6qY :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=f8zh8RCH3ePXB6qY :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=f8zh8RCH3ePXB6qY :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=f8zh8RCH3ePXB6qY :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=f8zh8RCH3ePXB6qY :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=wIX0s1ZRpWBcLb81 :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Capacités métier"
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/capabilities"
+  },
+  {
+    "path": "/en/missions/does-not-exist",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-en_missions_does-not-exist-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/en/mydash?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=D8Cub5g1RAtpf5JB :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/mydash?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/missions?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/soul?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/account?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/support?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/en/capabilities?_rsc=esq1LvJDxpJAl5rM :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=hSEm1rbwQnq8rRqD :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "Mission could not be loaded."
+    ],
+    "htmlLang": "en",
+    "title": "QeyNox — Results as a Service",
+    "url": "/en/missions/does-not-exist"
+  },
+  {
+    "path": "/fr/missions/does-not-exist",
+    "viewport": "1440",
+    "status": 200,
+    "screenshot": "crawl-fr_missions_does-not-exist-1440.png",
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [
+      "http://127.0.0.1:3000/fr/missions?_rsc=MUOmjAc-S5K_uB2J :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=MUOmjAc-S5K_uB2J :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=MUOmjAc-S5K_uB2J :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=MUOmjAc-S5K_uB2J :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=MUOmjAc-S5K_uB2J :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/mydash?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/missions?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/support?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/capabilities?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/account?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED",
+      "http://127.0.0.1:3000/fr/soul?_rsc=vrLtdCRPVu7KBij_ :: net::ERR_ABORTED"
+    ],
+    "httpErrors": [],
+    "issues": [],
+    "h1": [
+      "La mission n’a pas pu être chargée."
+    ],
+    "htmlLang": "fr",
+    "title": "QeyNox — Results as a Service",
+    "url": "/fr/missions/does-not-exist"
+  }
+]

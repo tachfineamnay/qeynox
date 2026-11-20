@@ -1,5 +1,11 @@
 import type { Metadata } from 'next';
-import type { Locale } from './copy';
+import type { Locale } from './locales';
+import { SUPPORTED_LOCALES } from './locales';
+
+/** hreflang map derived from the locale registry — grows automatically when a reviewed locale lands. */
+function alternatesFor(path: string): Record<string, string> {
+  return { ...Object.fromEntries(SUPPORTED_LOCALES.map(lang => [lang, absoluteUrl(lang, path)])), 'x-default': absoluteUrl('en', path) };
+}
 
 /**
  * Public site origin. The existing qeynox.io routing is not modified: this value is only used for
@@ -43,11 +49,7 @@ export function pageMetadata(lang: Locale, path: string, title: string, descript
     description,
     alternates: {
       canonical,
-      languages: {
-        en: absoluteUrl('en', path),
-        fr: absoluteUrl('fr', path),
-        'x-default': absoluteUrl('en', path),
-      },
+      languages: alternatesFor(path),
     },
     openGraph: {
       title,
