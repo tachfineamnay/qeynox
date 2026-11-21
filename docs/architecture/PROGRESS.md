@@ -1,5 +1,65 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION P09: A16 business outputs wired into the worker (PR, branch `arena/1004e438-qeynox`, off `779577d`)
+
+**The gap.** The eight A16 packs, their `<pack>@1` deliverable schemas, `validatePackDeliverable()` and
+`projectDeliverableToResultSummary()` existed. The worker still stored every step as one generic
+`AGENT_FINDING` built from the raw answer text, so no pack mission ever produced its structured
+deliverable.
+
+**What changed.** All glue lives in `packages/application/src/business-pack-execution.ts`; it adds no
+new business rules.
+- **Request recovery.** `BusinessPackService.createPlan` records the validated, normalized request on
+  the goal (`serviceRequest`: contract, pack, capability, fingerprint, canonical JSON). Before any engine
+  selection or budget use, the worker recovers it and proves it: the recorded JSON must hash to the
+  approved fingerprint, and pack and contract must match the operation constraints. Otherwise it fails
+  closed with `INVALID_STATE`, and the mission is never run as a generic one.
+- **Pack instructions.**
+  - Every step must belong to the pack capability, which selects its slot profile.
+  - That profile must permit `step:input`.
+  - Supporting steps get the request and prior outputs.
+  - The plan's single terminal step, which must depend on every other step, gets the `<pack>@1`
+    output contract and the exact URIs ToolBroker captured in the revision.
+- **Acceptance.** The actual Hermes output goes through the existing
+  `extractStructuredDeliverableFromJson` / `validatePackDeliverable`. The validation context is rebuilt
+  from the recovered request: captured URIs, competitors, channels and budget, and the deterministic
+  diagnostics and sensitivity. Rejected output fails the step with the new code `INVALID_AGENT_OUTPUT`;
+  no evidence, claim, output or document is written for it.
+- **Persistence.**
+  - Observed statements from `projectDeliverableToResultSummary` become
+    `business-pack:<pack>:observation` claims. Each is linked to every capture of the URI it cites
+    (exact digest) and assessed against the active policy.
+  - The validated deliverable is stored on the step output.
+  - `ResultAssembler` re-validates it on every (re)assembly and derives the title, scope, limitations,
+    next actions, `interpretations` and `businessPack` identity from it, using only that attempt's
+    claims.
+  - Supporting pack steps no longer register generic claims.
+  - Generic missions are unchanged.
+- **Atlas.** Contracts, library and shared views, the web reader (EN/FR), the HTML/PDF exports and the
+  review view carry `interpretations`, labelled AI interpretation and never a finding.
+- **Unchanged.** ToolBroker, budgets, the result-review approval and the delivery gate, which still
+  requires every finding to be SUPPORTED with a verifiable citation.
+
+**Verified.**
+- `pnpm typecheck` and `pnpm build` pass (4/4).
+- A throwaway local check (not committed) over all eight packs passed 82/82. It covered request recovery
+  through a JSON round trip, refusal of a tampered or missing request, deliverable-step selection,
+  instructions, acceptance of the A16 fixture deliverables under the rebuilt context, and rejection of
+  prose, incomplete JSON and uncaptured citations.
+
+**Not verified.**
+- No QA suite was run against PostgreSQL.
+- No live Hermes run.
+- No browser screenshot.
+
+**Known limits.**
+- Pack operations created before this change have no recorded request and fail closed at execution;
+  they must be re-requested.
+- Operations whose deliverable has no observed statement (for example operations without benchmark
+  URIs) assemble as DRAFT and are not deliverable under the existing rules.
+
+Not deployed.
+
 ## 2026-11-21 — MISSION P08: QA runtime bypass restricted to isolated QA runs (PR, branch `arena/6c9e84ad-qeynox`, off `45b9241`)
 
 **The gap.** `QEYNOX_QA_ALLOW_UNVERIFIED=true` skipped the A21.07 runtime gate whenever `NODE_ENV` was

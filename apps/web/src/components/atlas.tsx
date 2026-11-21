@@ -33,6 +33,10 @@ export interface AtlasDocument {
   nextActions: readonly string[]; limitations: readonly string[]; unresolved: readonly string[];
   citations: readonly AtlasCitation[]; createdAt: string;
   reviewedAt?: string; reviewedBy?: string; priorId?: string;
+  /** P09: AI synthesis from a validated business-pack deliverable. Rendered only as interpretation. */
+  interpretations?: readonly string[];
+  /** P09: the typed business service whose validated deliverable produced this document. */
+  businessPack?: { pack: string; contractKey: string };
 }
 
 type FindingClass = 'VERIFIED' | 'UNRESOLVED' | 'AWAITING_ASSESSMENT' | 'AI_INTERPRETATION';
@@ -64,6 +68,7 @@ const atlasCopy = {
     provenance: 'Provenance',
     noSource: 'No source was recorded for this finding.',
     noUriRecorded: 'No citation URI recorded',
+    structuredDeliverable: 'Structured business deliverable',
     notVerifiable: 'not verifiable',
     provider: 'Provider',
     retrieved: 'Retrieved',
@@ -109,6 +114,7 @@ const atlasCopy = {
     provenance: 'Provenance',
     noSource: 'Aucune source enregistrée pour ce constat.',
     noUriRecorded: 'Aucun URI de citation enregistré',
+    structuredDeliverable: 'Livrable métier structuré',
     notVerifiable: 'non vérifiable',
     provider: 'Fournisseur',
     retrieved: 'Consultée',
@@ -277,10 +283,12 @@ export function AtlasResult({ doc, lang, actions, exportsSlot }: {
         ? (lang === 'fr' ? 'Partiel : au moins un constat n’est pas résolu. Pas un résultat livré.' : 'Partial: at least one finding is unresolved. Not a delivered result.')
         : (lang === 'fr' ? 'Brouillon. Aucun constat n’est encore établi.' : 'Draft. No finding is established yet.');
 
+  const interpretations = doc.interpretations ?? [];
   const counts: readonly { klass: FindingClass; value: number }[] = [
     { klass: 'VERIFIED', value: verified.length },
     { klass: 'UNRESOLVED', value: unresolved.length },
     { klass: 'AWAITING_ASSESSMENT', value: awaiting.length },
+    ...(interpretations.length ? [{ klass: 'AI_INTERPRETATION' as const, value: interpretations.length }] : []),
   ];
 
   return (
@@ -289,6 +297,7 @@ export function AtlasResult({ doc, lang, actions, exportsSlot }: {
         <p className="atlas-eyebrow">{lang === 'fr' ? 'Résultat Atlas' : 'Atlas result'}</p>
         <h1>{doc.title}</h1>
         <p className="atlas-objective">{doc.objective}</p>
+        {doc.businessPack ? <p className="atlas-muted">{c.structuredDeliverable}: <code>{doc.businessPack.contractKey}</code></p> : null}
         <div className="atlas-verdict" role="note" aria-label={c.verdict}>
           <strong>{c.verdict}:</strong> {verdict}
         </div>
@@ -318,7 +327,18 @@ export function AtlasResult({ doc, lang, actions, exportsSlot }: {
         <Section id="atlas-verified" title={c.verified} note={c.verifiedNote} items={verified} empty={c.noneVerified} lang={lang} />
         <Section id="atlas-unresolved" title={c.unresolved} note={c.unresolvedNote} items={unresolved} empty={c.noneUnresolved} lang={lang} />
         <Section id="atlas-awaiting" title={c.awaiting} note={c.awaitingNote} items={awaiting} empty={c.noneAwaiting} lang={lang} />
-        <Section id="atlas-interpretation" title={c.interpretation} note={c.interpretationNote} items={[]} empty={c.noneInterpretation} lang={lang} />
+        <section id="atlas-interpretation" aria-labelledby="atlas-interpretation-heading" className="atlas-section">
+          <h2 id="atlas-interpretation-heading">{c.interpretation}</h2>
+          <p className="atlas-muted">{c.interpretationNote}</p>
+          {interpretations.length
+            ? <ol className="atlas-findings">{interpretations.map((text, index) => (
+                <li key={index} className="atlas-finding atlas-finding-ai_interpretation" data-class="AI_INTERPRETATION">
+                  <h3>{text}</h3>
+                  <p className="atlas-label">{classLabel.AI_INTERPRETATION[lang]}</p>
+                </li>
+              ))}</ol>
+            : <p className="atlas-empty">{c.noneInterpretation}</p>}
+        </section>
       </Card>
 
       <Card>

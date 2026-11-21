@@ -10,10 +10,10 @@ export interface NewOutbox { topic: string; key: string; payload: Record<string,
 export class QeyNoxStore {
   constructor(readonly db: QeyNoxDatabase) {}
 
-  async createOperation(principal: Principal, title: string, statement: string, constraints: readonly string[]) {
+  async createOperation(principal: Principal, title: string, statement: string, constraints: readonly string[], serviceRequest?: Goal['serviceRequest']) {
     if (!title.trim() || !statement.trim()) throw new DomainError('INVALID_INPUT', 'Missing objective');
     const now = new Date().toISOString();
-    const goal: Goal = { id: newId(), operationId: newId(), statement, constraints, createdAt: now };
+    const goal: Goal = { id: newId(), operationId: newId(), statement, constraints, createdAt: now, ...(serviceRequest ? { serviceRequest } : {}) };
     const operation: Operation = {
       id: goal.operationId, workspaceId: principal.workspaceId, createdBy: principal.userId,
       goalId: goal.id, title, status: 'DRAFT', version: 1, createdAt: now, updatedAt: now, lastActivityAt: now,

@@ -147,6 +147,8 @@ export default async function ResultLibraryDetailPage({
     reviewedAt: doc.reviewedAt,
     reviewedBy: doc.reviewedBy,
     priorId: doc.priorId,
+    interpretations: doc.interpretations,
+    businessPack: doc.businessPack ? { pack: doc.businessPack.pack, contractKey: doc.businessPack.contractKey } : undefined,
   };
 
   const otherVersions = detail.versions.filter(v => v.id !== doc.id);

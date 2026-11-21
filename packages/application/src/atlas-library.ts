@@ -795,6 +795,8 @@ export class AtlasLibraryService {
         priorId: doc.priorId,
         reviewedBy: doc.reviewedBy,
         reviewedAt: doc.reviewedAt,
+        ...(doc.interpretations ? { interpretations: [...doc.interpretations] } : {}),
+        ...(doc.businessPack ? { businessPack: { ...doc.businessPack } } : {}),
       },
       operation: {
         id: row.docRow.operationId,
@@ -1169,6 +1171,8 @@ export class AtlasLibraryService {
         createdAt: docRow.createdAt,
         reviewedAt: doc.reviewedAt ?? null,
         hasPriorVersion: Boolean(doc.priorId || doc.version > 1),
+        ...(doc.interpretations ? { interpretations: [...doc.interpretations] } : {}),
+        ...(doc.businessPack ? { businessPack: { pack: doc.businessPack.pack, contractKey: doc.businessPack.contractKey } } : {}),
       },
       verdict: documentVerdict(doc, classification),
       verificationPosture: deriveVerificationPosture(doc, classification),

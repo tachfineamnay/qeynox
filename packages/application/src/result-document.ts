@@ -2,6 +2,7 @@ import { and,eq,desc,inArray } from 'drizzle-orm';
 import { DomainError,newId,type ID,type Principal } from '@qeynox/domain';
 import { QeyNoxStore,resultDocuments,claims,claimEvidenceLinks,attempts,sources,type DocumentState } from '@qeynox/persistence';
 import type { Source } from '@qeynox/domain';
+import { readBusinessPackResult,type ResultBusinessPack } from './business-pack-execution';
 export interface ResultCitation {
   sourceId:string;provider:string;uri?:string;retrievedAt:string;publishedAt?:string;fingerprint?:string;
 }
@@ -15,6 +16,10 @@ export interface ResultDocument {
   nextActions:readonly string[];limitations:readonly string[];unresolved:readonly string[];
   citations:readonly ResultCitation[];
   createdAt:string;status:DocumentState;priorId?:ID;reviewedBy?:string;reviewedAt?:string;
+  /** P09: the agent's analytical synthesis from a validated business-pack deliverable. Never a finding, never evidence. */
+  interpretations?:readonly string[];
+  /** P09: identity of the validated business-pack deliverable this document was assembled from. */
+  businessPack?:ResultBusinessPack;
 }
 export class ResultAssembler {
  constructor(private readonly store:QeyNoxStore){}
@@ -23,7 +28,11 @@ export class ResultAssembler {
   if(op.currentRevisionId!==revisionId)throw new DomainError('CONFLICT','Cannot publish an older plan revision');
   const rowsAll=await this.store.db.select().from(claims).where(and(eq(claims.workspaceId,actor.workspaceId),eq(claims.operationId,operationId)));
   const attemptIds=new Set((await this.store.db.select().from(attempts).where(eq(attempts.revisionId,revisionId))).map(a=>a.id));
-  const rows=rowsAll.filter(row=>attemptIds.has(row.attemptId));
+  // P09: a business-pack result is assembled ONLY from its validated deliverable (re-validated here) and
+  // the domain claims of the attempt that produced it. A pack mission without one throws; generic
+  // missions get null and keep the generic assembly.
+  const pack=await readBusinessPackResult(this.store,actor,operationId,revisionId);
+  const rows=rowsAll.filter(row=>attemptIds.has(row.attemptId)&&(!pack||row.attemptId===pack.identity.attemptId));
   const claimIds=rows.map(row=>row.id);
   const links=claimIds.length?await this.store.db.select().from(claimEvidenceLinks).where(inArray(claimEvidenceLinks.claimId,claimIds)):[];
   const linksByClaim=new Map<string,typeof links>();
@@ -52,7 +61,13 @@ export class ResultAssembler {
   const state:DocumentState=!findings.length?'DRAFT':unresolved.length?'PARTIAL':'READY_FOR_REVIEW';
   const old=(await this.store.db.select().from(resultDocuments).where(and(eq(resultDocuments.operationId,operationId),eq(resultDocuments.workspaceId,actor.workspaceId))).orderBy(desc(resultDocuments.version)).limit(1))[0];
   const now=new Date().toISOString();
-  const result:ResultDocument={id:newId(),workspaceId:actor.workspaceId,operationId,revisionId,version:(old?.version??0)+1,title,objective:op.title,scope,findings,nextActions,limitations:unresolved.length?['Some claims are unverified or lack a verifiable citation']:[],unresolved,citations,createdAt:now,status:state,priorId:old?.id as ID|undefined};
+  const evidenceLimitations=unresolved.length?['Some claims are unverified or lack a verifiable citation']:[];
+  const result:ResultDocument={id:newId(),workspaceId:actor.workspaceId,operationId,revisionId,version:(old?.version??0)+1,
+   title:pack?pack.projection.title:title,objective:op.title,scope:pack?[...pack.projection.scope]:scope,findings,
+   nextActions:pack?[...pack.projection.nextActions]:nextActions,
+   limitations:pack?[...pack.projection.limitations,...evidenceLimitations]:evidenceLimitations,
+   unresolved,citations,createdAt:now,status:state,priorId:old?.id as ID|undefined,
+   ...(pack?{interpretations:[...pack.projection.analyticalStatements],businessPack:pack.identity}:{})};
   await this.store.db.insert(resultDocuments).values({id:result.id,workspaceId:result.workspaceId,operationId,revisionId,version:result.version,state,document:result as unknown as Record<string,unknown>,createdAt:result.createdAt,supersedesId:result.priorId});
   return result;
  }
