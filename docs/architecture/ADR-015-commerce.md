@@ -58,3 +58,14 @@ non-production environment disables payments instead of charging a real customer
 KNOWN FOLLOW-UP: no subscriptions (no verified product decision requires them), no tax/receipt documents,
 no customer-facing refund portal, and no live Stripe verification. Live test-mode Stripe, real webhook
 delivery and the browser redirect are NOT VERIFIED.
+
+## Amendment — MISSION A21.01 hard payment freeze (2026-11-21)
+
+Key presence no longer decides whether payments run. `QEYNOX_COMMERCE_MODE` does, server-side. Its only
+values are `PAYMENTS_DISABLED` (the default) and `BETA_FREE`, and both freeze every payment mutation:
+checkout, capture, refund, reconciliation and provider webhooks all return `503 PAYMENTS_FROZEN`.
+There is no paid mode, and any other value refuses API boot. The API never constructs
+`StripePaymentProvider` and does not read the Stripe credentials. `BETA_FREE` is a posture, not an
+entitlement: priced orders stay `PAYMENT_REQUIRED`, and the explicitly-free path described above is
+unchanged. The A08 provider, service, persistence contracts and every stored commerce row are preserved.
+Record: [A21_PAYMENT_FREEZE.md](../design/A21_PAYMENT_FREEZE.md).

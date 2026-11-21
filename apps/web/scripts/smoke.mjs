@@ -109,20 +109,33 @@ const backend = createServer((req, res) => {
     res.statusCode = 503; res.end(JSON.stringify({ error: { code: 'NOT_CONFIGURED' } })); return;
   }
   // MISSION A08 — payment status. The fixture reports a real recorded state; it never claims success.
+  // MISSION A21.01 — the real API can only return FROZEN payment views now (both supported commerce modes
+  // freeze payments), so every fixture mirrors that contract: a `commerce` block, no checkout, no link.
   if (req.url === '/v1/operations/operation_qa/payment') {
+    const commerce = (frozenMode) => ({ mode: frozenMode, paymentsAvailable: false, checkoutAvailable: false, refundsAvailable: false, betaFree: frozenMode === 'BETA_FREE', reason: 'PAYMENTS_FROZEN' });
+    const frozen = { canStartCheckout: false, providerConfigured: false, blockedReason: 'PAYMENTS_FROZEN' };
     payload = mode === 'payment-authorized'
       ? {
-          orderId: 'order_qa', orderState: 'AUTHORIZED', refunds: [], executionAuthorized: true,
-          canStartCheckout: false, blockedReason: 'ORDER_AUTHORIZED', providerConfigured: true,
+          orderId: 'order_qa', orderState: 'AUTHORIZED', refunds: [], executionAuthorized: true, ...frozen,
           payment: { id: 'payment_qa', status: 'AUTHORIZED', amountMinor: 2500, currency: 'USD', capturedMinor: 0, refundedMinor: 0, checkoutUrl: null, expiresAt: null, failureCode: null },
+          commerce: commerce('PAYMENTS_DISABLED'),
         }
-      : mode === 'payment-unconfigured'
-        ? { orderId: 'order_qa', orderState: 'PAYMENT_REQUIRED', payment: null, refunds: [], executionAuthorized: false, canStartCheckout: false, blockedReason: 'PROVIDER_NOT_CONFIGURED', providerConfigured: false }
-        : {
-            orderId: 'order_qa', orderState: 'PAYMENT_REQUIRED', refunds: [], executionAuthorized: false,
-            canStartCheckout: true, blockedReason: null, providerConfigured: true,
-            payment: { id: 'payment_qa', status: 'FAILED', amountMinor: 2500, currency: 'USD', capturedMinor: 0, refundedMinor: 0, checkoutUrl: 'https://checkout.stripe.test/qa', expiresAt: null, failureCode: 'card_declined' },
-          };
+      : mode === 'payment-frozen-disabled'
+        ? { orderId: 'order_qa', orderState: 'PAYMENT_REQUIRED', payment: null, refunds: [], executionAuthorized: false, ...frozen, commerce: commerce('PAYMENTS_DISABLED') }
+        : mode === 'payment-frozen-beta'
+          ? { orderId: 'order_qa', orderState: 'PAYMENT_REQUIRED', payment: null, refunds: [], executionAuthorized: false, ...frozen, commerce: commerce('BETA_FREE') }
+          : mode === 'payment-legacy-unfrozen'
+            // A pre-A21 response shape (no `commerce` block) must be rejected, never rendered as payable.
+            ? {
+                orderId: 'order_qa', orderState: 'PAYMENT_REQUIRED', refunds: [], executionAuthorized: false,
+                canStartCheckout: true, blockedReason: null, providerConfigured: true,
+                payment: { id: 'payment_qa', status: 'FAILED', amountMinor: 2500, currency: 'USD', capturedMinor: 0, refundedMinor: 0, checkoutUrl: 'https://checkout.stripe.test/qa', expiresAt: null, failureCode: 'card_declined' },
+              }
+            : {
+                orderId: 'order_qa', orderState: 'PAYMENT_REQUIRED', refunds: [], executionAuthorized: false, ...frozen,
+                payment: { id: 'payment_qa', status: 'FAILED', amountMinor: 2500, currency: 'USD', capturedMinor: 0, refundedMinor: 0, checkoutUrl: null, expiresAt: null, failureCode: 'card_declined' },
+                commerce: commerce('PAYMENTS_DISABLED'),
+              };
     res.end(JSON.stringify(payload)); return;
   }
   if (req.url === '/v1/operations/operation_qa/documents') payload = [doc];
@@ -356,16 +369,31 @@ try {
   const frenchDocument = await page('/fr/missions/operation_qa/results/document_qa', true);
   assert.ok(frenchDocument.includes('En attente d’évaluation') && frenchDocument.includes('Partiel'), 'the French reader is translated'); assertions++;
   assert.ok(!frenchDocument.includes('>UNVERIFIED<'), 'the French reader does not leak raw enums'); assertions++;
-  // MISSION A08 — a failed payment must be visible, recoverable, and must never read as paid.
+  // MISSION A08 + A21.01 — a recorded failed payment stays visible and is never read as paid; under the
+  // payment freeze it is history only: no retry, resume or checkout action is offered.
   mode = 'payment-failed';
   const payFailed = await page('/en/missions/operation_qa', true);
   assert.ok(payFailed.includes('Declined'), 'a declined payment is named in the page'); assertions++;
-  assert.ok(payFailed.includes('You can try again'), 'a declined payment offers a retry'); assertions++;
   assert.ok(!/Paid<\/span>/.test(payFailed), 'a declined payment is never shown as paid'); assertions++;
-  mode = 'payment-unconfigured';
-  const payUnconfigured = await page('/en/missions/operation_qa', true);
-  assert.ok(payUnconfigured.includes('Payments are not configured'), 'an unconfigured provider is stated plainly'); assertions++;
-  assert.ok(!/Continue to secure checkout/.test(payUnconfigured), 'no checkout button is offered without a provider'); assertions++;
+  assert.ok(payFailed.includes('Payments are currently disabled'), 'the frozen PAYMENTS_DISABLED state is stated plainly'); assertions++;
+  assert.ok(payFailed.includes('shown for reference only'), 'recorded payment history is labelled read-only'); assertions++;
+  assert.ok(!/Try again<\/button>|Resume checkout|Continue to secure checkout/.test(payFailed), 'no retry or checkout action is offered while frozen'); assertions++;
+  assert.ok(!payFailed.includes('checkout.stripe'), 'no hosted checkout link is rendered while frozen'); assertions++;
+  mode = 'payment-frozen-disabled';
+  const payDisabled = await page('/en/missions/operation_qa', true);
+  assert.ok(payDisabled.includes('Payments are currently disabled') && payDisabled.includes('data-commerce-mode="PAYMENTS_DISABLED"'), 'PAYMENTS_DISABLED renders its frozen state'); assertions++;
+  assert.ok(!/Continue to secure checkout/.test(payDisabled), 'no checkout button is offered when payments are disabled'); assertions++;
+  assert.ok(payDisabled.includes('payments are frozen on the server'), 'the payment-required notice names the freeze, not a missing provider'); assertions++;
+  mode = 'payment-frozen-beta';
+  const payBeta = await page('/en/missions/operation_qa', true);
+  assert.ok(payBeta.includes('free beta') && payBeta.includes('data-commerce-mode="BETA_FREE"'), 'BETA_FREE renders the free-beta frozen state'); assertions++;
+  assert.ok(!/Continue to secure checkout/.test(payBeta), 'no checkout button is offered in free beta'); assertions++;
+  const payBetaFr = await page('/fr/missions/operation_qa', true);
+  assert.ok(payBetaFr.includes('bêta gratuite') && !/Continuer vers le paiement sécurisé/.test(payBetaFr), 'the French free-beta state is translated and offers no checkout'); assertions++;
+  mode = 'payment-legacy-unfrozen';
+  const payLegacy = await page('/en/missions/operation_qa', true);
+  assert.ok(payLegacy.includes('Payment status unavailable'), 'a response without the commerce block is rejected, not rendered'); assertions++;
+  assert.ok(!/Continue to secure checkout|Try again<\/button>/.test(payLegacy) && !payLegacy.includes('checkout.stripe'), 'a legacy payable response never yields a checkout action'); assertions++;
   mode = 'section-failure';
   const partial = await page('/fr/missions/operation_qa', true);
   assert.ok(partial.includes('NOT_CONFIGURED') && partial.includes('QA mission workspace')); assertions++;
