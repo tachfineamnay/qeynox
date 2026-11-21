@@ -1,0 +1,136 @@
+{
+  "_readme": [
+    "OPERATOR CONFIGURATION — CAPABILITY PACK 05: SALES (Slot 5).",
+    "Domain: B2B account qualification & deal playbook over public company signals.",
+    "Operator customization: edit 'service.displayName', 'service.specialization', 'service.allowedMethodologies',",
+    "'service.allowedDealStages', 'service.maxTargetAccounts', and capability/profile names.",
+    "Runtime gates: QEYNOX_BRAVE_SEARCH_ENABLED=true, QEYNOX_BRAVE_SEARCH_API_KEY set, api.search.brave.com in",
+    "EgressPolicy. Strict data boundary: role-based stakeholder maps only (zero scraped personal emails/phones).",
+    "External connectors 'linkedin' and 'google-workspace' are BLOCKED; no automated outreach."
+  ],
+  "service": {
+    "pack": "sales",
+    "capabilityId": "capability-slot-5-v1",
+    "offerId": "offer-sales-pack-v1",
+    "budgetPolicyId": "budget-sales-pack-v1",
+    "displayName": "Enterprise Account Qualification & Deal Playbook",
+    "specialization": "MEDDPICC and SPICED account qualification over public company signals, role-based discovery maps, and mutual action plans",
+    "allowedMethodologies": ["MEDDPICC", "SPICED", "BANT_ENTERPRISE", "VALUE_SELLING"],
+    "allowedDealStages": [
+      "PROSPECTING_QUALIFICATION",
+      "DISCOVERY",
+      "SOLUTION_VALIDATION",
+      "COMMERCIAL_NEGOTIATION"
+    ],
+    "maxTargetAccounts": 3
+  },
+  "idempotencyKey": "operator-pack-05-sales-v1",
+  "entries": [
+    {
+      "domain": "TOOL",
+      "connectorId": "brave-search",
+      "version": "1",
+      "status": "ACTIVE",
+      "manifest": {
+        "description": "Read-only public web search through the Brave Search REST API v1.",
+        "provider": "Brave Search API v1",
+        "regions": ["GLOBAL"],
+        "operations": ["web.search"],
+        "mode": "READ_ONLY",
+        "licenseNotes": "Commercial Brave Search Data for AI / Search API terms apply; cite returned page URLs.",
+        "termsUrl": "https://brave.com/search/api/",
+        "credentialRef": "env:QEYNOX_BRAVE_SEARCH_API_KEY",
+        "freshness": { "ttlSeconds": 3600, "publishedAtSource": "UNKNOWN" },
+        "rateLimit": { "maxPerMinute": 15 },
+        "tools": [{ "name": "web", "version": "1" }]
+      }
+    },
+    {
+      "domain": "BUSINESS_CAPABILITY",
+      "slot": 5,
+      "version": 1,
+      "status": "ACTIVE",
+      "name": "B2B Account Qualification & Deal Playbook",
+      "purpose": "Inspect public company announcements and product footprint via Brave Search, then produce qualification briefs, role-based discovery maps, objection playbooks, and mutual action plans.",
+      "scope": [
+        "public-account-signal-research",
+        "meddpicc-spiced-qualification",
+        "role-based-stakeholder-mapping",
+        "mutual-action-plan-design"
+      ],
+      "allowedTools": ["brave-search:web@1"],
+      "privacyScopes": ["web:search"],
+      "inputSchemaVersion": 1,
+      "outputSchemaVersion": 1,
+      "maximumSteps": 4,
+      "maximumToolCalls": 4
+    },
+    {
+      "domain": "AGENT_PROFILE",
+      "slot": 5,
+      "version": 1,
+      "status": "ACTIVE",
+      "title": "Enterprise Sales Qualification Strategist",
+      "systemInstructions": "You are the QeyNox Enterprise Sales Qualification Strategist (Slot 5). Inspect public company initiatives, press releases, and product pages strictly via brave-search:web@1 and cite returned URLs in sourceUris. NEVER invent, guess, or scrape personal email addresses, direct phone numbers, or named private individuals in stakeholderRoleMap or accountBriefs — map functional job titles only. Never claim automated CRM, LinkedIn, or Gmail outreach (connectors BLOCKED). Number mutualActionPlan stepOrder sequentially starting at 1. Emit valid sales@1 JSON.",
+      "skillRefs": ["sales:account-qualification", "sales:mutual-action-planning"],
+      "allowedTools": ["brave-search:web@1"],
+      "permittedContextKeys": ["goal:statement", "step:input", "prior:summaries"],
+      "maxOutputTokens": 3000,
+      "maxIterations": 4
+    },
+    {
+      "domain": "VERIFICATION_POLICY",
+      "capabilityId": "capability-slot-5-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "minimumSources": 1,
+      "maxAgeDays": 120,
+      "approvedProviders": ["brave-search"],
+      "humanReviewRequired": true,
+      "validFrom": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "domain": "RAAS_OFFER",
+      "offerId": "offer-sales-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "label": "Enterprise Account Qualification & Deal Playbook (Pack 05)",
+      "capabilityIds": ["capability-slot-5-v1"],
+      "deliverableSchemaVersion": 1,
+      "scope": [
+        "Public company signal briefs with cited URLs for up to 3 target accounts",
+        "Structured qualification scorecard (MEDDPICC, SPICED, BANT Enterprise, or Value Selling)",
+        "Role-based stakeholder discovery map and objection handling playbook",
+        "Sequential joint Mutual Action Plan"
+      ],
+      "exclusions": [
+        "No personal contact enrichment, email scraping, or phone number lookup",
+        "No automated LinkedIn InMail or outbound email sequence sending (connectors BLOCKED)",
+        "No guaranteed close rates or pipeline revenue commitments"
+      ],
+      "regions": ["GLOBAL"],
+      "locales": ["en", "fr"],
+      "termsVersion": "2026-11-a16",
+      "currency": "EUR",
+      "amountMinor": 22000,
+      "taxPolicy": "CONFIGURED",
+      "isExplicitlyFree": false
+    },
+    {
+      "domain": "BUDGET_POLICY",
+      "policyId": "budget-sales-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "currency": "EUR",
+      "maxMoneyMinor": 2000,
+      "maxAgentCalls": 16,
+      "maxToolCalls": 6,
+      "maxDurationSeconds": 180,
+      "maxConcurrent": 2,
+      "unitMaxMinor": {
+        "hermes": 50,
+        "brave-search:web@1": 5
+      }
+    }
+  ]
+}

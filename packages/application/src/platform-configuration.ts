@@ -82,7 +82,7 @@ export class PlatformConfigurationService {
    * created, modified or activated; the report names every BLOCKER and its remedy. The iteration
    * basis is the ACTIVE business profile for the capability's slot — reported, never assumed.
    */
-  async validateService(principal: PlatformPrincipal, input: { readonly workspaceId: string; readonly capabilityId: string; readonly offerId: string; readonly expectedProvider: 'world-bank' }): Promise<ServiceConfigurationReport & { readonly maximumIterations: number | null }> {
+  async validateService(principal: PlatformPrincipal, input: { readonly workspaceId: string; readonly capabilityId: string; readonly offerId: string; readonly expectedProvider: 'world-bank' | 'brave-search' }): Promise<ServiceConfigurationReport & { readonly maximumIterations: number | null }> {
     const action = 'READ_PLATFORM_SERVICE_VALIDATION';
     await this.platform.requirePermission(principal, 'CONSULTATION', {
       action,

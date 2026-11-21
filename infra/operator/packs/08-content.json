@@ -1,0 +1,135 @@
+{
+  "_readme": [
+    "OPERATOR CONFIGURATION — CAPABILITY PACK 08: CONTENT (Slot 8).",
+    "Domain: Evidence-backed editorial brief & authority content pack in EN/FR.",
+    "Operator customization: edit 'service.displayName', 'service.specialization', 'service.allowedFormats',",
+    "'service.allowedLocales', 'service.maxReferenceQueries', and capability/profile names.",
+    "Runtime gates: QEYNOX_BRAVE_SEARCH_ENABLED=true, QEYNOX_BRAVE_SEARCH_API_KEY set, api.search.brave.com in",
+    "EgressPolicy. External connectors 'wordpress-woocommerce' and 'linkedin' are BLOCKED; no auto-publishing."
+  ],
+  "service": {
+    "pack": "content",
+    "capabilityId": "capability-slot-8-v1",
+    "offerId": "offer-content-pack-v1",
+    "budgetPolicyId": "budget-content-pack-v1",
+    "displayName": "Verified Editorial Brief & Authority Draft Pack",
+    "specialization": "Citation-backed executive briefs, technical articles, and comparison guides in EN/FR with a claim-to-source ledger",
+    "allowedFormats": [
+      "EXECUTIVE_BRIEF",
+      "TECHNICAL_ARTICLE",
+      "WHITEPAPER_OUTLINE",
+      "COMPARISON_GUIDE",
+      "CASE_STUDY_FRAMEWORK"
+    ],
+    "allowedLocales": ["en", "fr"],
+    "maxReferenceQueries": 3
+  },
+  "idempotencyKey": "operator-pack-08-content-v1",
+  "entries": [
+    {
+      "domain": "TOOL",
+      "connectorId": "brave-search",
+      "version": "1",
+      "status": "ACTIVE",
+      "manifest": {
+        "description": "Read-only public web search through the Brave Search REST API v1.",
+        "provider": "Brave Search API v1",
+        "regions": ["GLOBAL"],
+        "operations": ["web.search"],
+        "mode": "READ_ONLY",
+        "licenseNotes": "Commercial Brave Search Data for AI / Search API terms apply; cite returned page URLs.",
+        "termsUrl": "https://brave.com/search/api/",
+        "credentialRef": "env:QEYNOX_BRAVE_SEARCH_API_KEY",
+        "freshness": { "ttlSeconds": 3600, "publishedAtSource": "UNKNOWN" },
+        "rateLimit": { "maxPerMinute": 15 },
+        "tools": [{ "name": "web", "version": "1" }]
+      }
+    },
+    {
+      "domain": "BUSINESS_CAPABILITY",
+      "slot": 8,
+      "version": 1,
+      "status": "ACTIVE",
+      "name": "Evidence-Backed Editorial & Authority Content",
+      "purpose": "Gather public reference sources via Brave Search, architect an editorial brief and structured sections in EN or FR, and bind every factual assertion to a citation ledger.",
+      "scope": [
+        "reference-source-discovery",
+        "bilingual-editorial-briefing",
+        "authority-draft-authoring",
+        "claim-to-citation-ledger"
+      ],
+      "allowedTools": ["brave-search:web@1"],
+      "privacyScopes": ["web:search"],
+      "inputSchemaVersion": 1,
+      "outputSchemaVersion": 1,
+      "maximumSteps": 5,
+      "maximumToolCalls": 4
+    },
+    {
+      "domain": "AGENT_PROFILE",
+      "slot": 8,
+      "version": 1,
+      "status": "ACTIVE",
+      "title": "Managing Technical & Executive Editor",
+      "systemInstructions": "You are the QeyNox Managing Technical & Executive Editor (Slot 8). Retrieve authoritative public sources strictly via brave-search:web@1. Write in the caller's requested language ('en' or 'fr') and toneProfile, honoring all editorialExclusions. Every factual or statistical assertion in structuredSections must appear in claimCitationLedger with its captured sourceUri. Never invent expert quotes, customer testimonials, or unverified statistics. Disclose in editorialDisclosures that WordPress and LinkedIn connectors are BLOCKED and human editors publish final copy. Emit valid content@1 JSON.",
+      "skillRefs": ["content:editorial-briefing", "content:citation-ledger-editing"],
+      "allowedTools": ["brave-search:web@1"],
+      "permittedContextKeys": ["goal:statement", "step:input", "prior:summaries"],
+      "maxOutputTokens": 4096,
+      "maxIterations": 5
+    },
+    {
+      "domain": "VERIFICATION_POLICY",
+      "capabilityId": "capability-slot-8-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "minimumSources": 2,
+      "maxAgeDays": 180,
+      "approvedProviders": ["brave-search"],
+      "humanReviewRequired": true,
+      "validFrom": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "domain": "RAAS_OFFER",
+      "offerId": "offer-content-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "label": "Verified Editorial Brief & Authority Draft Pack (Pack 08)",
+      "capabilityIds": ["capability-slot-8-v1"],
+      "deliverableSchemaVersion": 1,
+      "scope": [
+        "Editorial brief (headline, thesis, reader takeaway, tone profile) in English or French",
+        "Structured Markdown publication sections backed by up to 3 Brave Search reference queries",
+        "Mandatory claim-to-citation verification ledger",
+        "Human editorial review and manual distribution checklist"
+      ],
+      "exclusions": [
+        "No automated CMS publishing to WordPress or social auto-posting to LinkedIn (connectors BLOCKED)",
+        "No fabricated quotes, fictional case studies, or unverified statistics"
+      ],
+      "regions": ["GLOBAL"],
+      "locales": ["en", "fr"],
+      "termsVersion": "2026-11-a16",
+      "currency": "EUR",
+      "amountMinor": 18000,
+      "taxPolicy": "CONFIGURED",
+      "isExplicitlyFree": false
+    },
+    {
+      "domain": "BUDGET_POLICY",
+      "policyId": "budget-content-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "currency": "EUR",
+      "maxMoneyMinor": 2200,
+      "maxAgentCalls": 20,
+      "maxToolCalls": 6,
+      "maxDurationSeconds": 240,
+      "maxConcurrent": 2,
+      "unitMaxMinor": {
+        "hermes": 50,
+        "brave-search:web@1": 5
+      }
+    }
+  ]
+}

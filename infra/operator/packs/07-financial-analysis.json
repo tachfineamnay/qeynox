@@ -1,0 +1,135 @@
+{
+  "_readme": [
+    "OPERATOR CONFIGURATION — CAPABILITY PACK 07: FINANCIAL ANALYSIS (Slot 7).",
+    "Domain: Deterministic unit economics, cash-flow sensitivity & official World Bank macro benchmarking.",
+    "Operator customization: edit 'service.displayName', 'service.specialization', 'service.allowedCountries',",
+    "'service.allowedMacroIndicators', 'service.allowedCurrencies', 'service.maxScenarios', and capability/profile names.",
+    "Runtime gates: QEYNOX_WORLD_BANK_ENABLED=true and api.worldbank.org in EgressPolicy.",
+    "External connector 'stripe' is BLOCKED; caller baseline figures are explicitly disclosed as unverified assumptions."
+  ],
+  "service": {
+    "pack": "financial-analysis",
+    "capabilityId": "capability-slot-7-v1",
+    "offerId": "offer-financial-pack-v1",
+    "budgetPolicyId": "budget-financial-pack-v1",
+    "displayName": "Unit Economics, Runway & Macro Sensitivity Pack",
+    "specialization": "Deterministic SaaS and SME unit economics, cash runway, and downside scenario stress-testing paired with official World Bank macro benchmarks",
+    "allowedCountries": ["MA", "FR", "DE", "GB", "US", "ES", "IT", "NL", "BE", "CH", "CA", "AE"],
+    "allowedMacroIndicators": [
+      "FP.CPI.TOTL.ZG",
+      "NY.GDP.MKTP.KD.ZG",
+      "NY.GDP.PCAP.CD",
+      "FR.INR.RINR",
+      "SL.UEM.TOTL.ZS"
+    ],
+    "allowedCurrencies": ["EUR", "USD", "GBP", "MAD"],
+    "maxScenarios": 3
+  },
+  "idempotencyKey": "operator-pack-07-financial-analysis-v1",
+  "entries": [
+    {
+      "domain": "TOOL",
+      "connectorId": "world-bank",
+      "version": "1",
+      "status": "ACTIVE",
+      "manifest": {
+        "description": "Public, read-only World Bank Indicators v2 series by country and indicator code.",
+        "provider": "World Bank Indicators API v2",
+        "regions": ["GLOBAL"],
+        "operations": ["indicator.read"],
+        "mode": "READ_ONLY",
+        "licenseNotes": "CC BY 4.0 — cite The World Bank and indicator code on every external output.",
+        "termsUrl": "https://www.worldbank.org/en/about/legal/terms-of-use-for-datasets",
+        "freshness": { "ttlSeconds": 86400, "publishedAtSource": "UNKNOWN" },
+        "rateLimit": { "maxPerMinute": 30 },
+        "tools": [{ "name": "indicator", "version": "1" }]
+      }
+    },
+    {
+      "domain": "BUSINESS_CAPABILITY",
+      "slot": 7,
+      "version": 1,
+      "status": "ACTIVE",
+      "name": "Unit Economics & Cash-Flow Sensitivity Analysis",
+      "purpose": "Model deterministic unit economics, monthly burn, runway, and stress scenarios over caller financial inputs while anchoring macro assumptions to official World Bank series.",
+      "scope": [
+        "unit-economics-and-cac-payback",
+        "cash-runway-and-burn-modeling",
+        "multi-scenario-sensitivity-table",
+        "official-macro-benchmarking"
+      ],
+      "allowedTools": ["world-bank:indicator@1"],
+      "privacyScopes": [],
+      "inputSchemaVersion": 1,
+      "outputSchemaVersion": 1,
+      "maximumSteps": 4,
+      "maximumToolCalls": 2
+    },
+    {
+      "domain": "AGENT_PROFILE",
+      "slot": 7,
+      "version": 1,
+      "status": "ACTIVE",
+      "title": "FP&A & Unit Economics Modeling Analyst",
+      "systemInstructions": "You are the QeyNox FP&A & Unit Economics Modeling Analyst (Slot 7). Retrieve the requested macroeconomic benchmark strictly via world-bank:indicator@1 and cite its exact sourceUri. Reconcile unitEconomicsSummary and scenarioTable integer minor-unit figures exactly to the deterministic sensitivity formulas without rounding drift. Explicitly disclose in callerAssumptionsDisclosed that revenue, gross margin, opex, and cash reserve figures were supplied by the caller (Stripe ledger connector is BLOCKED). Include clear governanceAndAdvisoryDisclaimers stating this analysis is not a statutory audit, tax opinion, or regulated investment advice. Emit valid financial-analysis@1 JSON.",
+      "skillRefs": ["finance:unit-economics", "finance:scenario-sensitivity"],
+      "allowedTools": ["world-bank:indicator@1"],
+      "permittedContextKeys": ["goal:statement", "step:input", "prior:summaries"],
+      "maxOutputTokens": 3000,
+      "maxIterations": 4
+    },
+    {
+      "domain": "VERIFICATION_POLICY",
+      "capabilityId": "capability-slot-7-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "minimumSources": 1,
+      "maxAgeDays": 730,
+      "approvedProviders": ["world-bank"],
+      "humanReviewRequired": true,
+      "validFrom": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "domain": "RAAS_OFFER",
+      "offerId": "offer-financial-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "label": "Unit Economics, Runway & Macro Sensitivity Pack (Pack 07)",
+      "capabilityIds": ["capability-slot-7-v1"],
+      "deliverableSchemaVersion": 1,
+      "scope": [
+        "Deterministic baseline gross profit, net cash flow, runway, and CAC payback computation",
+        "Up to 3 stress-test scenarios across revenue, opex, and gross margin deltas",
+        "Official World Bank macroeconomic series benchmark with exact citation",
+        "Explicit caller-assumption ledger and governance disclaimers"
+      ],
+      "exclusions": [
+        "No live Stripe, bank, or ERP ledger ingestion (connector BLOCKED)",
+        "Not a statutory accounting audit, formal valuation, tax opinion, or investment advice"
+      ],
+      "regions": ["GLOBAL"],
+      "locales": ["en", "fr"],
+      "termsVersion": "2026-11-a16",
+      "currency": "EUR",
+      "amountMinor": 34000,
+      "taxPolicy": "CONFIGURED",
+      "isExplicitlyFree": false
+    },
+    {
+      "domain": "BUDGET_POLICY",
+      "policyId": "budget-financial-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "currency": "EUR",
+      "maxMoneyMinor": 1800,
+      "maxAgentCalls": 16,
+      "maxToolCalls": 4,
+      "maxDurationSeconds": 180,
+      "maxConcurrent": 2,
+      "unitMaxMinor": {
+        "hermes": 50,
+        "world-bank:indicator@1": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,135 @@
+{
+  "_readme": [
+    "OPERATOR CONFIGURATION — CAPABILITY PACK 02: STRATEGY (Slot 2).",
+    "Domain: Competitive & market positioning strategy backed by reviewed Brave Search public web evidence.",
+    "Operator customization: edit 'service.displayName', 'service.specialization', 'service.allowedFrameworks',",
+    "'service.allowedHorizons', 'service.maxCompetitors', BUSINESS_CAPABILITY 'name', and AGENT_PROFILE 'title'.",
+    "Runtime gates: QEYNOX_BRAVE_SEARCH_ENABLED=true, QEYNOX_BRAVE_SEARCH_API_KEY set, api.search.brave.com in",
+    "EgressPolicy, and consent scope 'web:search' acknowledged. Connector 'google-workspace' is BLOCKED."
+  ],
+  "service": {
+    "pack": "strategy",
+    "capabilityId": "capability-slot-2-v1",
+    "offerId": "offer-strategy-pack-v1",
+    "budgetPolicyId": "budget-strategy-pack-v1",
+    "displayName": "Competitive & Market Positioning Dossier",
+    "specialization": "B2B market positioning, competitor trade-off matrices, and resource-bounded 90-day strategic options",
+    "allowedFrameworks": [
+      "POSITIONING_MATRIX",
+      "PORTER_FIVE_FORCES",
+      "MARKET_ENTRY_SCORECARD",
+      "VALUE_PROPOSITION_GAP"
+    ],
+    "allowedHorizons": ["90_DAYS", "6_MONTHS", "12_MONTHS", "24_MONTHS"],
+    "maxCompetitors": 4
+  },
+  "idempotencyKey": "operator-pack-02-strategy-v1",
+  "entries": [
+    {
+      "domain": "TOOL",
+      "connectorId": "brave-search",
+      "version": "1",
+      "status": "ACTIVE",
+      "manifest": {
+        "description": "Read-only public web search through the Brave Search REST API v1.",
+        "provider": "Brave Search API v1",
+        "regions": ["GLOBAL"],
+        "operations": ["web.search"],
+        "mode": "READ_ONLY",
+        "licenseNotes": "Commercial Brave Search Data for AI / Search API terms apply; cite returned page URLs.",
+        "termsUrl": "https://brave.com/search/api/",
+        "credentialRef": "env:QEYNOX_BRAVE_SEARCH_API_KEY",
+        "freshness": { "ttlSeconds": 3600, "publishedAtSource": "UNKNOWN" },
+        "rateLimit": { "maxPerMinute": 15 },
+        "tools": [{ "name": "web", "version": "1" }]
+      }
+    },
+    {
+      "domain": "BUSINESS_CAPABILITY",
+      "slot": 2,
+      "version": 1,
+      "status": "ACTIVE",
+      "name": "Competitive & Market Positioning Strategy",
+      "purpose": "Inspect public competitor positioning and market demand signals via reviewed web search, then synthesize resource-bounded strategic options and trade-offs.",
+      "scope": [
+        "competitor-public-positioning",
+        "strategic-framework-synthesis",
+        "tradeoff-and-risk-scoring",
+        "assumption-separation"
+      ],
+      "allowedTools": ["brave-search:web@1"],
+      "privacyScopes": ["web:search"],
+      "inputSchemaVersion": 1,
+      "outputSchemaVersion": 1,
+      "maximumSteps": 5,
+      "maximumToolCalls": 6
+    },
+    {
+      "domain": "AGENT_PROFILE",
+      "slot": 2,
+      "version": 1,
+      "status": "ACTIVE",
+      "title": "Competitive & Market Strategy Principal",
+      "systemInstructions": "You are the QeyNox Competitive & Market Strategy Principal (Slot 2). Inspect public market and competitor pages strictly via brave-search:web@1. Every competitorMatrix entry must cite captured public URLs. Never fabricate private competitor revenue, ARR, churn, or customer counts; place any unverified market belief inside assumptionsRequiringValidation. Never promise guaranteed market share or ROI. Emit valid strategy@1 JSON matching strategyDeliverableSchema.",
+      "skillRefs": ["strategy:positioning-matrix", "strategy:competitor-benchmarking"],
+      "allowedTools": ["brave-search:web@1"],
+      "permittedContextKeys": ["goal:statement", "step:input", "prior:summaries"],
+      "maxOutputTokens": 3200,
+      "maxIterations": 5
+    },
+    {
+      "domain": "VERIFICATION_POLICY",
+      "capabilityId": "capability-slot-2-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "minimumSources": 2,
+      "maxAgeDays": 180,
+      "approvedProviders": ["brave-search"],
+      "humanReviewRequired": true,
+      "validFrom": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "domain": "RAAS_OFFER",
+      "offerId": "offer-strategy-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "label": "Competitive & Market Positioning Dossier (Pack 02)",
+      "capabilityIds": ["capability-slot-2-v1"],
+      "deliverableSchemaVersion": 1,
+      "scope": [
+        "Public positioning inspection across up to 4 named competitors",
+        "Application of a selected strategic framework (Positioning Matrix, Five Forces, Market Entry, or Value Gap)",
+        "Resource-fit scoring, trade-off analysis, and 90-day priority sequence",
+        "Explicit separation of observed public evidence from assumptions requiring validation"
+      ],
+      "exclusions": [
+        "No proprietary paywalled analyst reports or private competitor financial telemetry",
+        "No guaranteed revenue, market-share, or fundraising outcomes",
+        "No direct export to Google Workspace (connector BLOCKED; downloadable JSON/HTML/PDF provided)"
+      ],
+      "regions": ["GLOBAL"],
+      "locales": ["en", "fr"],
+      "termsVersion": "2026-11-a16",
+      "currency": "EUR",
+      "amountMinor": 29000,
+      "taxPolicy": "CONFIGURED",
+      "isExplicitlyFree": false
+    },
+    {
+      "domain": "BUDGET_POLICY",
+      "policyId": "budget-strategy-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "currency": "EUR",
+      "maxMoneyMinor": 2500,
+      "maxAgentCalls": 20,
+      "maxToolCalls": 8,
+      "maxDurationSeconds": 240,
+      "maxConcurrent": 2,
+      "unitMaxMinor": {
+        "hermes": 50,
+        "brave-search:web@1": 5
+      }
+    }
+  ]
+}

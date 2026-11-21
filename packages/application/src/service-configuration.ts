@@ -1,24 +1,23 @@
 import { DomainError } from '@qeynox/domain';
 import type { QeyNoxStore } from '@qeynox/persistence';
-import { budgetPolicies, capabilities, offers, toolConfigurations, verificationPolicies } from '@qeynox/persistence';
+import { budgetPolicies, offers, toolConfigurations, verificationPolicies } from '@qeynox/persistence';
 import { and, desc, eq } from 'drizzle-orm';
 import type { CapabilityDefinition } from '@qeynox/domain';
-import { worldBankManifest } from '@qeynox/tools';
+import { braveSearchManifest, worldBankManifest } from '@qeynox/tools';
 
 /**
- * Service configuration validation.
+ * Service configuration validation (A03 + A16).
  *
- * A research service is only operational when every prerequisite agrees with every other one. The
- * defects this catches are the ones that silently produce a "configured" service that cannot work:
+ * A business service pack is only operational when every prerequisite agrees with every other one.
+ * The defects this catches are the ones that silently produce a "configured" service that cannot work:
  *
- * - a capability referencing a tool that no ACTIVE tool configuration exposes;
+ * - a capability referencing a tool that no ACTIVE tool configuration exposes, or missing required
+ *   consent scopes (such as 'web:search' when queries leave the deployment to Brave Search);
  * - a verification policy approving a provider that is not enabled, or bound to an inactive
- *   capability, or already expired;
+ *   capability, or not yet effective;
  * - an offer whose capability list does not cover the service capability;
  * - a budget policy that cannot pay for the engine calls the profile allows, or that rate-cards a
- *   provider that is not enabled;
- * - a profile allowing a tool the capability does not allow, or exceeding the capability's own
- *   tool-call ceiling.
+ *   provider that is not enabled.
  *
  * The validator reports EVERY finding with a stable code. It never repairs by guessing: a repair is
  * a change to operator configuration, performed by the operator.
@@ -56,11 +55,23 @@ export interface ServiceConfigurationInput {
    * must be told which tenant it is validating.
    */
   readonly workspaceId: string;
-  readonly expectedProvider: 'world-bank';
+  readonly expectedProvider: 'world-bank' | 'brave-search';
   /** Maximum engine calls a single plan may make, from the profile(s) the capability uses.
    *  Pass null when no ACTIVE business profile exists: iteration-dependent checks are then skipped
    *  (a missing profile is itself reported by capability availability) and BUDGET checks still run. */
   readonly maximumIterations: number | null;
+}
+
+function defaultToolRemedyFor(provider: 'world-bank' | 'brave-search'): string {
+  const manifest = provider === 'brave-search' ? braveSearchManifest : worldBankManifest;
+  return 'Set allowedTools to ' + manifest.tools.map(tool => provider + ':' + tool.name + '@' + tool.version).join(', ');
+}
+
+function providerActivationRemedy(provider: 'world-bank' | 'brave-search'): string {
+  if (provider === 'brave-search') {
+    return 'Activate the reviewed brave-search adapter and set QEYNOX_BRAVE_SEARCH_ENABLED=true + QEYNOX_BRAVE_SEARCH_API_KEY with attested egress';
+  }
+  return 'Activate the reviewed world-bank adapter and set QEYNOX_WORLD_BANK_ENABLED=true with attested egress';
 }
 
 /**
@@ -82,6 +93,19 @@ export async function validateServiceConfiguration(
   if (capability.status !== 'ACTIVE') {
     add({ code: 'CAPABILITY_INACTIVE', severity: 'BLOCKER', domain: 'CAPABILITY', detail: 'Capability status is ' + capability.status, remedy: 'Activate the capability' });
   }
+  if (
+    input.expectedProvider === 'brave-search' &&
+    capability.allowedTools.some(ref => ref.startsWith('brave-search:')) &&
+    !capability.privacyScopes.includes('web:search')
+  ) {
+    add({
+      code: 'CAPABILITY_MISSING_CONSENT_SCOPE',
+      severity: 'BLOCKER',
+      domain: 'CAPABILITY',
+      detail: 'Capability uses brave-search without declaring consent scope "web:search" in privacyScopes',
+      remedy: 'Include "web:search" in capability.privacyScopes so outbound search queries are explicitly disclosed',
+    });
+  }
 
   // --- tools -----------------------------------------------------------------------------
   const toolRows = await store.db.select().from(toolConfigurations).where(and(eq(toolConfigurations.status, 'ACTIVE')));
@@ -93,7 +117,7 @@ export async function validateServiceConfiguration(
     for (const tool of manifest?.tools ?? []) enabledRefs.add(row.connectorId + ':' + tool.name + '@' + tool.version);
   }
   if (!capability.allowedTools.length) {
-    add({ code: 'CAPABILITY_NO_TOOLS', severity: 'BLOCKER', domain: 'CAPABILITY', detail: 'The capability allows no reviewed tool', remedy: 'Set allowedTools to ' + worldBankManifest.tools.map(tool => 'world-bank:' + tool.name + '@' + tool.version).join(', ') });
+    add({ code: 'CAPABILITY_NO_TOOLS', severity: 'BLOCKER', domain: 'CAPABILITY', detail: 'The capability allows no reviewed tool', remedy: defaultToolRemedyFor(input.expectedProvider) });
   }
   for (const ref of capability.allowedTools) {
     if (!enabledRefs.has(ref)) {
@@ -101,7 +125,7 @@ export async function validateServiceConfiguration(
     }
   }
   if (!enabledConnectors.has(input.expectedProvider)) {
-    add({ code: 'PROVIDER_NOT_CONFIGURED', severity: 'BLOCKER', domain: 'TOOL', detail: 'No ACTIVE tool configuration for ' + input.expectedProvider, remedy: 'Activate the reviewed ' + input.expectedProvider + ' adapter and set QEYNOX_WORLD_BANK_ENABLED=true with attested egress' });
+    add({ code: 'PROVIDER_NOT_CONFIGURED', severity: 'BLOCKER', domain: 'TOOL', detail: 'No ACTIVE tool configuration for ' + input.expectedProvider, remedy: providerActivationRemedy(input.expectedProvider) });
   }
 
   // --- verification policy ----------------------------------------------------------------
@@ -130,7 +154,7 @@ export async function validateServiceConfiguration(
       add({ code: 'POLICY_SKIPS_HUMAN_REVIEW', severity: 'WARNING', domain: 'VERIFICATION', detail: 'Policy v' + policy.version + ' does not require human review', remedy: 'Agent findings still require an authorized human decision before SUPPORTED; set humanReviewRequired=true for clarity' });
     }
     if (policy.maxAgeDays < 1 || policy.maxAgeDays > 3650) {
-      add({ code: 'POLICY_MAX_AGE_IMPLAUSIBLE', severity: 'WARNING', domain: 'VERIFICATION', detail: 'Policy maxAgeDays=' + policy.maxAgeDays, remedy: 'Use a defensible freshness window for economic series' });
+      add({ code: 'POLICY_MAX_AGE_IMPLAUSIBLE', severity: 'WARNING', domain: 'VERIFICATION', detail: 'Policy maxAgeDays=' + policy.maxAgeDays, remedy: 'Use a defensible freshness window for provider evidence' });
     }
   }
 
@@ -179,7 +203,7 @@ export async function validateServiceConfiguration(
     if (input.maximumIterations !== null && input.maximumIterations !== undefined && (payload.maxAgentCalls ?? 0) < input.maximumIterations) {
       add({ code: 'BUDGET_AGENT_CALLS_TOO_LOW', severity: 'BLOCKER', domain: 'BUDGET', detail: 'maxAgentCalls ' + String(payload.maxAgentCalls) + ' is below the profile iteration ceiling ' + input.maximumIterations, remedy: 'Raise maxAgentCalls' });
     }
-    if ((payload.maxToolCalls ?? 0) < 1) {
+    if ((payload.maxToolCalls ?? 0) < 1 && capability.maximumToolCalls > 0) {
       add({ code: 'BUDGET_TOOL_CALLS_TOO_LOW', severity: 'BLOCKER', domain: 'BUDGET', detail: 'maxToolCalls ' + String(payload.maxToolCalls) + ' cannot pay for one provider read', remedy: 'Raise maxToolCalls' });
     }
     for (const key of Object.keys(payload.unitMaxMinor ?? {})) {

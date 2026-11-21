@@ -78,6 +78,30 @@ Validation rejects: an objective shorter than 20 characters, a malformed country
 value outside the operator allowlist, more than two comparisons, and any constraint that the
 capability's own ceilings cannot satisfy.
 
+## Eight shipped business capability packs (Mission A16)
+
+Operators can activate individual packs (`infra/operator/packs/01-research.json` .. `08-content.json`)
+or the full eight-slot suite (`infra/operator/a16-business-packs.json`):
+
+| Slot | Pack | Contract Key | Reviewed Tool | Blocked External Connectors Disclosed |
+| --- | --- | --- | --- | --- |
+| 1 | `research` | `research-pack@1` | `world-bank:indicator@1` | none |
+| 2 | `strategy` | `strategy-pack@1` | `brave-search:web@1` (`web:search`) | `google-workspace` |
+| 3 | `marketing` | `marketing-pack@1` | `brave-search:web@1` (`web:search`) | `meta`, `ga4`, `linkedin` |
+| 4 | `seo` | `seo-pack@1` | `brave-search:web@1` (`web:search`) | `search-console`, `ga4` |
+| 5 | `sales` | `sales-pack@1` | `brave-search:web@1` (`web:search`) | `linkedin`, `google-workspace` |
+| 6 | `operations` | `operations-pack@1` | `brave-search:web@1` (`web:search`) | `google-workspace`, `github` |
+| 7 | `financial-analysis` | `financial-analysis-pack@1` | `world-bank:indicator@1` | `stripe` |
+| 8 | `content` | `content-pack@1` | `brave-search:web@1` (`web:search`) | `wordpress-woocommerce`, `linkedin` |
+
+Capability names, profile titles/instructions, RaaS offer labels, and service `displayName`,
+`specialization`, allowlists, and numeric bounds are operator-editable without code changes.
+Verify all eight packs end-to-end with:
+
+```
+pnpm qa:business-packs
+```
+
 ## What "operational" means for this service
 
 | Layer | Evidence |

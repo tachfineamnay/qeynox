@@ -28,5 +28,6 @@ export type WorkflowTaskInput=z.infer<typeof workflowTaskInputSchema>;
 export type CreateOperationInput=z.infer<typeof createOperationSchema>;
 export * from './planning';
 export * from './configuration';
+export * from './business-packs';
 export * from './service-catalogue';
 export * from './connections';

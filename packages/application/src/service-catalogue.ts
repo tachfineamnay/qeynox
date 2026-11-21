@@ -1,12 +1,17 @@
 import { eq } from 'drizzle-orm';
 import type { CapabilityDefinition, Principal } from '@qeynox/domain';
+import type {
+  BusinessPackDomain,
+  ServiceContractMeta,
+  ServiceDeployment,
+} from '@qeynox/contracts';
 import { QeyNoxStore, offers } from '@qeynox/persistence';
 import { capabilityAvailability } from './capability-availability';
 import { failClosedRuntime, type OperationalState, type RuntimeReadinessSource } from './runtime-readiness';
 import { resolveContract, type ServiceContractRegistry } from './service-contracts';
 
 /**
- * MISSION A13 — customer-facing service catalogue read model.
+ * MISSION A13 + A16 — customer-facing service catalogue read model.
  *
  * One source of truth for both the customer Web pages and any read-only API projection:
  *
@@ -85,16 +90,21 @@ export interface ServiceSummaryView {
   readonly requestable: boolean;
   readonly contractKey: string | null;
   readonly unavailableReason: string | null;
+  readonly packDomain?: BusinessPackDomain;
+  readonly displayName?: string;
+  readonly specialization?: string;
 }
 
 export interface ServiceDetailView extends ServiceSummaryView {
   readonly capabilities: ServiceCapabilityView[];
-  /** Deployment switches echoed as booleans (never values). Null for non-World Bank contracts. */
-  readonly deployment: { readonly worldBankEnabled: boolean; readonly egressAttested: boolean } | null;
+  /** Deployment switches echoed as booleans (never values), plus honest blocked external connectors. */
+  readonly deployment: ServiceDeployment | null;
+  /** Operator-editable specialization, allowlists, bounds and deliverable sections for A16 packs. */
+  readonly contractMeta?: ServiceContractMeta;
 }
 
 /** Optional deployment probe for contract-specific honesty notes (booleans only). */
-export type DeploymentProbe = (contractKey: string) => { readonly worldBankEnabled: boolean; readonly egressAttested: boolean } | null;
+export type DeploymentProbe = (contractKey: string, offerId?: string) => ServiceDeployment | null;
 
 export class ServiceCatalogueService {
   constructor(
@@ -118,10 +128,14 @@ export class ServiceCatalogueService {
     const [view] = await this.views([row]);
     if (!view) return null;
     const capabilities = await this.capabilityViews(view.capabilityIds);
+    const { contract } = resolveContract(this.contracts, row.id, view.capabilityIds);
     return {
       ...view,
       capabilities,
-      deployment: view.contractKey && this.deploymentProbe ? this.deploymentProbe(view.contractKey) : null,
+      deployment: view.contractKey && this.deploymentProbe
+        ? this.deploymentProbe(view.contractKey, row.id)
+        : null,
+      ...(contract?.contractMeta ? { contractMeta: contract.contractMeta } : {}),
     };
   }
 
@@ -175,6 +189,13 @@ export class ServiceCatalogueService {
       const payload = row.configuration as ConfiguredOfferPayload;
       const isExplicitlyFree = payload.isExplicitlyFree === true;
       const taxPolicy = payload.taxPolicy === 'CONFIGURED' ? 'CONFIGURED' as const : 'CONFIG_REQUIRED' as const;
+      if (!isExplicitlyFree) {
+        // Stripe/payment processing is not implemented in this repo; surface truthful blocker on paid offers.
+        if (row.amountMinor === 0) {
+          blockers.add('OFFER_FREE_UNAUTHORIZED');
+          states.push('BLOCKED');
+        }
+      }
       const operationalState = worstState(states);
       views.push({
         offerId: row.id,
@@ -195,6 +216,9 @@ export class ServiceCatalogueService {
         requestable: contract !== null && capabilityActive,
         contractKey,
         unavailableReason: contract === null ? 'SERVICE_NOT_CONFIGURED' : !capabilityActive ? 'CAPABILITY_NOT_CONFIGURED' : null,
+        ...(contract?.packDomain ? { packDomain: contract.packDomain } : {}),
+        ...(contract?.displayName ? { displayName: contract.displayName } : {}),
+        ...(contract?.specialization ? { specialization: contract.specialization } : {}),
       });
     }
     return views.sort((a, b) => a.offerId.localeCompare(b.offerId));

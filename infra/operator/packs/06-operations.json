@@ -1,0 +1,135 @@
+{
+  "_readme": [
+    "OPERATOR CONFIGURATION — CAPABILITY PACK 06: OPERATIONS (Slot 6).",
+    "Domain: Process bottleneck diagnostic, SLA gap modeling & RACI SOP blueprint.",
+    "Operator customization: edit 'service.displayName', 'service.specialization', 'service.allowedProcessDomains',",
+    "'service.maxWorkflowStages', and capability/profile names.",
+    "Runtime gates: QEYNOX_BRAVE_SEARCH_ENABLED=true, QEYNOX_BRAVE_SEARCH_API_KEY set, api.search.brave.com in",
+    "EgressPolicy. External connectors 'google-workspace' and 'github' are BLOCKED."
+  ],
+  "service": {
+    "pack": "operations",
+    "capabilityId": "capability-slot-6-v1",
+    "offerId": "offer-operations-pack-v1",
+    "budgetPolicyId": "budget-operations-pack-v1",
+    "displayName": "Operational Bottleneck & RACI SOP Blueprint",
+    "specialization": "Workflow cycle-time bottleneck diagnostics, SLA gap modeling, RACI standard operating procedures, and audit control gates",
+    "allowedProcessDomains": [
+      "CUSTOMER_ONBOARDING",
+      "ORDER_TO_CASH",
+      "INCIDENT_MANAGEMENT",
+      "PROCUREMENT_APPROVAL",
+      "SERVICE_DELIVERY",
+      "QUALITY_ASSURANCE"
+    ],
+    "maxWorkflowStages": 8
+  },
+  "idempotencyKey": "operator-pack-06-operations-v1",
+  "entries": [
+    {
+      "domain": "TOOL",
+      "connectorId": "brave-search",
+      "version": "1",
+      "status": "ACTIVE",
+      "manifest": {
+        "description": "Read-only public web search through the Brave Search REST API v1.",
+        "provider": "Brave Search API v1",
+        "regions": ["GLOBAL"],
+        "operations": ["web.search"],
+        "mode": "READ_ONLY",
+        "licenseNotes": "Commercial Brave Search Data for AI / Search API terms apply; cite returned page URLs.",
+        "termsUrl": "https://brave.com/search/api/",
+        "credentialRef": "env:QEYNOX_BRAVE_SEARCH_API_KEY",
+        "freshness": { "ttlSeconds": 3600, "publishedAtSource": "UNKNOWN" },
+        "rateLimit": { "maxPerMinute": 15 },
+        "tools": [{ "name": "web", "version": "1" }]
+      }
+    },
+    {
+      "domain": "BUSINESS_CAPABILITY",
+      "slot": 6,
+      "version": 1,
+      "status": "ACTIVE",
+      "name": "Process Bottleneck Diagnostic & SOP Blueprint",
+      "purpose": "Diagnose workflow cycle-time bottlenecks against SLA targets, inspect optional public process benchmarks, and produce a sequential RACI SOP with audit control gates.",
+      "scope": [
+        "cycle-time-and-sla-diagnostics",
+        "handoff-and-rework-bottleneck-ranking",
+        "raci-sop-authoring",
+        "mandatory-control-gates"
+      ],
+      "allowedTools": ["brave-search:web@1"],
+      "privacyScopes": ["web:search"],
+      "inputSchemaVersion": 1,
+      "outputSchemaVersion": 1,
+      "maximumSteps": 4,
+      "maximumToolCalls": 2
+    },
+    {
+      "domain": "AGENT_PROFILE",
+      "slot": 6,
+      "version": 1,
+      "status": "ACTIVE",
+      "title": "Operations & Process Control Architect",
+      "systemInstructions": "You are the QeyNox Operations & Process Control Architect (Slot 6). Reconcile baselineCycleHoursTotal exactly to the sum of caller workflowStages medianCycleHours and preserve targetSlaHours verbatim. When external benchmarks are requested, query brave-search:web@1 and cite returned URIs in benchmarkReferenceUris. Number sopSteps stepNumber sequentially starting at 1, assign explicit Responsible and Accountable roles, and define mandatory controlGates before irreversible transitions. Disclose in systemIntegrationLimits that external workflow/docs connectors are BLOCKED. Emit valid operations@1 JSON.",
+      "skillRefs": ["operations:bottleneck-diagnostics", "operations:raci-sop-design"],
+      "allowedTools": ["brave-search:web@1"],
+      "permittedContextKeys": ["goal:statement", "step:input", "prior:summaries"],
+      "maxOutputTokens": 3200,
+      "maxIterations": 4
+    },
+    {
+      "domain": "VERIFICATION_POLICY",
+      "capabilityId": "capability-slot-6-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "minimumSources": 1,
+      "maxAgeDays": 365,
+      "approvedProviders": ["brave-search"],
+      "humanReviewRequired": true,
+      "validFrom": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "domain": "RAAS_OFFER",
+      "offerId": "offer-operations-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "label": "Operational Bottleneck & RACI SOP Blueprint (Pack 06)",
+      "capabilityIds": ["capability-slot-6-v1"],
+      "deliverableSchemaVersion": 1,
+      "scope": [
+        "Deterministic cycle-time sum, SLA gap calculation, and stage bottleneck ranking across up to 8 stages",
+        "Optional public operational control benchmark lookup via Brave Search",
+        "Sequential RACI Standard Operating Procedure with escalation triggers",
+        "Mandatory approval and audit artifact control gates"
+      ],
+      "exclusions": [
+        "No automated ticket creation, ERP mutation, or workflow deployment in GitHub/Google Workspace (connectors BLOCKED)",
+        "No statutory ISO/SOC2 certification issuance"
+      ],
+      "regions": ["GLOBAL"],
+      "locales": ["en", "fr"],
+      "termsVersion": "2026-11-a16",
+      "currency": "EUR",
+      "amountMinor": 0,
+      "taxPolicy": "CONFIGURED",
+      "isExplicitlyFree": true
+    },
+    {
+      "domain": "BUDGET_POLICY",
+      "policyId": "budget-operations-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "currency": "EUR",
+      "maxMoneyMinor": 1600,
+      "maxAgentCalls": 16,
+      "maxToolCalls": 4,
+      "maxDurationSeconds": 180,
+      "maxConcurrent": 2,
+      "unitMaxMinor": {
+        "hermes": 50,
+        "brave-search:web@1": 5
+      }
+    }
+  ]
+}
