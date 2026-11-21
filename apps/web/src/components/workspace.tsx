@@ -6,6 +6,8 @@ import { api, ApiError, recentSchema, session } from '../lib/api';
 import { copy, type Locale } from '../lib/copy';
 import { missionCopy } from '../lib/mission-copy';
 import { capabilityCatalogueSchema, readinessSchema, type CapabilityCatalogue } from '../lib/plan';
+import { readBetaJourney, type BetaJourneyRead } from '../lib/beta';
+import { BetaAccountCard, BetaInlineBanner } from './beta-offer';
 
 const guidanceSchema = z.object({ operationId: z.string(), action: z.string(), reason: z.string() });
 const onboardingSchema = z.object({ status: z.enum(['NOT_STARTED', 'IN_PROGRESS', 'PAUSED', 'COMPLETED', 'DISMISSED']) });
@@ -77,6 +79,9 @@ export async function Workspace({ lang, listOnly = false }: { lang: Locale; list
     catch { catalogue = null; }
   }
 
+  // MISSION A21.04 — free-beta account, allowance and expiry, from the API journey read model.
+  const beta: BetaJourneyRead | null = signedIn && configured && !listOnly ? await readBetaJourney() : null;
+
   const soulLabel = soulStatus ? dict(t.soulStatus as Record<string, string>, soulStatus, soulStatus) : '';
 
   const signInNotice = !configured
@@ -147,8 +152,11 @@ export async function Workspace({ lang, listOnly = false }: { lang: Locale; list
 
       <div className="qx-focus-card">
         <MissionForm lang={lang} enabled={signedIn && configured} />
+        {beta ? <BetaInlineBanner lang={lang} read={beta} /> : null}
         {signInNotice}
       </div>
+
+      {beta ? <BetaAccountCard lang={lang} read={beta} /> : null}
 
       {signedIn && configured && !failure ? (
         <>

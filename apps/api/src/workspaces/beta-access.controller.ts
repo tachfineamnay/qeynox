@@ -1,8 +1,8 @@
 import { Body, Controller, Get, Inject, Post, Req } from '@nestjs/common';
 import { z } from 'zod';
 import { DomainError, type Principal } from '@qeynox/domain';
-import type { WorkspaceBetaAccessService, WorkspaceBetaStatusView } from '@qeynox/application';
-import { WORKSPACE_BETA_ACCESS_SERVICE } from './workspaces.tokens';
+import type { BetaJourneyService, BetaJourneyView, WorkspaceBetaAccessService, WorkspaceBetaStatusView } from '@qeynox/application';
+import { WORKSPACE_BETA_ACCESS_SERVICE, WORKSPACE_BETA_JOURNEY_SERVICE } from './workspaces.tokens';
 
 interface AuthedRequest { principal?: Principal }
 
@@ -20,11 +20,24 @@ const activateSchema = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/)
  */
 @Controller('v1/workspaces/current/beta-access')
 export class WorkspaceBetaAccessController {
-  constructor(@Inject(WORKSPACE_BETA_ACCESS_SERVICE) private readonly beta: WorkspaceBetaAccessService) {}
+  constructor(
+    @Inject(WORKSPACE_BETA_ACCESS_SERVICE) private readonly beta: WorkspaceBetaAccessService,
+    @Inject(WORKSPACE_BETA_JOURNEY_SERVICE) private readonly journey: BetaJourneyService,
+  ) {}
 
   @Get()
   status(@Req() request: AuthedRequest): Promise<WorkspaceBetaStatusView> {
     return this.beta.status(principal(request));
+  }
+
+  /**
+   * A21.04 — the customer's free-beta journey: one server-derived state (ACTIVE, NOT_CONFIGURED,
+   * NOT_ENROLLED, INVITATION_PENDING, EXPIRED, REVOKED, QUOTA_EXHAUSTED, CONCURRENT_LIMIT_REACHED,
+   * RUNTIME_UNAVAILABLE), the allowance, the expiry and the pricing facts (no card, 0 due today).
+   */
+  @Get('journey')
+  journeyView(@Req() request: AuthedRequest): Promise<BetaJourneyView> {
+    return this.journey.view(principal(request));
   }
 
   @Post('activate')

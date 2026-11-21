@@ -7,10 +7,52 @@ import { fileURLToPath } from 'node:url';
 import { createServer as createPortProbe } from 'node:net';
 
 let mode = 'empty';
+// MISSION A21.04 — which free-beta journey the fixture API reports (independent of `mode`).
+let beta = 'active';
+const journeyAccount = {
+  status: 'ACTIVE', expiresAt: '2026-12-31T23:59:00.000Z', invitationExpiresAt: null, activatedAt: '2026-11-01T09:00:00.000Z',
+  missionQuota: 5, missionsUsed: 2, missionsRemaining: 3, activeMissions: 0, concurrentLimit: 2,
+  providerBudgetMinor: 5000, providerBudgetRemainingMinor: 4200, currency: 'EUR', quotaReason: null, canActivate: false,
+};
+const noGrant = { status: 'NOT_ENROLLED', expiresAt: null, invitationExpiresAt: null, activatedAt: null, missionQuota: null, missionsUsed: null, missionsRemaining: null, activeMissions: 0, concurrentLimit: null, providerBudgetMinor: null, providerBudgetRemainingMinor: null, currency: null, quotaReason: null, canActivate: false };
+function betaJourney(kind) {
+  const enabled = kind !== 'not-configured';
+  const runtime = kind === 'runtime' ? { canExecute: false, state: 'BLOCKED' } : { canExecute: true, state: 'OPERATIONAL' };
+  const accounts = {
+    active: [journeyAccount, 'ACTIVE'],
+    'not-configured': [journeyAccount, 'NOT_CONFIGURED'],
+    'not-enrolled': [noGrant, 'NOT_ENROLLED'],
+    invited: [{ ...journeyAccount, status: 'INVITED', activatedAt: null, invitationExpiresAt: '2026-11-28T12:00:00.000Z', missionsUsed: 0, missionsRemaining: 5, providerBudgetRemainingMinor: 5000, canActivate: true }, 'INVITATION_PENDING'],
+    expired: [{ ...journeyAccount, status: 'EXPIRED', expiresAt: '2026-11-10T18:00:00.000Z' }, 'EXPIRED'],
+    revoked: [{ ...journeyAccount, status: 'REVOKED' }, 'REVOKED'],
+    quota: [{ ...journeyAccount, missionsUsed: 5, missionsRemaining: 0, quotaReason: 'MISSIONS' }, 'QUOTA_EXHAUSTED'],
+    runtime: [journeyAccount, 'RUNTIME_UNAVAILABLE'],
+  };
+  const [account, state] = accounts[kind];
+  return {
+    workspaceId: 'workspace_qa', state, canLaunch: state === 'ACTIVE',
+    freeBeta: { enabled, mode: enabled ? 'BETA_FREE' : 'PAYMENTS_DISABLED', cardRequired: false, paymentsAvailable: false, amountDueTodayMinor: 0, waiverPercent: enabled ? 100 : null, waiverApplies: enabled && account.status === 'ACTIVE' },
+    account, runtime,
+  };
+}
+const qaService = (offerId, label, amountMinor, isExplicitlyFree) => ({
+  offerId, version: 1, label, displayName: label, amountMinor, currency: 'EUR', isExplicitlyFree, taxPolicy: 'CONFIGURED',
+  scope: ['QA scope'], exclusions: [], regions: ['GLOBAL'], locales: ['en', 'fr'], termsVersion: '2026-11-a16', deliverableSchemaVersion: 1,
+  capabilityIds: ['capability_qa'], availability: { operationalState: 'BLOCKED', isExecutable: false, blockers: ['RUNTIME_NOT_OPERATIONAL'] },
+  requestable: false, contractKey: null, unavailableReason: 'CAPABILITY_NOT_CONFIGURED',
+});
 let capabilityReads = 0;
 const token = 'q'.repeat(64);
 const backend = createServer((req, res) => {
   res.setHeader('content-type', 'application/json');
+  // A21.04 — interactive QA only: switch the fixture state (used by the screenshot run). Never enabled
+  // in the asserted smoke run, and never part of the application.
+  if (process.env.QEYNOX_SMOKE_INTERACTIVE === '1' && req.url?.startsWith('/__qa/state?')) {
+    const query = new URL(req.url, 'http://fixture').searchParams;
+    if (query.get('mode')) mode = query.get('mode');
+    if (query.get('beta')) beta = query.get('beta');
+    res.end(JSON.stringify({ mode, beta })); return;
+  }
   if (req.url === '/v1/auth/login' && req.method === 'POST') { res.end(JSON.stringify({ token, workspaceId: 'workspace_qa', expiresAt: '2099-01-01T00:00:00.000Z' })); return; }
   // MISSION A04 — public identity routes. The web layer calls these without a session, so the
   // fixture must answer them the way the real API does: no bearer header is sent.
@@ -59,7 +101,19 @@ const backend = createServer((req, res) => {
   }
   assert.equal(req.headers.authorization, `Bearer ${token}`);
   assert.equal(req.headers['x-qeynox-workspace'], 'workspace_qa');
-  const operation = { id: 'operation_qa', title: 'QA mission workspace', status: 'RUNNING', version: 3, lastActivityAt: '2026-01-01T12:00:00.000Z' };
+  // MISSION A21.04 — the free-beta journey read model and the service catalogue.
+  if (req.url === '/v1/workspaces/current/beta-access/journey') {
+    if (beta === 'unavailable') { res.statusCode = 503; res.end(JSON.stringify({ error: { code: 'NOT_CONFIGURED' } })); return; }
+    // A response that would ask for a card must be rejected by the web, never rendered as free beta.
+    if (beta === 'malformed') { const value = betaJourney('active'); res.end(JSON.stringify({ ...value, freeBeta: { ...value.freeBeta, cardRequired: true } })); return; }
+    res.end(JSON.stringify(betaJourney(beta))); return;
+  }
+  if (req.url === '/v1/services') { res.end(JSON.stringify([qaService('offer_strategy_qa', 'QA Strategy Pack', 29000, false), qaService('offer_research_qa', 'QA Research Pack', 0, true)])); return; }
+  if (req.url === '/v1/services/offer_strategy_qa') {
+    res.end(JSON.stringify({ ...qaService('offer_strategy_qa', 'QA Strategy Pack', 29000, false), capabilities: [], deployment: null })); return;
+  }
+  // A21.04: a mission awaiting quote acceptance is READY (not yet launched), so the launch card is shown.
+  const operation = { id: 'operation_qa', title: 'QA mission workspace', status: mode === 'payment-beta-quote' ? 'READY' : 'RUNNING', version: 3, lastActivityAt: '2026-01-01T12:00:00.000Z' };
   const citation = { sourceId: 'source_qa', provider: 'QA source', uri: mode === 'unsafe-source' ? 'javascript:alert(1)' : 'https://example.org/evidence', retrievedAt: operation.lastActivityAt };
   // A07 — the fixture carries one claim that can be verified and one that cannot, so the reader has a
   // real distinction to display rather than an empty state that could hide a regression.
@@ -113,6 +167,9 @@ const backend = createServer((req, res) => {
     if (mode === 'payment-beta-authorized') payload = { ...payload, order: betaOrder('BETA_AUTHORIZED'), executionAuthorized: true, payment: { required: false, state: 'BETA_AUTHORIZED' }, betaAuthorization: betaAuthorization(true, null), betaAuthorizationAvailable: false };
     if (mode === 'payment-beta-invalid') payload = { ...payload, order: betaOrder('BETA_AUTHORIZED'), executionAuthorized: false, payment: { required: false, state: 'BETA_AUTHORIZED' }, betaAuthorization: betaAuthorization(false, 'GRANT_REVOKED'), betaAuthorizationAvailable: false };
     if (mode === 'payment-beta-available') payload = { ...payload, order: betaOrder('PAYMENT_REQUIRED'), betaAuthorization: null, betaAuthorizationAvailable: true };
+    // MISSION A21.04 — an open quote awaiting acceptance (no order yet).
+    if (mode === 'payment-beta-quote') payload = { ...payload, order: null, executionAuthorized: false, payment: { required: false, state: null },
+      quotes: [{ id: 'quote_qa', offerId: 'offer_strategy_qa', amountMinor: 29000, currency: 'EUR', expiresAt: '2026-12-01T12:00:00.000Z', createdAt: operation.lastActivityAt, accepted: false, expired: false }] };
     res.end(JSON.stringify(payload)); return;
   }
   if (['/v1/operations/operation_qa/plan', '/v1/operations/operation_qa/readiness', '/v1/operations/operation_qa/commercial'].includes(req.url)) {
@@ -290,6 +347,7 @@ try {
   assert.ok(ready, logs);
   if (process.env.QEYNOX_SMOKE_INTERACTIVE === '1') {
     console.log(`QA FIXTURE ONLY: http://127.0.0.1:${port}/en/account (any test email/password; no real credentials).`);
+    console.log(`QA FIXTURE STATE: http://127.0.0.1:${backend.address().port}/__qa/state?mode=loaded&beta=active`);
     await new Promise(resolve => process.once('SIGINT', resolve));
     process.exitCode = 0;
   } else {
@@ -384,6 +442,8 @@ try {
   assert.ok(!frenchDocument.includes('>UNVERIFIED<'), 'the French reader does not leak raw enums'); assertions++;
   // MISSION A08 + A21.01 — a recorded failed payment stays visible and is never read as paid; under the
   // payment freeze it is history only: no retry, resume or checkout action is offered.
+  // A21.04: PAYMENTS_DISABLED fixtures report the matching NOT_CONFIGURED journey (no free beta).
+  beta = 'not-configured';
   mode = 'payment-failed';
   const payFailed = await page('/en/missions/operation_qa', true);
   assert.ok(payFailed.includes('Declined'), 'a declined payment is named in the page'); assertions++;
@@ -397,14 +457,20 @@ try {
   assert.ok(payDisabled.includes('Payments are currently disabled') && payDisabled.includes('data-commerce-mode="PAYMENTS_DISABLED"'), 'PAYMENTS_DISABLED renders its frozen state'); assertions++;
   assert.ok(!/Continue to secure checkout/.test(payDisabled), 'no checkout button is offered when payments are disabled'); assertions++;
   assert.ok(payDisabled.includes('payments are frozen on the server'), 'the payment-required notice names the freeze, not a missing provider'); assertions++;
+  // MISSION A21.04 — in a BETA_FREE flow the payment panel is replaced by the beta offer summary: no
+  // payment prompt, no card request, no checkout. Here the grant has expired, so no waiver applies.
+  beta = 'expired';
   mode = 'payment-frozen-beta';
   const payBeta = await page('/en/missions/operation_qa', true);
-  assert.ok(payBeta.includes('free beta') && payBeta.includes('data-commerce-mode="BETA_FREE"'), 'BETA_FREE renders the free-beta frozen state'); assertions++;
+  assert.ok(!payBeta.includes('data-commerce-mode=') && payBeta.includes('data-context="payment"') && payBeta.includes('Free beta expired'), 'BETA_FREE replaces the payment panel with the beta summary and states the expired grant'); assertions++;
+  assert.ok(!payBeta.includes('payments are frozen on the server') && !payBeta.includes('Payments are currently disabled')  && !/card number|card details|Pay now|secure checkout|checkout\.stripe/i.test(payBeta), 'no payment prompt or card request in a beta flow'); assertions++;
+  assert.ok(payBeta.includes('The 100% beta waiver applies only while') && !/<s>[^<]*290/.test(payBeta), 'an expired grant shows the list price without a waiver'); assertions++;
   assert.ok(!/Continue to secure checkout/.test(payBeta), 'no checkout button is offered in free beta'); assertions++;
   const payBetaFr = await page('/fr/missions/operation_qa', true);
-  assert.ok(payBetaFr.includes('bêta gratuite') && !/Continuer vers le paiement sécurisé/.test(payBetaFr), 'the French free-beta state is translated and offers no checkout'); assertions++;
+  assert.ok(payBetaFr.includes('Bêta gratuite expirée') && payBetaFr.includes('Bêta gratuite — aucune carte requise') && !payBetaFr.includes('data-commerce-mode=') && !/Continuer vers le paiement sécurisé/.test(payBetaFr), 'the French free-beta state is translated and offers no payment panel or checkout'); assertions++;
   // MISSION A21.03 — a free-beta authorization shows the list price and 0 due, offers no payment panel
   // or checkout, and is never labelled paid.
+  beta = 'active';
   mode = 'payment-beta-authorized';
   const betaAuthorized = await page('/en/missions/operation_qa', true);
   assert.ok(betaAuthorized.includes('Covered by free beta access') && betaAuthorized.includes('FREE_BETA'), 'a beta-authorized order names the free-beta basis'); assertions++;
@@ -415,18 +481,101 @@ try {
   assert.ok(!betaAuthorized.includes('payments are frozen on the server'), 'no payment-required notice for a covered order'); assertions++;
   const betaAuthorizedFr = await page('/fr/missions/operation_qa', true);
   assert.ok(betaAuthorizedFr.includes('Couvert par l’accès bêta gratuit') && betaAuthorizedFr.includes('À payer maintenant') && betaAuthorizedFr.includes('Bêta gratuite — autorisée'), 'the French free-beta authorization is translated'); assertions++;
+  beta = 'revoked';
   mode = 'payment-beta-invalid';
   const betaInvalid = await page('/en/missions/operation_qa', true);
   assert.ok(betaInvalid.includes('no longer applies') && betaInvalid.includes('the beta access was revoked'), 'an invalid beta authorization says why (revoked)'); assertions++;
   assert.ok(!betaInvalid.includes('Service scope accepted') && !/Continue to secure checkout/.test(betaInvalid), 'an invalid beta authorization is not shown as authorized and offers no checkout'); assertions++;
+  beta = 'active';
   mode = 'payment-beta-available';
   const betaAvailable = await page('/en/missions/operation_qa', true);
   assert.ok(betaAvailable.includes('Cover with free beta access') && betaAvailable.includes('active beta access'), 'an eligible PAYMENT_REQUIRED order offers the free-beta conversion'); assertions++;
   assert.ok(!betaAvailable.includes('payments are frozen on the server') && !/Continue to secure checkout/.test(betaAvailable), 'the conversion replaces the frozen-payment notice and offers no checkout'); assertions++;
+  assert.ok(!betaAvailable.includes('data-commerce-mode=') && betaAvailable.includes('data-context="payment"') && betaAvailable.includes('Beta waiver (100%)') && /<s>[^<]*290/.test(betaAvailable), 'an eligible order shows the waived list price instead of a payment panel'); assertions++;
+  beta = 'not-configured';
   mode = 'payment-legacy-unfrozen';
   const payLegacy = await page('/en/missions/operation_qa', true);
   assert.ok(payLegacy.includes('Payment status unavailable'), 'a response without the commerce block is rejected, not rendered'); assertions++;
   assert.ok(!/Continue to secure checkout|Try again<\/button>/.test(payLegacy) && !payLegacy.includes('checkout.stripe'), 'a legacy payable response never yields a checkout action'); assertions++;
+  // ── MISSION A21.04 — free-beta customer journey (EN/FR, every state, every surface) ──────────────
+  const flat = html => html.replaceAll('<!-- -->', '');
+  const zeroEuro = /€\s?0(?:[.,]00)?(?!\d)|0(?:[.,]00)?\s?€/;
+  const stateTitles = {
+    'not-enrolled': ['NOT_ENROLLED', 'Not enrolled in the free beta', 'Non inscrit à la bêta gratuite'],
+    expired: ['EXPIRED', 'Free beta expired', 'Bêta gratuite expirée'],
+    revoked: ['REVOKED', 'Free beta access revoked', 'Accès bêta gratuit révoqué'],
+    quota: ['QUOTA_EXHAUSTED', 'Beta mission allowance used up', 'Quota de missions bêta épuisé'],
+    runtime: ['RUNTIME_UNAVAILABLE', 'Mission runtime unavailable', 'Moteur d’exécution indisponible'],
+    'not-configured': ['NOT_CONFIGURED', 'Free beta not configured', 'Bêta gratuite non configurée'],
+    invited: ['INVITATION_PENDING', 'Invitation awaiting activation', 'Invitation en attente d’activation'],
+  };
+  mode = 'loaded';
+  beta = 'active';
+  const dashActive = flat(await page('/en/mydash', true));
+  assert.ok(dashActive.includes('Your free beta access') && dashActive.includes('Free beta — no card required'), 'MyDash shows the free-beta card and its headline'); assertions++;
+  assert.ok(dashActive.includes('Amount due today') && zeroEuro.test(dashActive), 'MyDash states 0 due today'); assertions++;
+  assert.ok(dashActive.includes('Beta missions remaining') && dashActive.includes('3 of 5'), 'MyDash shows the remaining beta allowance'); assertions++;
+  assert.ok(dashActive.includes('Beta access expires') && dashActive.includes('December 31, 2026'), 'MyDash shows the beta expiry (locale date)'); assertions++;
+  assert.ok(dashActive.includes('data-beta-account="ACTIVE"') && dashActive.includes('data-beta-state="ACTIVE"') && dashActive.includes('Free beta active'), 'MyDash shows the account status and the active state in text'); assertions++;
+  assert.ok(!/checkout|credit card|Pay now/i.test(dashActive), 'MyDash offers no checkout or card prompt'); assertions++;
+  assert.ok(dashActive.includes('qx-beta-inline'), 'mission creation states the free-beta terms'); assertions++;
+  const dashActiveFr = flat(await page('/fr/mydash', true));
+  assert.ok(dashActiveFr.includes('Bêta gratuite — aucune carte requise') && dashActiveFr.includes('Montant dû aujourd’hui') && dashActiveFr.includes('3 sur 5') && dashActiveFr.includes('31 décembre 2026') && dashActiveFr.includes('Actif'), 'French MyDash: headline, 0 due, allowance, expiry, status'); assertions++;
+  for (const [kind, [state, en, fr]] of Object.entries(stateTitles)) {
+    beta = kind;
+    const dash = flat(await page('/en/mydash', true));
+    assert.ok(dash.includes('data-beta-state="' + state + '"') && dash.includes(en), 'MyDash renders ' + state + ' (EN)'); assertions++;
+    assert.ok(!dash.includes('Free beta active'), state + ' is never shown as active'); assertions++;
+    const dashFr = flat(await page('/fr/mydash', true));
+    assert.ok(dashFr.includes('data-beta-state="' + state + '"') && dashFr.includes(fr), 'MyDash renders ' + state + ' (FR)'); assertions++;
+  }
+  beta = 'quota';
+  assert.ok(flat(await page('/en/mydash', true)).includes('0 of 5'), 'an exhausted allowance shows 0 remaining'); assertions++;
+  beta = 'not-configured';
+  const dashDisabled = flat(await page('/en/mydash', true));
+  assert.ok(dashDisabled.includes('Payments disabled — no card required') && !dashDisabled.includes('Free beta — no card required'), 'NOT_CONFIGURED never claims a free beta'); assertions++;
+  beta = 'invited';
+  const dashInvited = flat(await page('/en/mydash', true));
+  assert.ok(dashInvited.includes('name="token"') && dashInvited.includes('Activate beta access') && dashInvited.includes('Invitation expires'), 'a pending invitation offers activation to an owner/admin with its expiry'); assertions++;
+  beta = 'unavailable';
+  const dashUnavailable = flat(await page('/en/mydash', true));
+  assert.ok(dashUnavailable.includes('Beta status unavailable (NOT_CONFIGURED)') && !dashUnavailable.includes('Free beta — no card required') && !dashUnavailable.includes('Free beta active'), 'an unreadable journey claims nothing'); assertions++;
+  beta = 'malformed';
+  const dashMalformed = flat(await page('/en/mydash', true));
+  assert.ok(dashMalformed.includes('Beta status unavailable (INVALID_RESPONSE)') && !dashMalformed.includes('Free beta active'), 'a journey asking for a card is rejected, not rendered'); assertions++;
+  // Catalogue and service detail.
+  beta = 'active';
+  const catalogue = flat(await page('/en/services', true));
+  assert.ok(/<s>[^<]*290[^<]*<\/s>/.test(catalogue) && catalogue.includes('List price, waived by the free beta:'), 'the catalogue crosses out the waived list price with a screen-reader label'); assertions++;
+  assert.ok(catalogue.includes('Free beta · nothing due today') && catalogue.includes('data-beta-state="ACTIVE"'), 'the catalogue states the free-beta terms and state'); assertions++;
+  assert.ok(catalogue.includes('Free — explicitly authorized by the operator') && !/<s>[^<]*€0/.test(catalogue), 'a free offer is not shown as waived'); assertions++;
+  const catalogueFr = flat(await page('/fr/services', true));
+  assert.ok(catalogueFr.includes('Bêta gratuite · rien à payer aujourd’hui') && /<s>[^<]*290[^<]*<\/s>/.test(catalogueFr), 'French catalogue'); assertions++;
+  beta = 'expired';
+  const catalogueExpired = flat(await page('/en/services', true));
+  assert.ok(!/<s>[^<]*290/.test(catalogueExpired) && catalogueExpired.includes('Free beta expired'), 'an expired grant shows the list price, uncrossed, and the expired state'); assertions++;
+  beta = 'active';
+  const detail = flat(await page('/en/services/offer_strategy_qa', true));
+  assert.ok(detail.includes('data-context="service"') && detail.includes('Free beta — no card required') && detail.includes('Beta waiver (100%)') && /−€290|−290/.test(detail), 'service detail: headline and the labelled 100% waiver'); assertions++;
+  assert.ok(detail.includes('Amount due today') && zeroEuro.test(detail) && detail.includes('3 of 5') && detail.includes('Account status'), 'service detail: 0 due, allowance and account status'); assertions++;
+  const detailFr = flat(await page('/fr/services/offer_strategy_qa', true));
+  assert.ok(detailFr.includes('Remise bêta (100 %)') && detailFr.includes('Prix catalogue') && detailFr.includes('Montant dû aujourd’hui'), 'French service detail'); assertions++;
+  beta = 'not-configured';
+  const detailDisabled = flat(await page('/en/services/offer_strategy_qa', true));
+  assert.ok(!detailDisabled.includes('Beta waiver (100%)') && detailDisabled.includes('Free beta not configured') && detailDisabled.includes('Payments disabled — no card required'), 'NOT_CONFIGURED claims no waiver on the service detail'); assertions++;
+  // Quote acceptance and launch on the mission page.
+  beta = 'active';
+  mode = 'payment-beta-quote';
+  const quotePage = flat(await page('/en/missions/operation_qa', true));
+  assert.ok(quotePage.includes('data-context="quote"') && quotePage.includes('Beta waiver (100%)') && quotePage.includes('Accepting records the quote at its list price'), 'quote acceptance shows the waiver before accepting'); assertions++;
+  assert.ok(quotePage.includes('data-context="launch"') && quotePage.includes('Launching uses one mission of your beta allowance'), 'the launch card states the beta terms'); assertions++;
+  assert.ok(!quotePage.includes('data-commerce-mode=') && !/Continue to secure checkout|checkout\.stripe/.test(quotePage), 'no payment panel or checkout before acceptance'); assertions++;
+  const quotePageFr = flat(await page('/fr/missions/operation_qa', true));
+  assert.ok(quotePageFr.includes('Remise bêta (100 %)') && quotePageFr.includes('L’acceptation enregistre le devis'), 'French quote acceptance'); assertions++;
+  beta = 'runtime';
+  const launchRuntime = flat(await page('/en/missions/operation_qa', true));
+  assert.ok(launchRuntime.includes('Mission runtime unavailable') && !launchRuntime.includes('Launching uses one mission of your beta allowance'), 'the launch card states RUNTIME_UNAVAILABLE instead of the launch note'); assertions++;
+  beta = 'active';
   mode = 'section-failure';
   const partial = await page('/fr/missions/operation_qa', true);
   assert.ok(partial.includes('NOT_CONFIGURED') && partial.includes('QA mission workspace')); assertions++;

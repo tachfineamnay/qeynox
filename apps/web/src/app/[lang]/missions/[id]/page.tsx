@@ -8,6 +8,8 @@ import { AcceptQuoteForm, ApprovalDecision, BetaAuthorizeForm, ClaimReviewForm, 
 import { FlowHeader, FlowWorkspace } from '../../../../components/flow';
 import { PlanEditor, type DraftStep } from '../../../../components/plan-editor';
 import { PaymentPanel } from '../../../../components/payment-panel';
+import { BetaOfferSummary } from '../../../../components/beta-offer';
+import { readBetaJourney } from '../../../../lib/beta';
 import { copy, locale } from '../../../../lib/copy';
 import { flowCopy } from '../../../../lib/flow-copy';
 import { buildFlowModel, stateOf } from '../../../../lib/flow-model';
@@ -76,7 +78,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   ]);
   // MISSION A08 — payment status is read separately so an unavailable payment provider degrades to a
   // stated condition on the commercial card instead of breaking the whole mission page.
-  const payment = await read(base + '/payment', paymentViewSchema);
+  // MISSION A21.04 — the workspace's free-beta journey (real API); read in parallel with payment status.
+  const [payment, beta] = await Promise.all([read(base + '/payment', paymentViewSchema), readBetaJourney()]);
   const paymentData = payment.data && payment.data.orderId === commercial.data?.order?.id ? payment.data : null;
 
   const planData = plan.data && plan.data.operation.id === op.id ? plan.data : null;
@@ -120,6 +123,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     ? (planData.approvals ?? []).filter(approval => approval.status === 'PENDING' && !approval.stale)
     : [];
   const commercialRevision = commercialData?.revisionId ?? null;
+  // MISSION A21.04 — a beta flow is any page where the server reports the free beta (journey) or a
+  // free-beta commerce mode (payment view). In a beta flow no payment panel, checkout or card prompt is
+  // rendered: the beta offer summary takes its place and states the waiver, 0 due and the account state.
+  const betaFlow = beta.journey ? beta.journey.freeBeta.enabled : Boolean(paymentData?.commerce?.betaFree);
+  const betaCovered = Boolean(commercialData?.order && ['BETA_AUTHORIZED', 'BETA_DELIVERED'].includes(commercialData.order.state));
+  const openQuote = commercialData && !commercialData.order ? commercialData.quotes.find(quote => !quote.accepted && !quote.expired) ?? null : null;
   const editable = !planStale && ['DRAFT', 'READY', 'INTERRUPTED', 'FAILED', 'COMPLETED'].includes(op.status);
   const running = ['RUNNING', 'WAITING_APPROVAL', 'INTERRUPT_REQUESTED'].includes(op.status);
   const canInterrupt = ['RUNNING', 'WAITING_APPROVAL'].includes(op.status);
@@ -188,6 +197,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const readinessCard = (
     <Card id="flow-launch" className="qx-launch-card">
       <SectionHeading title={f.readinessTitle} />
+      {/* MISSION A21.04 — the free-beta terms of a launch, stated even when readiness cannot be read. */}
+      {betaFlow && !running && op.status !== 'COMPLETED' ? <BetaOfferSummary lang={lang} read={beta} context="launch" price={null} /> : null}
       {readinessData ? (
         <>
           <p className={readinessCanStart ? 'qx-ready' : 'qx-not-ready'}>
@@ -333,6 +344,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
               ))}
             </ul>
           )}
+          {betaFlow && openQuote ? <BetaOfferSummary lang={lang} read={beta} context="quote" price={{ amountMinor: openQuote.amountMinor, currency: openQuote.currency }} /> : null}
           {commercialData.quotes.length === 0 ? <p className="muted">{f.noCommercialQuote}</p> : (
             <ul className="qx-quote-list">
               {commercialData.quotes.map(quote => (
@@ -374,7 +386,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           ) : null}
           {/* MISSION A08 — a paid order needs an explicit payment state and a way to recover from any
               non-paid outcome. The panel never decides success; it renders what the server recorded. */}
-          {commercialData.order && !['AUTHORIZED', 'FULFILLING', 'DELIVERED', 'BETA_AUTHORIZED', 'BETA_DELIVERED'].includes(commercialData.order.state) ? (
+          {betaFlow && commercialData.order && !betaCovered && !['AUTHORIZED', 'FULFILLING', 'DELIVERED'].includes(commercialData.order.state) ? (
+            <BetaOfferSummary lang={lang} read={beta} context="payment" price={{ amountMinor: commercialData.order.amountMinor, currency: commercialData.order.currency }} />
+          ) : null}
+          {!betaFlow && commercialData.order && !['AUTHORIZED', 'FULFILLING', 'DELIVERED', 'BETA_AUTHORIZED', 'BETA_DELIVERED'].includes(commercialData.order.state) ? (
             <PaymentPanel
               lang={lang}
               operationId={op.id}
@@ -388,10 +403,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
               returned={returnMarker === 'returned'}
             />
           ) : null}
-          {!paymentData && commercialData.order && !commercialData.betaAuthorization ? (
+          {!betaFlow && !paymentData && commercialData.order && !commercialData.betaAuthorization ? (
             <p className="muted">{lang === 'fr' ? 'État du paiement indisponible (' + payment.code + '). Aucun paiement n’est supposé effectué.' : 'Payment status unavailable (' + payment.code + '). No payment is assumed to have happened.'}</p>
           ) : null}
-          {commercialData.payment.required && !commercialData.betaAuthorizationAvailable && !paymentData?.canStartCheckout && paymentData?.providerConfigured === false ? <Feedback error title={f.paymentRequired} /> : null}
+          {!betaFlow && commercialData.payment.required && !commercialData.betaAuthorizationAvailable && !paymentData?.canStartCheckout && paymentData?.providerConfigured === false ? <Feedback error title={f.paymentRequired} /> : null}
           {commercialData.executionAuthorized ? <p className="qx-ready">✓ {f.scopeAccepted}</p> : null}
           <p className="muted qx-hint">{f.quoteNote}</p>
         </>

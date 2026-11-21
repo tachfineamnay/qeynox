@@ -230,3 +230,18 @@ Operator follow-ups (not performed by the agent):
 - Revoking a grant stops every order it authorized; a new grant does not revive them (the tester accepts a fresh quote or converts a `PAYMENT_REQUIRED` order).
 
 No push to main, no merge, no deployment; the migration was applied only to disposable databases.
+
+## Free beta customer UX (Mission A21.04)
+
+| Responsibility | Code area | Status |
+| --- | --- | --- |
+| Server-composed customer journey: commerce mode + workspace grant + runtime readiness → one state, allowance, expiry, constant pricing facts (no card, 0 due, 100% waiver only in `BETA_FREE`, `waiverApplies` = A21.03 acceptance rule); read-only, session- and tenant-scoped | packages/application/src/beta-journey.ts, apps/api/src/workspaces/beta-access.controller.ts (`GET /v1/workspaces/current/beta-access/journey`), workspaces.module.ts, workspaces.tokens.ts | **VERIFIED IN DISPOSABLE QA (2026-11-21)** on real PostgreSQL 14.1: `qa:beta-journey` 7 groups / 128 assertions. Every state comes from real records; NOT_CONFIGURED is verified by a second boot in `PAYMENTS_DISABLED`; no rows are written by the read. |
+| Web journey reader with literal guards (a card request or a charge is rejected), EN/FR copy, shared beta offer summary / price tag / state notice / MyDash account card, invitation activation | apps/web/src/lib/beta.ts, lib/beta-copy.ts, lib/beta-actions.ts, components/beta-offer.tsx, components/beta-activate-form.tsx, app/globals.css | Typecheck, build, `test:smoke` 329 PASS (all states EN/FR, unreadable and malformed journeys). |
+| Surfaces: catalogue, service detail, mission creation, MyDash, quote acceptance, launch; payment panel and payment prompts replaced in beta flows | apps/web/src/app/[lang]/services/page.tsx, services/[offerId]/page.tsx, components/workspace.tsx, app/[lang]/missions/[id]/page.tsx, lib/service-copy.ts | `test:smoke` + `test:flow2` 35 PASS. **Browser rendering verified against the labelled smoke fixture API only**: 73 headless-Chromium captures at 390/1024/1440, EN and FR, no horizontal overflow (`docs/design/screenshots/a21-04/`). Reference comparison **BLOCKED** (reference PNG absent). |
+
+Operator follow-ups (not performed by the agent):
+- No migration; the route ships with the API.
+- Invitation tokens are still delivered out of band; customers redeem them on MyDash (OWNER/ADMIN only).
+
+No push to main, no merge, no deployment.
+

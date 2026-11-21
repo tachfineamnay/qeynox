@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { WorkspaceAccessService, WorkspaceBetaAccessService, createEmailTransportFromEnv } from '@qeynox/application';
+import { BetaJourneyService, WorkspaceAccessService, WorkspaceBetaAccessService, commercePolicyFromEnvironment, createEmailTransportFromEnv } from '@qeynox/application';
+import { apiRuntimeReadiness } from '../operations/runtime-readiness';
 import { BetaAccessStore, NotificationStore, WorkspaceStore, type DatabaseConnection } from '@qeynox/persistence';
 import { DB_CONNECTION } from '../database/database.module';
 import { WorkspacesController } from './workspaces.controller';
 import { WorkspaceTeamController } from './team.controller';
 import { WorkspaceTeamService } from '@qeynox/application';
-import { WORKSPACE_ACCESS_SERVICE, WORKSPACE_BETA_ACCESS_SERVICE, WORKSPACE_STORE } from './workspaces.tokens';
+import { WORKSPACE_ACCESS_SERVICE, WORKSPACE_BETA_ACCESS_SERVICE, WORKSPACE_BETA_JOURNEY_SERVICE, WORKSPACE_STORE } from './workspaces.tokens';
 import { WorkspaceBetaAccessController } from './beta-access.controller';
 import { WORKSPACE_TEAM_SERVICE } from './team.tokens';
 
@@ -38,6 +39,13 @@ import { WORKSPACE_TEAM_SERVICE } from './team.tokens';
       provide: WORKSPACE_BETA_ACCESS_SERVICE,
       useFactory: (connection: DatabaseConnection) => new WorkspaceBetaAccessService(new BetaAccessStore(connection.db)),
       inject: [DB_CONNECTION],
+    },
+    {
+      // A21.04: the customer free-beta journey — commerce mode (read once at boot, like every commerce
+      // service), the workspace grant (A21.02) and live runtime readiness, composed server-side.
+      provide: WORKSPACE_BETA_JOURNEY_SERVICE,
+      useFactory: (beta: WorkspaceBetaAccessService) => new BetaJourneyService(beta, commercePolicyFromEnvironment(), apiRuntimeReadiness),
+      inject: [WORKSPACE_BETA_ACCESS_SERVICE],
     },
   ],
 })
