@@ -80,7 +80,7 @@ preconditions.
 - **Gates.** `OperationExecutionService` now *requires* a runtime source and refuses `start` before
   any beta allowance, attempt or outbox row is written (`NOT_CONFIGURED` → 503 when unproven,
   `UNAVAILABLE` → 502 when a probe failed). The worker re-checks with `freshReadiness()` before each
-  step. `QEYNOX_QA_ALLOW_UNVERIFIED` is ignored when `NODE_ENV=production`.
+  step. `QEYNOX_QA_ALLOW_UNVERIFIED` is honoured only in an explicitly isolated QA run (P08, below).
 - **Exposure.** Customers (`/readiness` prerequisites, beta journey) get only
   `{status, failure, checkedAt, expiresAt}` per component; operators (`/v1/platform/capabilities`)
   get the full verification record. No credential appears in either (tested).
@@ -101,7 +101,17 @@ preconditions.
   than "no blockers".
 - `ExecutionEngineSelection.selectOperational()` refuses a runtime without `verifiedLive` **and**
   evidence. The worker uses it for tenant execution; `select()` remains for isolated QA fixtures.
-  The worker honours `QEYNOX_QA_ALLOW_UNVERIFIED=true` only as an explicit, non-production QA opt-in.
+  The worker honours `QEYNOX_QA_ALLOW_UNVERIFIED=true` only inside an explicitly isolated QA run
+  (P08, `apps/worker/src/qa-runtime-bypass.ts`). All of these must hold:
+  - `QEYNOX_QA_ENVIRONMENT=isolated`;
+  - `NODE_ENV` unset, `test` or `development`, and no `QEYNOX_DEPLOYMENT_ENV`;
+  - the connected `DATABASE_URL` is a loopback `qeynox_qa_*` database, and `QEYNOX_QA_DATABASE_URL` is a
+    loopback URL;
+  - Hermes, if configured, is a loopback double;
+  - no `HATCHET_CLIENT_TOKEN` is set.
+
+  Otherwise the bypass is refused (warned once, by condition name only) and the gate applies.
+  Staging, preproduction and production workers can never run on an unverified runtime.
 - The catalogue reads the runtime of the process that owns the configuration: the API injects
   `apiRuntimeReadiness` into `CapabilityCatalogueService` and `PlatformCatalogueService` forwards its
   runtime source to the catalogue.
