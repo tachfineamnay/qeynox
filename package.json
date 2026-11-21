@@ -47,6 +47,7 @@
     "qa:stripe-payments": "pnpm --filter @qeynox/worker qa:stripe-payments",
     "qa:payment-freeze": "pnpm --filter @qeynox/api qa:payment-freeze",
     "qa:beta-access": "pnpm --filter @qeynox/api qa:beta-access",
+    "qa:beta-execution": "pnpm --filter @qeynox/api qa:beta-execution",
     "qa:brave-search": "pnpm --filter @qeynox/worker qa:brave-search",
     "qa:workspace-management": "pnpm --filter @qeynox/worker qa:workspace-management",
     "qa:documents": "pnpm --filter @qeynox/worker qa:documents",

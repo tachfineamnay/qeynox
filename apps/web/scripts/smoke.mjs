@@ -103,6 +103,16 @@ const backend = createServer((req, res) => {
       order: { id: 'order_qa', state: 'PAYMENT_REQUIRED', amountMinor: 2500, currency: 'USD', createdAt: operation.lastActivityAt },
       executionAuthorized: false, payment: { required: true, state: 'PAYMENT_REQUIRED' },
     };
+    // MISSION A21.03 — free-beta authorization fixtures. The list price stays on the order; 0 is due.
+    const betaAuthorization = (valid, denial, status = 'AUTHORIZED') => ({
+      id: 'beta_auth_qa', basis: 'FREE_BETA', grantId: 'grant_qa', status, revisionId: 'revision_qa', offerId: 'offer_qa', offerVersion: 1,
+      termsVersion: 'terms_qa', listAmountMinor: 29000, currency: 'EUR', amountDueNowMinor: 0, authorizedAt: operation.lastActivityAt,
+      deliveredAt: status === 'DELIVERED' ? operation.lastActivityAt : null, valid, denial,
+    });
+    const betaOrder = state => ({ id: 'order_qa', state, amountMinor: 29000, currency: 'EUR', createdAt: operation.lastActivityAt });
+    if (mode === 'payment-beta-authorized') payload = { ...payload, order: betaOrder('BETA_AUTHORIZED'), executionAuthorized: true, payment: { required: false, state: 'BETA_AUTHORIZED' }, betaAuthorization: betaAuthorization(true, null), betaAuthorizationAvailable: false };
+    if (mode === 'payment-beta-invalid') payload = { ...payload, order: betaOrder('BETA_AUTHORIZED'), executionAuthorized: false, payment: { required: false, state: 'BETA_AUTHORIZED' }, betaAuthorization: betaAuthorization(false, 'GRANT_REVOKED'), betaAuthorizationAvailable: false };
+    if (mode === 'payment-beta-available') payload = { ...payload, order: betaOrder('PAYMENT_REQUIRED'), betaAuthorization: null, betaAuthorizationAvailable: true };
     res.end(JSON.stringify(payload)); return;
   }
   if (['/v1/operations/operation_qa/plan', '/v1/operations/operation_qa/readiness', '/v1/operations/operation_qa/commercial'].includes(req.url)) {
@@ -122,7 +132,10 @@ const backend = createServer((req, res) => {
         }
       : mode === 'payment-frozen-disabled'
         ? { orderId: 'order_qa', orderState: 'PAYMENT_REQUIRED', payment: null, refunds: [], executionAuthorized: false, ...frozen, commerce: commerce('PAYMENTS_DISABLED') }
-        : mode === 'payment-frozen-beta'
+        : mode === 'payment-beta-authorized' || mode === 'payment-beta-invalid'
+          // A free-beta order: no payment, never payment-authorized, still frozen.
+          ? { orderId: 'order_qa', orderState: 'BETA_AUTHORIZED', payment: null, refunds: [], executionAuthorized: false, ...frozen, commerce: commerce('BETA_FREE') }
+        : mode === 'payment-frozen-beta' || mode === 'payment-beta-available'
           ? { orderId: 'order_qa', orderState: 'PAYMENT_REQUIRED', payment: null, refunds: [], executionAuthorized: false, ...frozen, commerce: commerce('BETA_FREE') }
           : mode === 'payment-legacy-unfrozen'
             // A pre-A21 response shape (no `commerce` block) must be rejected, never rendered as payable.
@@ -390,6 +403,26 @@ try {
   assert.ok(!/Continue to secure checkout/.test(payBeta), 'no checkout button is offered in free beta'); assertions++;
   const payBetaFr = await page('/fr/missions/operation_qa', true);
   assert.ok(payBetaFr.includes('bêta gratuite') && !/Continuer vers le paiement sécurisé/.test(payBetaFr), 'the French free-beta state is translated and offers no checkout'); assertions++;
+  // MISSION A21.03 — a free-beta authorization shows the list price and 0 due, offers no payment panel
+  // or checkout, and is never labelled paid.
+  mode = 'payment-beta-authorized';
+  const betaAuthorized = await page('/en/missions/operation_qa', true);
+  assert.ok(betaAuthorized.includes('Covered by free beta access') && betaAuthorized.includes('FREE_BETA'), 'a beta-authorized order names the free-beta basis'); assertions++;
+  assert.ok(betaAuthorized.includes('List price') && /€\s?290|290(?:[.,]00)?\s?€/.test(betaAuthorized) && betaAuthorized.includes('Due now') && /€\s?0(?:[.,]00)?|0(?:[.,]00)?\s?€/.test(betaAuthorized), 'the list price stays visible and 0 is due now'); assertions++;
+  assert.ok(betaAuthorized.includes('data-status="BETA_AUTHORIZED"') && betaAuthorized.includes('Free beta — authorized'), 'the order badge says free beta, not paid'); assertions++;
+  assert.ok(!betaAuthorized.includes('data-commerce-mode='), 'no payment panel is rendered for a beta-authorized order'); assertions++;
+  assert.ok(!/Paid<\/span>|Continue to secure checkout|checkout\.stripe/.test(betaAuthorized), 'a beta order is never shown as paid and offers no checkout'); assertions++;
+  assert.ok(!betaAuthorized.includes('payments are frozen on the server'), 'no payment-required notice for a covered order'); assertions++;
+  const betaAuthorizedFr = await page('/fr/missions/operation_qa', true);
+  assert.ok(betaAuthorizedFr.includes('Couvert par l’accès bêta gratuit') && betaAuthorizedFr.includes('À payer maintenant') && betaAuthorizedFr.includes('Bêta gratuite — autorisée'), 'the French free-beta authorization is translated'); assertions++;
+  mode = 'payment-beta-invalid';
+  const betaInvalid = await page('/en/missions/operation_qa', true);
+  assert.ok(betaInvalid.includes('no longer applies') && betaInvalid.includes('the beta access was revoked'), 'an invalid beta authorization says why (revoked)'); assertions++;
+  assert.ok(!betaInvalid.includes('Service scope accepted') && !/Continue to secure checkout/.test(betaInvalid), 'an invalid beta authorization is not shown as authorized and offers no checkout'); assertions++;
+  mode = 'payment-beta-available';
+  const betaAvailable = await page('/en/missions/operation_qa', true);
+  assert.ok(betaAvailable.includes('Cover with free beta access') && betaAvailable.includes('active beta access'), 'an eligible PAYMENT_REQUIRED order offers the free-beta conversion'); assertions++;
+  assert.ok(!betaAvailable.includes('payments are frozen on the server') && !/Continue to secure checkout/.test(betaAvailable), 'the conversion replaces the frozen-payment notice and offers no checkout'); assertions++;
   mode = 'payment-legacy-unfrozen';
   const payLegacy = await page('/en/missions/operation_qa', true);
   assert.ok(payLegacy.includes('Payment status unavailable'), 'a response without the commerce block is rejected, not rendered'); assertions++;

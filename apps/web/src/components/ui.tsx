@@ -38,6 +38,7 @@ const badgeTones: Record<string, string> = {
   WAITING_APPROVAL: 'warning', NEEDS_HUMAN_REVIEW: 'warning', PARTIAL: 'warning', INTERRUPT_REQUESTED: 'warning',
   INTERRUPTED: 'warning', PAYMENT_REQUIRED: 'warning', AWAITING_ACCEPTANCE: 'warning',
   RUNNING: 'info', READY: 'info', QUEUED: 'info', AUTHORIZED: 'info', FULFILLING: 'info', ACTIVE: 'info',
+  BETA_AUTHORIZED: 'info', BETA_DELIVERED: 'success',
 };
 
 export function StatusBadge({ status, lang }: { status: string; lang: Locale }) {

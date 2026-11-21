@@ -127,7 +127,15 @@ export const readinessSchema = z.object({
     profile: z.object({ ok: z.boolean(), missing: z.array(z.string()) }),
     provider: z.object({ ok: z.boolean(), missing: z.array(z.string()) }),
     policy: z.object({ ok: z.boolean(), missing: z.array(z.string()) }).optional().default({ ok: true, missing: [] }),
-    executionAuthorization: z.object({ ok: z.boolean(), state: z.string().nullable(), authorized: z.boolean() }).optional().default({ ok: false, state: null, authorized: false }),
+    executionAuthorization: z.object({
+      ok: z.boolean(), state: z.string().nullable(), authorized: z.boolean(),
+      // A21.03 — why execution is authorized. FREE_BETA is NOT a payment.
+      basis: z.enum(['PAID_ORDER', 'FREE_OFFER', 'FREE_BETA']).nullable().optional().default(null),
+    }).optional().default({ ok: false, state: null, authorized: false, basis: null }),
+    betaAuthorization: z.object({
+      present: z.boolean(), valid: z.boolean(), denial: z.string().nullable(), grantId: z.string().nullable(),
+      listAmountMinor: z.number().int().nullable(), currency: z.string().nullable(), amountDueNowMinor: z.literal(0).nullable(),
+    }).optional().default({ present: false, valid: false, denial: null, grantId: null, listAmountMinor: null, currency: null, amountDueNowMinor: null }),
   }),
 });
 
@@ -180,6 +188,19 @@ export const commercialViewSchema = z.object({
   }).nullable(),
   executionAuthorized: z.boolean(),
   payment: z.object({ required: z.boolean(), state: z.string().nullable() }),
+  /**
+   * MISSION A21.03 — the free-beta execution authorization of the current order, if any. It is a
+   * distinct, non-financial authorization: the list price is shown unchanged and nothing is due now.
+   * `valid` is re-evaluated by the API on every read (mode, grant, revision, scope).
+   */
+  betaAuthorization: z.object({
+    id: z.string(), basis: z.literal('FREE_BETA'), grantId: z.string(), status: z.enum(['AUTHORIZED', 'DELIVERED']),
+    revisionId: z.string(), offerId: z.string(), offerVersion: z.number().int(), termsVersion: z.string(),
+    listAmountMinor: z.number().int(), currency: z.string(), amountDueNowMinor: z.literal(0),
+    authorizedAt: z.string(), deliveredAt: z.string().nullable(), valid: z.boolean(), denial: z.string().nullable(),
+  }).nullable().optional().default(null),
+  /** True when an accepted PAYMENT_REQUIRED order can be covered by the workspace's active beta grant. */
+  betaAuthorizationAvailable: z.boolean().optional().default(false),
 });
 export type CommercialView = z.infer<typeof commercialViewSchema>;
 

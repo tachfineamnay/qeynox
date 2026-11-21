@@ -2,6 +2,7 @@ import { and,eq,desc } from 'drizzle-orm';
 import { DomainError,newId,redoStep,descendants,type ID,type Principal,type StepAttempt,type Operation } from '@qeynox/domain';
 import { QeyNoxStore,BetaAccessStore,attempts,commandIds,operations,outbox,approvals,events } from '@qeynox/persistence';
 import { withBetaDenialLedger } from './beta-access';
+import { CommerceService } from './commerce';
 
 export class OperationControlService {
   private readonly beta:BetaAccessStore;
@@ -35,6 +36,8 @@ export class OperationControlService {
       const [current]=await tx.select().from(operations).where(and(eq(operations.id,operationId),eq(operations.workspaceId,actor.workspaceId),eq(operations.version,expectedVersion))).limit(1);
       if(!current)throw new DomainError('CONFLICT','Concurrent operation change');
       await this.beta.admitMission(tx,{workspaceId:actor.workspaceId,operationId,actorUserId:actor.userId,at:new Date(),trigger:'REDO'});
+      // A21.03: a free-beta order is only re-launched while its beta authorization is still valid.
+      await new CommerceService(this.store).assertBetaContinuation(tx,actor,operationId,prior.planRevisionId);
       const updated:Operation={...op,status:'RUNNING',version:expectedVersion+1,updatedAt:now,lastActivityAt:now};
       const [modified]=await tx.update(operations).set({payload:updated,status:'RUNNING',version:updated.version,lastActivityAt:now}).where(and(eq(operations.id,operationId),eq(operations.version,expectedVersion))).returning({id:operations.id});
       if(!modified)throw new DomainError('CONFLICT','Concurrent change');

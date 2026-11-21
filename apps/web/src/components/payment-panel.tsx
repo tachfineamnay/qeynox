@@ -50,7 +50,7 @@ const copy = {
     providerIssue: 'The payment provider could not be reached for a status check. Your recorded state is unchanged.',
     forbidden: 'This account cannot change the payment for this mission.',
     frozenDisabled: 'Payments are currently disabled. Nothing can be charged, and paid work stays blocked.',
-    frozenBeta: 'QeyNox is in free beta: no payment is taken. Checkout is closed, so paid offers cannot start during the beta.',
+    frozenBeta: 'QeyNox is in free beta: no payment is taken and checkout is closed. Paid offers can start only when your workspace has active beta access, which covers them at no charge.',
     frozenHistory: 'Recorded payment history is shown for reference only. It cannot be changed while payments are frozen.',
     frozenAction: 'Payments are frozen on the server. No checkout was started and nothing was charged.',
     states: {
@@ -91,7 +91,7 @@ const copy = {
     providerIssue: 'Le prestataire de paiement est injoignable pour une vérification. Votre état enregistré reste inchangé.',
     forbidden: 'Ce compte ne peut pas modifier le paiement de cette mission.',
     frozenDisabled: 'Les paiements sont actuellement désactivés. Rien ne peut être débité et le travail payant reste bloqué.',
-    frozenBeta: 'QeyNox est en bêta gratuite : aucun paiement n’est encaissé. Le paiement en ligne est fermé, les offres payantes ne peuvent donc pas démarrer pendant la bêta.',
+    frozenBeta: 'QeyNox est en bêta gratuite : aucun paiement n’est encaissé et le paiement en ligne est fermé. Les offres payantes ne démarrent que si votre espace dispose d’un accès bêta actif, qui les couvre sans frais.',
     frozenHistory: 'L’historique de paiement enregistré est affiché à titre indicatif. Il ne peut pas être modifié tant que les paiements sont gelés.',
     frozenAction: 'Les paiements sont gelés côté serveur. Aucun paiement n’a été démarré et rien n’a été débité.',
     states: {

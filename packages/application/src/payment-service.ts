@@ -6,6 +6,7 @@ import {
   type CommercialState, type PaymentStatus,
 } from '@qeynox/persistence';
 import type { PaymentPort, VerifiedPaymentEvent } from './payments';
+import { isBetaOrderState } from './beta-execution';
 
 /**
  * MISSION A08 — one-time payment lifecycle for versioned RaaS offers.
@@ -358,7 +359,9 @@ export class PaymentService {
         : await tx.select().from(payments).where(eq(payments.orderId, order.id)).orderBy(desc(payments.createdAt)).limit(1);
 
       const nextOrderState = await this.applyToPayment(tx, event, order, payment, receivedAt);
-      if (nextOrderState && nextOrderState !== order.state) {
+      // A21.03: a free-beta order has no payment, so no provider event can apply to it; this guard makes
+      // that structural fact explicit — a beta order is never moved into a payment-derived state.
+      if (nextOrderState && nextOrderState !== order.state && !isBetaOrderState(order.state)) {
         await tx.update(commercialOrders).set({ state: nextOrderState, updatedAt: receivedAt }).where(eq(commercialOrders.id, order.id));
       }
       await tx.update(paymentEvents).set({ outcome: 'APPLIED' })
@@ -596,6 +599,9 @@ export class PaymentService {
         failureCode: payment.failureCode,
       } : null,
       refunds: refundRows.map(row => ({ id: row.id, status: row.status, amountMinor: row.amountMinor, createdAt: row.createdAt })),
+      // A21.03: deliberately NOT true for BETA_AUTHORIZED / BETA_DELIVERED. This is the PAYMENT read model:
+      // a free-beta order has no payment and no payment-based authorization. Its non-financial beta
+      // authorization is reported by CommerceService.view (`betaAuthorization`) and plan readiness.
       executionAuthorized: order.state === 'AUTHORIZED' || order.state === 'FULFILLING' || order.state === 'DELIVERED',
       canStartCheckout: canStart && this.provider.isConfigured,
       blockedReason: !this.provider.isConfigured

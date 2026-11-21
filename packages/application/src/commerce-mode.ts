@@ -16,8 +16,14 @@ import type { CheckoutSessionRequest, PaymentIntentRequest, PaymentPort } from '
  *   refund, or entitlement-changing reconciliation. Historical payment records remain readable.
  * - `BETA_FREE`: QeyNox is offered as a free beta. Still no financial transaction of any kind. The mode
  *   is reported to clients so they can say "free beta, nothing is charged" instead of "payments are not
- *   configured". It does NOT grant any new entitlement: paid orders stay PAYMENT_REQUIRED, and only
- *   offers already configured as explicitly free authorize without payment (unchanged behaviour).
+ *   configured". Since MISSION A21.03 it enables exactly ONE entitlement, and only for workspaces holding
+ *   an ACTIVE beta grant (A21.02): an accepted PRICED scope is covered by a separate, non-financial free
+ *   beta execution authorization (`BetaExecutionAuthorizer`, order state `BETA_AUTHORIZED`, amount due
+ *   now 0). No payment, invoice or checkout is created and the order is never PAID/CAPTURED/AUTHORIZED.
+ *   Without an active grant, paid orders stay PAYMENT_REQUIRED exactly as before.
+ *
+ * Under `PAYMENTS_DISABLED` no beta authorization is created, and existing ones stop authorizing
+ * execution or delivery (fail closed) until the mode is BETA_FREE again.
  *
  * There is deliberately no paid mode. Any other value (`PAID`, `STRIPE`, `LIVE`, …) is refused at boot
  * rather than interpreted, because a typo or an optimistic deployment must never be read as permission
@@ -43,7 +49,10 @@ export interface CommercePolicy {
   readonly paymentsFrozen: true;
   /** Always false in this release: no checkout, capture, refund or provider reconciliation. */
   readonly financialTransactionsAllowed: false;
-  /** True only in BETA_FREE. A presentation fact, never an entitlement. */
+  /**
+   * True only in BETA_FREE. Reported to clients; since A21.03 it is also the precondition (together with
+   * an ACTIVE beta grant) for the non-financial free beta execution authorization. Never a payment.
+   */
   readonly betaFree: boolean;
 }
 

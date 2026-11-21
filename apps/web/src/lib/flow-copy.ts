@@ -200,6 +200,7 @@ const en = {
     STEP_COMPLETED_NEXT_QUEUED: 'Step completed, next step queued',
     STEPS_COMPLETED_REVIEW_REQUIRED: 'Steps completed, human review required',
     RESULT_DELIVERED: 'Result delivered',
+    BETA_EXECUTION_AUTHORIZED: 'Execution covered by free beta access (nothing charged)',
     operationStatus: 'Operation status recorded',
   },
   common: {
@@ -405,6 +406,7 @@ const fr: typeof en = {
     STEP_COMPLETED_NEXT_QUEUED: 'Étape terminée, étape suivante en file',
     STEPS_COMPLETED_REVIEW_REQUIRED: 'Étapes terminées, revue humaine requise',
     RESULT_DELIVERED: 'Résultat livré',
+    BETA_EXECUTION_AUTHORIZED: 'Exécution couverte par l’accès bêta gratuit (rien n’est débité)',
     operationStatus: 'Statut de l’opération enregistré',
   },
   common: {

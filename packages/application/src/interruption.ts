@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { DomainError, newId, transitionOperation, type ID, type Principal, type StepAttempt } from '@qeynox/domain';
 import { QeyNoxStore, BetaAccessStore, attempts, events, executions, operations, outbox, toolLedger } from '@qeynox/persistence';
 import { withBetaDenialLedger } from './beta-access';
+import { CommerceService } from './commerce';
 import type { OrchestratorPort } from '@qeynox/orchestration';
 
 /**
@@ -215,6 +216,8 @@ export class InterruptionService {
         .limit(1);
       if (!current) throw new DomainError('CONFLICT', 'Concurrent operation change');
       await beta.admitMission(tx, { workspaceId: actor.workspaceId, operationId, actorUserId: actor.userId, at: new Date(), trigger: 'RETRY' });
+      // A21.03: a free-beta order is only re-launched while its beta authorization is still valid.
+      await new CommerceService(this.store).assertBetaContinuation(tx, actor, operationId, revisionId);
       const [failedAttempt] = await tx
         .select()
         .from(attempts)

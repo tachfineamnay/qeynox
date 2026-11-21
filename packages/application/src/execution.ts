@@ -16,7 +16,9 @@ export class OperationExecutionService {
   const op=await this.store.getOperation(actor,operationId);
   if(op.version!==expectedVersion)throw new DomainError('CONFLICT','Operation version mismatch');
   if(!op.currentRevisionId||!['READY','INTERRUPTED','FAILED'].includes(op.status))throw new DomainError('INVALID_STATE','Plan not ready');
-  await this.commerce.assertExecutionAllowed(actor,operationId,op.currentRevisionId);
+  const revisionId=op.currentRevisionId;
+  // A21.03: a refused free-beta authorization is recorded in the beta ledger like any launch denial.
+  await withBetaDenialLedger(this.beta,{workspaceId:actor.workspaceId,actorUserId:actor.userId,operationId,kind:'LAUNCH_DENIED'},()=>this.commerce.assertExecutionAllowed(actor,operationId,revisionId));
   await new BudgetService(this.store).ensureBudget(actor,operationId);
   const planSeal=await this.sealer.prepare(operationId,op.currentRevisionId);
   const planSteps=await this.store.getSteps(op.currentRevisionId);
@@ -32,6 +34,9 @@ export class OperationExecutionService {
    const [current]=await tx.select().from(operations).where(and(eq(operations.id,operationId),eq(operations.workspaceId,actor.workspaceId),eq(operations.version,expectedVersion))).for('update').limit(1);
    if(!current)throw new DomainError('CONFLICT','Concurrent operation start');
    await this.beta.admitMission(tx,{workspaceId:actor.workspaceId,operationId,actorUserId:actor.userId,at:new Date(),trigger:'START'});
+   // A21.03: the commercial authorization is re-decided inside the launch transaction (beta orders hold
+   // their linked grant FOR SHARE), so a revocation racing the launch cannot slip between the two checks.
+   await this.commerce.assertExecutionAllowed(actor,operationId,revisionId,tx);
    const [sealed]=await tx.select().from(planSeals).where(eq(planSeals.revisionId,planSeal.revisionId)).limit(1);
    if(sealed&&sealed.contentHash!==planSeal.contentHash)throw new DomainError('CONFLICT','Plan changed after sealing');
    if(!sealed)await tx.insert(planSeals).values(planSeal);

@@ -1,5 +1,44 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION A21.03: free beta execution authorization (draft PR, branch `arena/45f55f1b-qeynox`, off `74f25d5`)
+
+Eligible beta testers can now execute all eight A16 business packs without paying. They get a **distinct, non-financial beta authorization** (new table `raas_beta_authorizations`, additive migration `0027_beta_execution_authorization.sql`), never a fake payment:
+- **Accept:** in `BETA_FREE` mode, a priced quote accepted by a workspace with an ACTIVE, unexpired A21.02 grant creates an order in the explicit state `BETA_AUTHORIZED`. The order keeps the published price, quote, offer version, scope hash, terms acceptance and revision. The authorization row is bound to all of them and to the grant. It records the list price unchanged and pins the amount due now to 0 with a DB CHECK.
+- **Nothing financial:** no payment, invoice, checkout session or refund is created. A beta order is never `AUTHORIZED`, `DELIVERED`, `PAID` or `CAPTURED`. The payment view never payment-authorizes it, and the webhook can never change its state.
+- **Free offers** stay `AUTHORIZED` as before. Without a grant, or under the default `PAYMENTS_DISABLED`, priced orders stay `PAYMENT_REQUIRED` (A21.01 unchanged).
+- **Re-checked at every use:** start, retry, redo and result delivery each re-check the mode, the grant's status and expiry, the current revision and every binding. Revocation, expiry, a plan change, tampering or a switch back to `PAYMENTS_DISABLED` fail closed with `403 BETA_ACCESS_REQUIRED` (`BETA_AUTHORIZATION_<denial>`).
+- **Delivery** needs no Stripe. The order becomes `BETA_DELIVERED`, and `RESULT_DELIVERED` names the `FREE_BETA` basis.
+- **Conversion:** `POST /v1/operations/:id/commercial/beta-authorization` converts a `PAYMENT_REQUIRED` order accepted before the grant, only if it has no payment history.
+- **Other controls unchanged:** consent, budgets, the A21.02 quota, concurrency and spend gates, ToolBroker permissions, runtime readiness and the human `RESULT_REVIEW` all still apply.
+- **Visible state:** commercial, readiness and web views show the list price, "due now 0" and why an authorization no longer applies.
+
+Verified on a disposable **real PostgreSQL 14.1** (applied nowhere else):
+- New `qa:beta-execution`: **13 groups / 440 assertions PASS** over the real `AppModule` HTTP API and in-process services. It covers:
+  - all 8 packs accepted at published prices and executed through the real ToolBroker/PgToolLedger, human review and delivery (one over HTTP), with zero payment, payment-event or refund rows;
+  - concurrent acceptance (replays, racing keys, competing quotes);
+  - revoked and expired grants (start, retry, delivery);
+  - changed plans and tampered bindings;
+  - cross-tenant attempts;
+  - explicit conversion;
+  - fail-closed mode switch;
+  - mandatory controls;
+  - the DB CHECK on amount due.
+  
+  Mutation checks: bypassing validation at delivery, removing the retry re-check, or ignoring the grant status each make the suite fail.
+- Regressions:
+  - `qa:payment-freeze` PASS; `qa:beta-access` 126 PASS; `qa:business-packs` 370 PASS (pack fixtures moved to `qa-pack-fixtures.ts`, unchanged);
+  - `qa:stripe-payments` 108; `qa:backend` 28; `qa:agent-runtime` 65; `qa:mission-lifecycle` 88; `qa:atlas-library` 105; `qa:atlas-results` 150; `qa:notifications` 98;
+  - 19 other `qa:*` suites PASS.
+- `qa:task02` past the pre-existing parity failures: 4637 assertions PASS (only those mismatches relaxed in a throwaway copy). The new table has full Drizzle↔SQL parity.
+- `pnpm typecheck` PASS; `pnpm build` 4/4; web `test:smoke` 218 PASS; `test:flow2` 35 PASS.
+
+Pre-existing or environmental failures, not caused by this mission:
+- `qa:task02` parity (`email_deliveries_dedup_unique`, `notifications_dedup_unique`, their unique columns, and `result_share_links_access_count_check`).
+- `qa:platform-authorization` and `qa:platform-users` part B: `pilot.module.ts` queries the database at boot.
+- `qa:connectors`, `qa:raas`, `qa:egress` and `qa:a03-service` part 2: BLOCKED because the live World Bank provider is unreachable over TLS from the sandbox.
+
+NOT verified: browser rendering of the free-beta block and conversion button; a real worker, Hermes or provider run on a beta order (providers were local fakes behind the real ToolBroker); a delivered Stripe webhook against a beta order (payments stay frozen). No production change. One draft PR; not merged. Full record: [A21_BETA_EXECUTION.md](../design/A21_BETA_EXECUTION.md).
+
 ## 2026-11-21 — MISSION A21.02: invite-only beta access (draft PR, branch `arena/3e51529e-qeynox`, off `1177489`)
 
 Durable, workspace-scoped beta grants on the existing PostgreSQL identity and workspace model (no second authentication system). A PLATFORM_ADMIN creates a grant for one `identity_workspaces` row, with an expiry, a mission quota, a concurrent-mission limit and a provider-spend cap. The grant starts INVITED with a single-use 43-character token, stored only as a SHA-256 digest. An OWNER or ADMIN of that same workspace activates it. States are ACTIVE, EXPIRED (evaluated from the clock on every read and gate) and REVOKED. A **mandatory** server-side gate runs inside the launch transaction of start, retry and redo, and inside every provider-spend reservation. It locks the grant row: no grant, an INVITED, expired or revoked grant, or an unadmitted mission → 403 `BETA_ACCESS_REQUIRED`. Quota, concurrency or spend cap reached → 429 `BETA_LIMIT_REACHED`. Readiness names the blocker. Operators cannot grant a workspace they created or hold any membership in, and the issuer cannot activate their own grant. Every operator action (success or denial) lands in `platform_admin_audit`. Lifecycle, admissions, denials and spend go to the new `beta_grant_events` ledger. The new Control `/beta` pages list, grant, inspect and revoke. Additive migration `0026_beta_access.sql`.

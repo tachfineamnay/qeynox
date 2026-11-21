@@ -1,6 +1,6 @@
 'use client';
 import { useActionState } from 'react';
-import { acceptQuote, decideApproval, deliverResult, reassembleDocument, requestQuote, reviewClaim, startMission } from '../lib/plan-actions';
+import { acceptQuote, authorizeBeta, decideApproval, deliverResult, reassembleDocument, requestQuote, reviewClaim, startMission } from '../lib/plan-actions';
 import { missionCopy } from '../lib/mission-copy';
 import type { Locale } from '../lib/copy';
 import { errorText } from './forms';
@@ -88,6 +88,23 @@ export function AcceptQuoteForm({ lang, operationId, quoteId, idempotencyKey }: 
       <input type="hidden" name="locale" value={lang} />
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       <button disabled={pending}>{pending ? missionCopy(lang).busy : f.acceptQuote}</button>
+      {state.code ? <Feedback error={state.code !== 'OK'} title={outcome(lang, state.code, missionCopy(lang).success)} /> : null}
+    </form>
+  );
+}
+
+/**
+ * MISSION A21.03 — covers an accepted priced order with the workspace's free beta access. Shown only
+ * when the API reports `betaAuthorizationAvailable`; the API re-checks everything and charges nothing.
+ */
+export function BetaAuthorizeForm({ lang, operationId }: { lang: Locale; operationId: string }) {
+  const f = missionCopy(lang).flow;
+  const [state, action, pending] = useActionState(authorizeBeta, { code: '' });
+  return (
+    <form action={action} className="qx-inline-form">
+      <input type="hidden" name="operationId" value={operationId} />
+      <input type="hidden" name="locale" value={lang} />
+      <button disabled={pending}>{pending ? missionCopy(lang).busy : f.betaAuthorize}</button>
       {state.code ? <Feedback error={state.code !== 'OK'} title={outcome(lang, state.code, missionCopy(lang).success)} /> : null}
     </form>
   );
