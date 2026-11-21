@@ -33,6 +33,10 @@ import { DomainError, type ID, type Principal } from '@qeynox/domain';
 import { createWorkerDependencies } from '../src/runtime';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
 import { seedQaBetaGrant } from '../../api/scripts/qa-beta-fixture';
+import { makeRuntimeReadiness as qaRuntimeFixture } from '@qeynox/application';
+// A21.07 QA fixture (test infrastructure only): this suite exercises launches, not runtime probing.
+// The launch gate itself is proven against real probes in qa:runtime-verification.
+const qaVerifiedRuntime = () => qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:qa-agent-runtime', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:qa-agent-runtime' });
 
 let assertions = 0;
 function assert(condition: unknown, message: string): asserts condition {
@@ -247,7 +251,7 @@ async function main(): Promise<void> {
     assert(accepted.state === 'AUTHORIZED', 'explicitly free offer authorizes the QA workflow');
     workerDeps = await createWorkerDependencies();
     assert(typeof workerDeps.handler === 'function' && typeof workerDeps.close === 'function', 'worker dependencies constructed with a shutdown hook');
-    const execution = new OperationExecutionService(store);
+    const execution = new OperationExecutionService(store, qaVerifiedRuntime);
     const started = await execution.start(owner, operation.id, ready.version, 'qa-runtime-start-0001') as { attemptId: ID; alreadyAccepted: boolean };
     assert(!started.alreadyAccepted && typeof started.attemptId === 'string', 'execution start created the first step attempt');
     assert(await count('outbox', 'operation_id=$1 AND state=$2', [operation.id, 'PENDING']) === 1, 'execution start queued exactly one dispatch intent');

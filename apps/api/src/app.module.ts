@@ -1,4 +1,5 @@
 import { HealthController } from './health.controller';
+import { RuntimeProbeLifecycle } from './operations/runtime-readiness';
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
@@ -20,5 +21,5 @@ import { ConnectionsModule } from './connections/connections.module';
 import { AccountModule } from './account/account.module';
 import { DocumentsModule } from './documents/documents.module';
 import { NotificationsModule } from './notifications/notifications.module';
-@Module({controllers:[HealthController],imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule,OperatorModule,ConfigurationModule,SoulModule,PilotModule,PlatformModule,WorkspacesModule,SupportModule,CapabilitiesModule,ServicesModule,ConnectionsModule,DocumentsModule, AccountModule, NotificationsModule]})
+@Module({controllers:[HealthController],providers:[RuntimeProbeLifecycle],imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule,OperatorModule,ConfigurationModule,SoulModule,PilotModule,PlatformModule,WorkspacesModule,SupportModule,CapabilitiesModule,ServicesModule,ConnectionsModule,DocumentsModule, AccountModule, NotificationsModule]})
 export class AppModule {}

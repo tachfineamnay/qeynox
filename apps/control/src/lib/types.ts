@@ -102,6 +102,15 @@ export interface PlatformAssignmentView {
 }
 
 export type OperationalState = 'CONFIGURED' | 'OPERATIONAL' | 'BLOCKED' | 'UNVERIFIED';
+/** A21.07: one runtime component's own live-probe verification (contains no credential). */
+export type RuntimeVerificationStatus = 'NOT_CONFIGURED' | 'NOT_PROBED' | 'VERIFIED' | 'FAILED' | 'STALE' | 'TARGET_CHANGED';
+export interface RuntimeVerificationView {
+  status: RuntimeVerificationStatus; evidenceRef: string | null; endpoint: string | null;
+  identity: { endpoint: string; deployment: string; version: string } | null;
+  outcome: 'SUCCEEDED' | 'FAILED' | null; failure: string | null; detail: string | null;
+  observedAt: string | null; expiresAt: string | null;
+}
+export interface RuntimeComponentView { id: string; configured: boolean; missing: string[]; state?: OperationalState; verifiedLive?: boolean; attested?: boolean; evidence?: string | null; verification?: RuntimeVerificationView }
 export interface CapabilitySlotDetailView {
   id: string; version: number; name: string; purpose: string; scope: string[];
   maximumSteps: number; maximumToolCalls: number; externalActions: boolean;
@@ -113,8 +122,8 @@ export interface PlatformCatalogueView {
   slots: { slot: number; status: 'ACTIVE' | 'UNCONFIGURED'; available: boolean; operationalState?: OperationalState; capability: CapabilitySlotDetailView | null }[];
   total: number; active: number; available: number;
   runtime: {
-    engine: { id: string; configured: boolean; missing: string[]; state?: OperationalState; verifiedLive?: boolean; attested?: boolean; evidence?: string | null };
-    orchestrator: { id: string; configured: boolean; missing: string[]; state?: OperationalState; verifiedLive?: boolean; attested?: boolean; evidence?: string | null };
+    engine: RuntimeComponentView;
+    orchestrator: RuntimeComponentView;
     overallState?: OperationalState; canExecute?: boolean;
   };
   operator: { scope: 'WORKSPACE'; configurationEndpoint: string; platformConfigurationEndpoint?: string; allowlistConfigured: boolean };

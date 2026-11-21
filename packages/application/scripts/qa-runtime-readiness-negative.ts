@@ -4,7 +4,7 @@
  * missing budget, missing execution authorization all block OPERATIONAL.
  */
 import assert from 'node:assert/strict';
-import { makeRuntimeReadiness, failClosedRuntime } from '../src/runtime-readiness';
+import { makeRuntimeReadiness, failClosedRuntime, runtimeExecutionBlocker } from '../src/runtime-readiness';
 import { computeCapabilityOperationalState } from '../src/capability-availability';
 
 let assertions = 0;
@@ -86,11 +86,24 @@ check(qa.canExecute === false, 'N10: QA contract success is not canExecute');
 
 // Positive: OPERATIONAL requires all
 const pos = makeRuntimeReadiness({
-  engineConfigured: true, engineMissing: [], engineVerifiedLive: true, engineAttested: true, engineEvidence: 'live-probe-2026-11-19',
-  orchestratorConfigured: true, orchestratorMissing: [], orchestratorVerifiedLive: true, orchestratorAttested: true, orchestratorEvidence: 'live-probe-2026-11-19',
+  engineConfigured: true, engineMissing: [], engineVerifiedLive: true, engineAttested: true, engineEvidence: 'qa-fixture:runtime-readiness-negative',
+  orchestratorConfigured: true, orchestratorMissing: [], orchestratorVerifiedLive: true, orchestratorAttested: true, orchestratorEvidence: 'qa-fixture:runtime-readiness-negative',
 });
 eq(pos.overallState, 'OPERATIONAL', 'P1: all prerequisites + verifiedLive + attested -> OPERATIONAL');
 eq(pos.canExecute, true, 'P1: OPERATIONAL canExecute true');
 eq(computeCapabilityOperationalState({ providerReady: true, profileReady: true, policyReady: true, runtime: pos }), 'OPERATIONAL', 'P1: capability OPERATIONAL');
+
+// A21.07 negatives: an operator boolean never verifies; a failed probe is BLOCKED and UNAVAILABLE.
+const flagOnly = makeRuntimeReadiness({ engineVerifiedLive: true, orchestratorVerifiedLive: true });
+check(!flagOnly.canExecute && flagOnly.engine.verification.status === 'NOT_PROBED' && flagOnly.orchestrator.verification.status === 'NOT_PROBED', 'N11: verifiedLive=true without evidence -> NOT_PROBED, not executable');
+const engineFailed = makeRuntimeReadiness({ engineFailure: 'TIMEOUT', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:runtime-readiness-negative' });
+eq(engineFailed.engine.state, 'BLOCKED', 'N12: failed Hermes probe -> Hermes BLOCKED');
+eq(engineFailed.orchestrator.state, 'OPERATIONAL', 'N12: Hatchet unaffected by the Hermes failure');
+check(!engineFailed.canExecute, 'N12: one failed component blocks execution');
+eq(runtimeExecutionBlocker(engineFailed)?.code, 'UNAVAILABLE', 'N12: failed probe -> UNAVAILABLE');
+const orchestratorFailed = makeRuntimeReadiness({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:runtime-readiness-negative', orchestratorFailure: 'AUTH_REJECTED' });
+check(!orchestratorFailed.canExecute && orchestratorFailed.orchestrator.verification.failure === 'AUTH_REJECTED', 'N13: failed Hatchet probe blocks execution with its own failure');
+check(failClosedRuntime().engine.verification.status === 'NOT_CONFIGURED' && failClosedRuntime().engine.evidence === null, 'N14: fail-closed runtime carries no evidence');
+eq(runtimeExecutionBlocker(failClosedRuntime())?.code, 'NOT_CONFIGURED', 'N14: fail-closed runtime -> NOT_CONFIGURED');
 
 console.log(`Runtime readiness NEGATIVE QA PASSED: ${assertions} assertions`);

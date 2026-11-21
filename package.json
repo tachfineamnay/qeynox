@@ -36,6 +36,7 @@
     "qa:hermes-live-selftest": "pnpm --filter @qeynox/worker qa:hermes-live-selftest",
     "hermes:diagnose": "pnpm --filter @qeynox/worker hermes:diagnose",
     "qa:runtime-readiness": "pnpm --filter @qeynox/application qa:runtime-readiness",
+    "qa:runtime-verification": "pnpm --filter @qeynox/api qa:runtime-verification",
     "qa:a03-service": "pnpm --filter @qeynox/worker qa:a03-service",
     "qa:service-catalogue": "pnpm --filter @qeynox/worker qa:service-catalogue",
     "qa:connector-hub": "pnpm --filter @qeynox/worker qa:connector-hub",

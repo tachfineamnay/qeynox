@@ -45,6 +45,10 @@ import {
 import { DomainError, newId, type ID, type Operation, type Principal } from '@qeynox/domain';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
 import { seedQaBetaGrant } from '../../api/scripts/qa-beta-fixture';
+import { makeRuntimeReadiness as qaRuntimeFixture } from '@qeynox/application';
+// A21.07 QA fixture (test infrastructure only): this suite exercises launches, not runtime probing.
+// The launch gate itself is proven against real probes in qa:runtime-verification.
+const qaVerifiedRuntime = () => qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:qa-stripe-payments', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:qa-stripe-payments' });
 
 let assertions = 0;
 const passed: string[] = [];
@@ -293,7 +297,7 @@ async function main(): Promise<void> {
     // ── Group 4 · paid execution is impossible before verified authorization ────────────────────
     await expectDomainError('PAYMENT_REQUIRED', () => commerce.assertExecutionAllowed(owner, first.operation.id, first.revisionId as ID), 'execution before any payment');
     const { OperationExecutionService } = await import('@qeynox/application');
-    const execution = new OperationExecutionService(store);
+    const execution = new OperationExecutionService(store, qaVerifiedRuntime);
     // The reported error is now PAYMENT_REQUIRED: an unpaid order is a payment state, not a broken
     // configuration. Before A08 a paid order could not exist, so the two were indistinguishable.
     await expectDomainError('PAYMENT_REQUIRED', () => execution.start(owner, first.operation.id, first.operation.version, 'qa-a08-start-before-' + randomUUID().slice(0, 8)), 'starting execution on an unpaid order');

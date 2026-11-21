@@ -31,6 +31,10 @@ import {
 import { DomainError, type ID, type Principal, type Source } from '@qeynox/domain';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
 import { seedQaBetaGrant } from '../../api/scripts/qa-beta-fixture';
+import { makeRuntimeReadiness as qaRuntimeFixture } from '@qeynox/application';
+// A21.07 QA fixture (test infrastructure only): this suite exercises launches, not runtime probing.
+// The launch gate itself is proven against real probes in qa:runtime-verification.
+const qaVerifiedRuntime = () => qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:qa-raas-deliverable', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:qa-raas-deliverable' });
 
 let assertions = 0;
 function assert(condition: unknown, message: string): asserts condition {
@@ -165,7 +169,7 @@ async function main(): Promise<void> {
     const quote = await commerce.quote(owner, operation.id, 'qa-raas-offer', plan.revision.id) as { id: string };
     const acceptedOrder = await commerce.accept(owner, quote.id as ID, 'qa-raas-acceptance-0001');
     assert(acceptedOrder.state === 'AUTHORIZED', 'explicitly free QA offer authorized fulfilment');
-    const execution = new OperationExecutionService(store);
+    const execution = new OperationExecutionService(store, qaVerifiedRuntime);
     const started = await execution.start(owner, operation.id, ready.version, 'qa-raas-start-0001') as { attemptId: ID };
     assert(typeof started.attemptId === 'string', 'research step attempt created');
 

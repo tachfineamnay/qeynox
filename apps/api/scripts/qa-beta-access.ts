@@ -56,6 +56,11 @@ import { AppModule } from '../src/app.module';
 import { DomainExceptionFilter } from '../src/transport/domain-exception.filter';
 import { hashPassword } from '../src/auth/password';
 import { createIsolatedQaDatabase } from './qa-isolated-database';
+import { startVerifiedRuntime, type VerifiedRuntime } from './qa-runtime-fixtures';
+import { makeRuntimeReadiness as qaRuntimeFixture } from '@qeynox/application';
+// A21.07 QA fixture (test infrastructure only): this suite exercises launches, not runtime probing.
+// The launch gate itself is proven against real probes in qa:runtime-verification.
+const qaVerifiedRuntime = () => qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:qa-beta-access', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:qa-beta-access' });
 
 // ── Assertion helpers ────────────────────────────────────────────────────────────────────────────
 let assertions = 0;
@@ -111,6 +116,7 @@ async function main(): Promise<void> {
   delete process.env.QEYNOX_COMMERCE_MODE;
   let connection: ReturnType<typeof connectDatabase> | undefined;
   let app: INestApplication | undefined;
+  let runtime: VerifiedRuntime | undefined;
   try {
     // ── Group 0 · additive migration ─────────────────────────────────────────────────────────────
     const report = await runMigrations(qa.url);
@@ -135,6 +141,9 @@ async function main(): Promise<void> {
         grantedBy: 'QA_FIXTURE', grantReason: 'deterministic beta access e2e seed',
       });
     }
+    // A21.07: HTTP launches pass the runtime gate only on real probe evidence. Local Hermes/Hatchet
+    // fixtures (QA infrastructure) are probed by the API's own monitor; nothing is flagged as verified.
+    runtime = await startVerifiedRuntime();
     app = await NestFactory.create(AppModule, { logger: false, abortOnError: false });
     app.useGlobalFilters(new DomainExceptionFilter());
     await app.listen(0, '127.0.0.1');
@@ -198,7 +207,7 @@ async function main(): Promise<void> {
 
     const planning = new PlanningService(store);
     const commerce = new CommerceService(store);
-    const execution = new OperationExecutionService(store);
+    const execution = new OperationExecutionService(store, qaVerifiedRuntime);
     const budgets = new BudgetService(store);
     const planRead = new PlanReadService(store);
     const betaStore = new BetaAccessStore(db);
@@ -487,6 +496,7 @@ async function main(): Promise<void> {
     console.log('Beta access QA PASSED: ' + String(groups) + ' groups, ' + String(assertions) + ' assertions in ' + String(Math.round((Date.now() - startedAt) / 1000)) + 's');
     console.log('BOUNDARY: real PostgreSQL, real services and HTTP API; no worker/Hermes/provider ran (spend exercised through BudgetService.reserve/settle); completion and expiry use explicit fixture shortcuts; no browser ran.');
   } finally {
+    await runtime?.stop().catch(() => undefined);
     await app?.close().catch(() => undefined);
     await connection?.close().catch(() => undefined);
     await qa.drop();

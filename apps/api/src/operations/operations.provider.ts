@@ -10,7 +10,7 @@ export const REVISIONS_SERVICE=Symbol('REVISIONS_SERVICE');
 export const PLAN_READ_SERVICE=Symbol('PLAN_READ_SERVICE');
 export const INTERRUPTION_SERVICE=Symbol('INTERRUPTION_SERVICE');
 export const provideOperations={provide:OPERATIONS_SERVICE,useFactory:(s:QeyNoxStore)=>new OperationService(s),inject:[QEYNOX_STORE]};
-export const provideExecution={provide:EXECUTION_SERVICE,useFactory:(s:QeyNoxStore)=>new OperationExecutionService(s),inject:[QEYNOX_STORE]};
+export const provideExecution={provide:EXECUTION_SERVICE,useFactory:(s:QeyNoxStore)=>new OperationExecutionService(s,apiRuntimeReadiness),inject:[QEYNOX_STORE]};
 export const providePlanning={provide:PLANNING_SERVICE,useFactory:(s:QeyNoxStore)=>new PlanningService(s),inject:[QEYNOX_STORE]};
 export const provideControls={provide:CONTROLS_SERVICE,useFactory:(s:QeyNoxStore)=>new OperationControlService(s),inject:[QEYNOX_STORE]};
 export const provideRevisions={provide:REVISIONS_SERVICE,useFactory:(s:QeyNoxStore)=>new PlanRevisionService(s),inject:[QEYNOX_STORE]};

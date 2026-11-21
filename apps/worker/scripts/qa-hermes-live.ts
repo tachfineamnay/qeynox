@@ -24,8 +24,9 @@
  *                              The inference proof stands; isolation stays unproven and is
  *                              reported that way.
  *
- * What it does NOT do: it does not set HERMES_NATIVE_TOOLS_ISOLATED, does not record
- * QEYNOX_RUNTIME_VERIFIED_LIVE, and does not create a mission or touch any database.
+ * What it does NOT do: it does not set HERMES_NATIVE_TOOLS_ISOLATED, does not mark the runtime
+ * verified (since A21.07 only the API/worker runtime probes can), and does not create a mission or
+ * touch any database.
  */
 import { HermesAdapter, probeHermes, redactSecrets, type HermesDiagnostic } from '@qeynox/engine';
 import { DomainError, type ID } from '@qeynox/domain';
@@ -162,7 +163,7 @@ async function main(): Promise<void> {
   console.log('  · Inference through Hermes to the configured provider: PROVEN for this deployment.');
   console.log('  · Native-tool isolation: ' + (isolationEvidenced ? 'evidenced by /v1/toolsets (enabled: none)' : 'UNPROVEN (no toolset inventory attestation)'));
   console.log('  · Server-side cancellation: not observable for non-streaming chat completions; client-side only.');
-  console.log('  · This script does not set QEYNOX_RUNTIME_VERIFIED_LIVE and does not touch any database.');
+  console.log('  · This script does not mark the runtime verified (A21.07: only the API/worker live probes do) and does not touch any database.');
   console.log('PASS: real inference verified — ' + assertions + ' assertions, ' + elapsed + 'ms.');
 }
 

@@ -1,0 +1,122 @@
+[
+  {
+    "file": "runtime-verified-en-mobile.jpg",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "runtime-verified-en-desktop.jpg",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "runtime-verified-fr-mobile.jpg",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "runtime-verified-fr-desktop.jpg",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "runtime-failed-en-mobile.jpg",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "runtime",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "runtime-failed-en-desktop.jpg",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "runtime",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "runtime-failed-fr-mobile.jpg",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "runtime",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "runtime-failed-fr-desktop.jpg",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "runtime",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "runtime-not-probed-en-mobile.jpg",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "runtime-legacy",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "runtime-not-probed-en-desktop.jpg",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "runtime-legacy",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "runtime-not-probed-fr-mobile.jpg",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "runtime-legacy",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "runtime-not-probed-fr-desktop.jpg",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "runtime-legacy",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  }
+]

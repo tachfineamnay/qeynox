@@ -44,6 +44,10 @@ import { DomainError, type ID, type Principal, type Source } from '@qeynox/domai
 import type { ConfigurationEntry } from '@qeynox/application';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
 import { seedQaBetaGrant } from '../../api/scripts/qa-beta-fixture';
+import { makeRuntimeReadiness as qaRuntimeFixture } from '@qeynox/application';
+// A21.07 QA fixture (test infrastructure only): this suite exercises launches, not runtime probing.
+// The launch gate itself is proven against real probes in qa:runtime-verification.
+const qaVerifiedRuntime = () => qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:qa-a03-service', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:qa-a03-service' });
 
 const PASS = 0;
 const FAILED = 1;
@@ -338,7 +342,7 @@ async function partTwo(): Promise<'PASSED' | 'BLOCKED'> {
     // --- 5. Attempt and budget materialization ---------------------------------------------
     // The attempt must exist before any reservation: every reservation belongs to a concrete step
     // attempt, so budget can never be consumed by an operation with no executing work.
-    const execution = new OperationExecutionService(store);
+    const execution = new OperationExecutionService(store, qaVerifiedRuntime);
     const startable = await store.getOperation(owner, created.operationId);
     const started = await execution.start(owner, created.operationId, startable.version, 'qa-a03-start-0001') as { attemptId: ID };
     check(typeof started.attemptId === 'string', 'the research step attempt was created');

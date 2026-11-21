@@ -29,6 +29,10 @@ import { DomainError, type ID, type Principal } from '@qeynox/domain';
 import { createWorkerDependencies } from '../src/runtime';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
 import { seedQaBetaGrant } from '../../api/scripts/qa-beta-fixture';
+import { makeRuntimeReadiness as qaRuntimeFixture } from '@qeynox/application';
+// A21.07 QA fixture (test infrastructure only): this suite exercises launches, not runtime probing.
+// The launch gate itself is proven against real probes in qa:runtime-verification.
+const qaVerifiedRuntime = () => qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:qa-connectors', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:qa-connectors' });
 
 let assertions = 0;
 function assert(condition: unknown, message: string): asserts condition {
@@ -234,7 +238,7 @@ async function main(): Promise<void> {
     const commerce = new CommerceService(store);
     const quote = await commerce.quote(owner, operating.id, 'qa-connector-offer', plan.revision.id) as { id: string };
     await commerce.accept(owner, quote.id as ID, 'qa-connector-acceptance-0001');
-    const execution = new OperationExecutionService(store);
+    const execution = new OperationExecutionService(store, qaVerifiedRuntime);
     const started = await execution.start(owner, operating.id, readyOperation.version, 'qa-connector-start-0001') as { attemptId: ID };
     assert(typeof started.attemptId === 'string', 'QA operation started with an attempt');
 

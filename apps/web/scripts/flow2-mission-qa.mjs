@@ -46,8 +46,9 @@ const readiness = {
     order: { ok: true, state: 'AUTHORIZED', amountMinor: 120000, currency: 'MAD' },
     budget: { ok: true, source: 'POLICY', currency: 'MAD', ceiling: 300000, spent: 120000, reserved: 0 },
     permission: { ok: true, role: 'OWNER' },
-    engine: { ok: true, runtime: 'HERMES', missing: [], state: 'OPERATIONAL', verifiedLive: true, attested: true },
-    orchestrator: { ok: true, runtime: 'HATCHET', missing: [], state: 'OPERATIONAL', verifiedLive: true, attested: true },
+    // A21.07 wire shape: each component carries its own customer-safe live-check summary.
+    engine: { ok: true, runtime: 'hermes', missing: [], state: 'OPERATIONAL', verifiedLive: true, attested: true, verification: { status: 'VERIFIED', failure: null, checkedAt: now, expiresAt: now } },
+    orchestrator: { ok: true, runtime: 'hatchet', missing: [], state: 'OPERATIONAL', verifiedLive: true, attested: true, verification: { status: 'VERIFIED', failure: null, checkedAt: now, expiresAt: now } },
     profile: { ok: true, missing: [] },
     provider: { ok: true, missing: [] },
     policy: { ok: true, missing: [] },
@@ -193,6 +194,9 @@ try {
       'Pilot guidance', 'QA evidence document', 'Secteur ciblé',
       'Énergie solaire', 'duplicate events ignored', 'Context inspector', 'Read availability',
     ]) { assert.ok(english.includes(text), 'EN missing: ' + text); assertions++; }
+    // A21.07: each runtime prerequisite row is backed by its own verified live check.
+    assert.ok(/data-ok="true" data-runtime-component="engine" data-verification="VERIFIED"/.test(english) && /data-ok="true" data-runtime-component="orchestrator" data-verification="VERIFIED"/.test(english), 'A21.07: runtime prerequisites show per-component verification'); assertions++;
+    assert.ok(!english.includes('probe:') && !english.includes('evidenceRef'), 'A21.07: no evidence reference reaches the customer page'); assertions++;
     assert.ok(!english.includes('>WAITING_APPROVAL<'), 'raw status must be localized');
     assert.ok(!english.includes('>RUNNING<'), 'raw step state must be localized');
 

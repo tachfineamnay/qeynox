@@ -3,7 +3,7 @@ import { DomainError,newId,transitionOperation,type ID,type Evidence,type StepAt
 import { connectDatabase,QeyNoxStore,attempts,operations,events } from '@qeynox/persistence';
 import { HermesAdapter,hermesCapabilities } from '@qeynox/engine';
 import { AgentProfileStore,CapabilityRegistry } from '@qeynox/roles';
-import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv } from '@qeynox/application';
+import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv,createRuntimeProbeMonitor,runtimeExecutionBlocker } from '@qeynox/application';
 import { NotificationStore } from '@qeynox/persistence';
 import { createConfiguredToolRegistry } from '@qeynox/tools';
 import { PgOutboxDispatcher,type ExecutionRequest,type OrchestratorPort } from '@qeynox/orchestration';
@@ -17,11 +17,14 @@ export async function createWorkerDependencies(){
  // operator configuration: an ACTIVE capability can change while the worker is running.
  const tools=await createConfiguredToolRegistry(conn.db);
  const registry=new EngineRegistry();
- // MISSION A01: runtime is UNVERIFIED until live verification evidence is present.
- // verifiedLive requires QEYNOX_RUNTIME_VERIFIED_LIVE=true + evidence; config flag alone is not proof.
- const verifiedLive = process.env.QEYNOX_RUNTIME_VERIFIED_LIVE === 'true';
- const evidence = verifiedLive ? (process.env.QEYNOX_RUNTIME_VERIFICATION_EVIDENCE ?? 'live-probe') : null;
- registry.register({id:'hermes',version:'hermes-api-unverified',runtime:engine,capabilities:hermesCapabilities,verifiedLive,evidence});
+ // MISSION A21.07: the worker verifies the runtime with its OWN bounded live probes (Hermes and Hatchet,
+ // separately). No environment boolean and no default evidence string can mark it verified; a restarted
+ // worker holds no evidence until it has probed again.
+ const runtimeMonitor=createRuntimeProbeMonitor(process.env);
+ // The registration reads the latest Hermes verification at selection time (getters, not a snapshot).
+ registry.register({id:'hermes',version:'hermes-api-unverified',runtime:engine,capabilities:hermesCapabilities,
+  get verifiedLive(){return runtimeMonitor.readiness().engine.verifiedLive;},
+  get evidence(){return runtimeMonitor.readiness().engine.evidence;}});
  const selections=new ExecutionEngineSelection(store,registry);
  const claims=new ClaimsService(store);
  const documents=new ResultAssembler(store);
@@ -41,17 +44,18 @@ export async function createWorkerDependencies(){
    try{
     const prior=await progression.priorOutputs(request.operationId,request.planRevisionId,step.id);
     const owner={userId:row.payload.createdBy,workspaceId:row.payload.workspaceId,roles:['system:worker']};
-    // MISSION A01: tenant execution requires OPERATIONAL runtime (verifiedLive + evidence).
-    // QA fixtures use select() with isolated mock server; production must use selectOperational().
-    // We attempt operational first; if not verified, fail closed with NOT_CONFIGURED (never present as executable).
-    // For backward compat with existing QA that sets QEYNOX_RUNTIME_VERIFIED_LIVE=true, this passes.
-    // If QA does not set verifiedLive, it will fail closed — which is correct per mission.
-    // To preserve existing QA scripts that rely on mock Hermes without verifiedLive, we allow select()
-    // when QEYNOX_QA_ALLOW_UNVERIFIED=true (explicit QA opt-in, never in production).
-    const allowUnverifiedQa = process.env.QEYNOX_QA_ALLOW_UNVERIFIED === 'true';
+    // MISSION A01 / A21.07: tenant execution requires an OPERATIONAL runtime proven by this worker's own
+    // fresh probes (selectOperational). Isolated QA suites that drive a deterministic Hermes double may
+    // opt out with QEYNOX_QA_ALLOW_UNVERIFIED=true; the opt-out is ignored when NODE_ENV=production (set
+    // by infra/Dockerfile.worker), so it can never bypass the gate in a deployed worker.
+    const allowUnverifiedQa = process.env.QEYNOX_QA_ALLOW_UNVERIFIED === 'true' && process.env.NODE_ENV !== 'production';
     if (allowUnverifiedQa) {
       await selections.select(owner,request.operationId,request.planRevisionId,attempt.id,profile,'hermes');
     } else {
+      // A21.07: BOTH components must be verified by fresh probe evidence; anything not VERIFIED is
+      // re-probed once (bounded) right here, then the step is refused if either is still unproven.
+      const runtimeBlock=runtimeExecutionBlocker(await runtimeMonitor.freshReadiness());
+      if(runtimeBlock)throw new DomainError(runtimeBlock.code,runtimeBlock.message);
       await selections.selectOperational(owner,request.operationId,request.planRevisionId,attempt.id,profile,'hermes');
     }
     // Reload active providers per attempt; never execute with a stale, startup-only ToolRegistry.
@@ -130,7 +134,8 @@ export async function createWorkerDependencies(){
     };
     await deliver();setInterval(()=>{void deliver();},5000);
   },
-  close:async()=>{await conn.close();},
+  runtimeMonitor,
+  close:async()=>{runtimeMonitor.stop();await conn.close();},
   toolRegistry:tools, // startup snapshot retained for existing QA callers
   loadToolRegistry:()=>createConfiguredToolRegistry(conn.db),
  };

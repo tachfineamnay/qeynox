@@ -709,6 +709,12 @@
 .qx-beta-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 18px;margin:0 0 12px}
 .qx-beta-facts>div{min-width:0;background:var(--qx-surface);border:1px solid var(--qx-border);border-radius:var(--qx-radius-sm);padding:10px 12px}
 .qx-beta-facts dt{font-size:12px;font-weight:650;letter-spacing:.4px;color:var(--qx-text-secondary);margin:0 0 2px}
+/* A21.07 — per-component runtime verification inside the beta facts. */
+.qx-beta-facts>.qx-beta-runtime{grid-column:1/-1}
+.qx-runtime-components{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+.qx-runtime-components li{min-width:0;overflow-wrap:anywhere}
+.qx-runtime-components li span{font-weight:600}
+.qx-runtime-components li small{color:var(--qx-text-secondary)}
 .qx-beta-facts dd{margin:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .qx-beta-facts s,.qx-beta-price s{color:var(--qx-text-muted);text-decoration-thickness:2px}
 .qx-beta-facts .qx-beta-due{border-color:var(--qx-blue-600)}

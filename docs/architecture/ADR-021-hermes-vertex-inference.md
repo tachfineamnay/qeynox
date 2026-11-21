@@ -98,8 +98,10 @@ Short form, inside the private network:
 2. `pnpm hermes:diagnose` → must exit 0 (no enabled toolset, authenticated, model advertised).
 3. `QEYNOX_QA_HERMES_URL=... QEYNOX_QA_HERMES_KEY=... pnpm qa:hermes-live` → must print
    `PASS: real inference verified`.
-4. Only then set `QEYNOX_RUNTIME_VERIFIED_LIVE=true` with
-   `QEYNOX_RUNTIME_VERIFICATION_EVIDENCE=<the recorded run id + date>` (A01 gate).
+4. Record the run id + date in the operator log. Superseded by A21.07: there is no switch to set.
+   The API and the worker verify Hermes (and Hatchet) themselves with bounded live probes; the
+   operator sees each component's evidence, identity and expiry under platform capabilities
+   (see ADR-020, "A21.07 amendment").
 
 ## Non-goals
 

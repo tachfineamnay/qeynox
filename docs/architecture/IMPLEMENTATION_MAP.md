@@ -245,6 +245,29 @@ Operator follow-ups (not performed by the agent):
 
 No push to main, no merge, no deployment.
 
+## Truthful runtime readiness (Mission A21.07)
+
+| Responsibility | Code area | Status |
+| --- | --- | --- |
+| Hermes probe: `/health` identity + version, key accepted (401/403 → AUTH_REJECTED), `/v1/toolsets` isolation, model advertised; abortable; stale-connection retry | packages/engine/src/hermes-diagnostics.ts | **VERIFIED IN DISPOSABLE QA** (`qa:runtime-verification`, local Hermes-contract fixture) |
+| Hatchet probe: endpoints from token claims (or overrides), `/api/ready`, `/api/v1/version`, `/api/v1/tenants/{sub}` must answer for that tenant, gRPC TCP reachability | packages/orchestration/src/hatchet-probe.ts | **VERIFIED IN DISPOSABLE QA** (local Hatchet-contract fixture) |
+| Evidence model + pure evaluation: NOT_CONFIGURED / NOT_PROBED / VERIFIED / FAILED / STALE / TARGET_CHANGED per component; both required for `canExecute`; launch blocker codes; customer summary; no default evidence | packages/application/src/runtime-readiness.ts | **VERIFIED IN QA** (`qa:runtime-readiness` 70 + 27) |
+| `RuntimeProbeMonitor`: per-process in-memory evidence, clamped policy (timeout / freshness / interval), monitor-enforced deadline, in-flight sharing, `freshReadiness`, secret scrubbing, configuration fingerprint | packages/application/src/runtime-probes.ts | **VERIFIED IN DISPOSABLE QA** |
+| API: process monitor + boot lifecycle (`QEYNOX_RUNTIME_PROBES=off` disables); env flags `QEYNOX_RUNTIME_VERIFIED_LIVE` / `_EVIDENCE` no longer read | apps/api/src/operations/runtime-readiness.ts, app.module.ts | **VERIFIED IN DISPOSABLE QA** (HTTP, boot probing) |
+| Launch gate: `OperationExecutionService` requires a runtime source; `start` refused before any allowance/attempt/outbox write (503 NOT_CONFIGURED / 502 UNAVAILABLE) | packages/application/src/execution.ts, apps/api/src/operations/operations.provider.ts | **VERIFIED IN DISPOSABLE QA** (unit + HTTP) |
+| Readiness and journey: per-component blockers (`*_UNVERIFIED`, `*_UNAVAILABLE`), `verification` summaries; operator capabilities carry the full record | packages/application/src/plan-read.ts, beta-journey.ts, platform-catalogue.ts | **VERIFIED IN DISPOSABLE QA** |
+| Worker: own monitor, `freshReadiness()` gate before `selectOperational`; QA opt-out ignored under `NODE_ENV=production` | apps/worker/src/runtime.ts, main.ts | **TYPECHECKED + gate components tested**; no worker step ran against the gate |
+| Web: per-component runtime rows (beta card, mission prerequisites), EN/FR copy, malformed/absent → NOT_PROBED | apps/web/src/lib/runtime-copy.ts, components/beta-offer.tsx, app/[lang]/missions/[id]/page.tsx | **VERIFIED IN SMOKE/FLOW2 (fixture API) + SCREENSHOTS** (`docs/design/screenshots/a21-07/`) |
+| Control: per-component verification (status, evidence ref, identity, endpoint, observed/expires, failure) | apps/control/src/app/[lang]/settings/page.tsx, lib/types.ts, lib/copy.ts | **TYPECHECKED + BUILT**; not screenshotted |
+| Real Hermes / Hatchet deployments | — | **NOT VERIFIED**: no deployment contacted |
+
+Operator follow-ups (not performed by the agent):
+- Remove `QEYNOX_RUNTIME_VERIFIED_LIVE` / `QEYNOX_RUNTIME_VERIFICATION_EVIDENCE` from deployed environments (now ignored).
+- Make sure the API and worker can reach Hermes `/health` + `/v1/*` and the Hatchet REST API + gRPC from their own networks.
+- Optionally tune `QEYNOX_RUNTIME_PROBE_*`.
+
+No push to main, no merge, no deployment.
+
 ## Authenticated e-mail verification resend (Mission A21.06)
 
 | Responsibility | Code area | Status |

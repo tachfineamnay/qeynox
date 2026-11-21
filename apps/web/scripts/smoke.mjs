@@ -24,7 +24,13 @@ const journeyAccount = {
 const noGrant = { status: 'NOT_ENROLLED', expiresAt: null, invitationExpiresAt: null, activatedAt: null, missionQuota: null, missionsUsed: null, missionsRemaining: null, activeMissions: 0, concurrentLimit: null, providerBudgetMinor: null, providerBudgetRemainingMinor: null, currency: null, quotaReason: null, canActivate: false };
 function betaJourney(kind) {
   const enabled = kind !== 'not-configured';
-  const runtime = kind === 'runtime' ? { canExecute: false, state: 'BLOCKED' } : { canExecute: true, state: 'OPERATIONAL' };
+  // A21.07: each runtime component carries its own live-check summary (customer-safe: no endpoint or evidence).
+  const verifiedCheck = { status: 'VERIFIED', failure: null, checkedAt: '2026-11-21T11:59:00.000Z', expiresAt: '2026-11-21T12:01:00.000Z' };
+  const runtime = kind === 'runtime'
+    ? { canExecute: false, state: 'BLOCKED', engine: verifiedCheck, orchestrator: { status: 'FAILED', failure: 'TIMEOUT', checkedAt: '2026-11-21T11:59:30.000Z', expiresAt: '2026-11-21T12:01:30.000Z' } }
+    : kind === 'runtime-legacy'
+      ? { canExecute: false, state: 'UNVERIFIED' }
+      : { canExecute: true, state: 'OPERATIONAL', engine: verifiedCheck, orchestrator: verifiedCheck };
   const accounts = {
     active: [journeyAccount, 'ACTIVE'],
     'not-configured': [journeyAccount, 'NOT_CONFIGURED'],
@@ -34,6 +40,7 @@ function betaJourney(kind) {
     revoked: [{ ...journeyAccount, status: 'REVOKED' }, 'REVOKED'],
     quota: [{ ...journeyAccount, missionsUsed: 5, missionsRemaining: 0, quotaReason: 'MISSIONS' }, 'QUOTA_EXHAUSTED'],
     runtime: [journeyAccount, 'RUNTIME_UNAVAILABLE'],
+    'runtime-legacy': [journeyAccount, 'RUNTIME_UNAVAILABLE'],
   };
   const [account, state] = accounts[kind];
   return {
@@ -679,6 +686,20 @@ try {
   assert.ok(dashActive.includes('qx-beta-inline'), 'mission creation states the free-beta terms'); assertions++;
   const dashActiveFr = flat(await page('/fr/mydash', true));
   assert.ok(dashActiveFr.includes('Bêta gratuite — aucune carte requise') && dashActiveFr.includes('Montant dû aujourd’hui') && dashActiveFr.includes('3 sur 5') && dashActiveFr.includes('31 décembre 2026') && dashActiveFr.includes('Actif'), 'French MyDash: headline, 0 due, allowance, expiry, status'); assertions++;
+  // MISSION A21.07 — per-component live checks, never a single optimistic flag.
+  const component = (html, name, status) => html.includes('data-runtime-component="' + name + '" data-verification="' + status + '"');
+  assert.ok(component(dashActive, 'engine', 'VERIFIED') && component(dashActive, 'orchestrator', 'VERIFIED') && dashActive.includes('Verified by a live check'), 'A21.07: ACTIVE shows each runtime component verified by a live check'); assertions++;
+  assert.ok(dashActive.includes('Agent runtime') && dashActive.includes('Workflow executor'), 'A21.07: both runtime components are named'); assertions++;
+  assert.ok(!/hermes\.|probe:|qa-fixture|https?:\/\/[^"<]*hatchet/i.test(dashActive), 'A21.07: no endpoint or evidence reference reaches the customer page'); assertions++;
+  beta = 'runtime';
+  const dashRuntime = flat(await page('/en/mydash', true));
+  assert.ok(component(dashRuntime, 'engine', 'VERIFIED') && component(dashRuntime, 'orchestrator', 'FAILED'), 'A21.07: a failed orchestrator check is shown on its own row, the engine stays verified'); assertions++;
+  assert.ok(dashRuntime.includes('Unavailable: the last live check failed') && dashRuntime.includes('it did not answer in time'), 'A21.07: the failure is stated in words (not colour only)'); assertions++;
+  const dashRuntimeFr = flat(await page('/fr/mydash', true));
+  assert.ok(dashRuntimeFr.includes('Indisponible : le dernier contrôle a échoué') && dashRuntimeFr.includes('il n’a pas répondu à temps') && dashRuntimeFr.includes('Vérifié par un contrôle en direct'), 'A21.07: French per-component runtime checks'); assertions++;
+  beta = 'runtime-legacy';
+  const dashLegacy = flat(await page('/en/mydash', true));
+  assert.ok(component(dashLegacy, 'engine', 'NOT_PROBED') && component(dashLegacy, 'orchestrator', 'NOT_PROBED') && dashLegacy.includes('Not yet verified by a live check') && !dashLegacy.includes('Verified by a live check'), 'A21.07: a journey without component checks is shown as not verified, never as verified'); assertions++;
   for (const [kind, [state, en, fr]] of Object.entries(stateTitles)) {
     beta = kind;
     const dash = flat(await page('/en/mydash', true));

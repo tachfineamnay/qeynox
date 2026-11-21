@@ -103,6 +103,10 @@ import { DomainExceptionFilter } from '../src/transport/domain-exception.filter'
 import { createIsolatedQaDatabase } from './qa-isolated-database';
 import { seedQaBetaGrant } from './qa-beta-fixture';
 import { VALID_PACK_REQUESTS, buildValidDeliverables } from './qa-pack-fixtures';
+import { makeRuntimeReadiness as qaRuntimeFixture } from '@qeynox/application';
+// A21.07 QA fixture (test infrastructure only): this suite exercises launches, not runtime probing.
+// The launch gate itself is proven against real probes in qa:runtime-verification.
+const qaVerifiedRuntime = () => qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:qa-business-packs', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:qa-business-packs' });
 
 const repoRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../..');
 const suiteBundlePath = resolve(repoRoot, 'infra/operator/a16-business-packs.json');
@@ -165,28 +169,8 @@ function capabilityFromBundle(entries: readonly ConfigurationEntry[]): Capabilit
   };
 }
 
-const OPERATIONAL_RUNTIME: RuntimeReadiness = {
-  engine: {
-    id: 'hermes',
-    configured: true,
-    missing: [],
-    state: 'OPERATIONAL',
-    verifiedLive: true,
-    attested: true,
-    evidence: 'qa-a16-fixture',
-  },
-  orchestrator: {
-    id: 'hatchet',
-    configured: true,
-    missing: [],
-    state: 'OPERATIONAL',
-    verifiedLive: true,
-    attested: true,
-    evidence: 'qa-a16-fixture',
-  },
-  overallState: 'OPERATIONAL',
-  canExecute: true,
-};
+// A21.07: built through the labelled QA builder so the fixture carries a full VERIFIED record.
+const OPERATIONAL_RUNTIME: RuntimeReadiness = qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-a16-fixture', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-a16-fixture' });
 
 // =============================================================================================
 // PART 1 — Pure Contract, Bundle, Planning DAG, Math & Deliverable Verification (Zero DB)
@@ -1091,7 +1075,7 @@ try {
   localToolRegistry.registerBundle({ connector: localBraveConnector, manifest: braveSearchManifest });
   const broker = new ToolBroker(localToolRegistry, new PgToolLedger(db));
 
-  const execService = new OperationExecutionService(store);
+  const execService = new OperationExecutionService(store, qaVerifiedRuntime);
   const opBeforeStart = await store.getOperation(actorA, opsTarget.operationId);
   await execService.start(actorA, opsTarget.operationId, opBeforeStart.version, 'qa-a16-ops-start-1');
   const opAfterStart = await store.getOperation(actorA, opsTarget.operationId);

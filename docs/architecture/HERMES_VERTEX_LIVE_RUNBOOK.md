@@ -147,21 +147,23 @@ A successful run prints: model, engine run id, `finish_reason`, latency, usage (
 `not observed … never as zero`), and a 200-character redacted excerpt of the answer.
 
 What the run does **not** do: it creates no mission, touches no database, sets no attestation, and
-does not write `QEYNOX_RUNTIME_VERIFIED_LIVE`.
+does not mark the runtime verified (nothing can: see step 5).
 
 ---
 
-## 5. Record the evidence (A01 gate)
+## 5. Record the evidence (A21.07: verification is automatic, never declared)
 
-Only after step 4 returns PASS may the deployment claim a verified live runtime:
+Record the step-4 run (`hermes-vertex <date> run=<engine run id> model=<model> latency=<ms>`) in the
+operator log. There is **no** environment switch to set: since A21.07 `QEYNOX_RUNTIME_VERIFIED_LIVE`
+and `QEYNOX_RUNTIME_VERIFICATION_EVIDENCE` are ignored. The API and the worker each probe Hermes and
+Hatchet separately (bounded by `QEYNOX_RUNTIME_PROBE_TIMEOUT_MS`), keep the evidence in memory for
+`QEYNOX_RUNTIME_PROBE_FRESHNESS_SECONDS`, and re-probe every `QEYNOX_RUNTIME_PROBE_INTERVAL_SECONDS`.
+Control → Settings → Runtime shows, per component, the verification status, evidence reference,
+verified endpoint/deployment/version, probe time and expiry.
 
-```
-QEYNOX_RUNTIME_VERIFIED_LIVE=true
-QEYNOX_RUNTIME_VERIFICATION_EVIDENCE="hermes-vertex <date> run=<engine run id> model=<model> latency=<ms>"
-```
-
-Until then the API reports the engine as `UNVERIFIED` and capabilities stay non-executable — which
-is the correct, fail-closed state.
+Until both components are `VERIFIED` the API reports the runtime as `UNVERIFIED` (or `BLOCKED` when a
+probe failed), refuses `POST /v1/operations/:id/start` and capabilities stay non-executable — the
+correct, fail-closed state.
 
 ---
 
@@ -179,6 +181,6 @@ is the correct, fail-closed state.
 
 ## 7. Rollback
 
-Unset `HERMES_MODEL` / `model.provider` to return Hermes to its previous provider, and unset
-`QEYNOX_RUNTIME_VERIFIED_LIVE` so the platform falls back to `UNVERIFIED`. No QeyNox migration,
+Unset `HERMES_MODEL` / `model.provider` to return Hermes to its previous provider. The changed
+configuration invalidates the previous Hermes evidence (`TARGET_CHANGED`) until the next probe. No QeyNox migration,
 schema change or credential is involved in this feature.

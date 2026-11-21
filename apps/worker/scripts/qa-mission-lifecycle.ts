@@ -36,6 +36,10 @@ import { DomainError, type ID, type Principal } from '@qeynox/domain';
 import { createWorkerDependencies } from '../src/runtime';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
 import { seedQaBetaGrant } from '../../api/scripts/qa-beta-fixture';
+import { makeRuntimeReadiness as qaRuntimeFixture } from '@qeynox/application';
+// A21.07 QA fixture (test infrastructure only): this suite exercises launches, not runtime probing.
+// The launch gate itself is proven against real probes in qa:runtime-verification.
+const qaVerifiedRuntime = () => qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:qa-mission-lifecycle', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:qa-mission-lifecycle' });
 
 let assertions = 0;
 const passed: string[] = [];
@@ -184,7 +188,7 @@ async function main(): Promise<void> {
       return workerDeps.handler;
     };
     const planning = new PlanningService(store);
-    const execution = new OperationExecutionService(store);
+    const execution = new OperationExecutionService(store, qaVerifiedRuntime);
     const commerce = new CommerceService(store);
     const controls = new OperationControlService(store);
     const interruptions = new InterruptionService(store, { orchestrator: recordingOrchestrator({ requests: [] }) });

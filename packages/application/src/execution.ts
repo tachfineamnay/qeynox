@@ -5,11 +5,16 @@ import { PlanSealer } from './plan-seal';
 import { CommerceService } from './commerce';
 import { BudgetService } from './budgets';
 import { withBetaDenialLedger } from './beta-access';
+import { runtimeExecutionBlocker, type RuntimeReadinessSource } from './runtime-readiness';
 export class OperationExecutionService {
  private readonly sealer:PlanSealer;
  private readonly commerce:CommerceService;
  private readonly beta:BetaAccessStore;
- constructor(private readonly store:QeyNoxStore){this.sealer=new PlanSealer(store);this.commerce=new CommerceService(store);this.beta=new BetaAccessStore(store.db);}
+ /**
+  * MISSION A21.07: `runtime` is required. A launch is refused unless BOTH Hermes and Hatchet are verified
+  * by fresh live-probe evidence; there is no default that could let a caller skip the gate.
+  */
+ constructor(private readonly store:QeyNoxStore,private readonly runtime:RuntimeReadinessSource){this.sealer=new PlanSealer(store);this.commerce=new CommerceService(store);this.beta=new BetaAccessStore(store.db);}
  async start(actor:Principal,operationId:ID,expectedVersion:number,commandKey:string){
   const [accepted]=await this.store.db.select().from(commandIds).where(and(eq(commandIds.workspaceId,actor.workspaceId),eq(commandIds.commandKey,commandKey))).limit(1);
   if(accepted){if(accepted.operationId!==operationId)throw new DomainError('CONFLICT','Idempotency key reused');return {...accepted.outcome,alreadyAccepted:true};}
@@ -17,6 +22,10 @@ export class OperationExecutionService {
   if(op.version!==expectedVersion)throw new DomainError('CONFLICT','Operation version mismatch');
   if(!op.currentRevisionId||!['READY','INTERRUPTED','FAILED'].includes(op.status))throw new DomainError('INVALID_STATE','Plan not ready');
   const revisionId=op.currentRevisionId;
+  // A21.07: no mission is admitted (and no beta allowance consumed) while either runtime component is
+  // unverified, expired or unavailable. The worker re-checks with its own probes before executing.
+  const runtimeBlock=runtimeExecutionBlocker(this.runtime());
+  if(runtimeBlock)throw new DomainError(runtimeBlock.code,runtimeBlock.message);
   // A21.03: a refused free-beta authorization is recorded in the beta ledger like any launch denial.
   await withBetaDenialLedger(this.beta,{workspaceId:actor.workspaceId,actorUserId:actor.userId,operationId,kind:'LAUNCH_DENIED'},()=>this.commerce.assertExecutionAllowed(actor,operationId,revisionId));
   await new BudgetService(this.store).ensureBudget(actor,operationId);

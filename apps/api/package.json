@@ -32,7 +32,8 @@
     "qa:beta-execution": "tsx scripts/qa-beta-execution.ts",
     "qa:verification-resend": "tsx scripts/qa-verification-resend.ts",
     "qa:registration": "tsx scripts/qa-registration.ts",
-    "qa:beta-journey": "tsx scripts/qa-beta-journey.ts"
+    "qa:beta-journey": "tsx scripts/qa-beta-journey.ts",
+    "qa:runtime-verification": "tsx scripts/qa-runtime-verification.ts"
   },
   "dependencies": {
     "@qeynox/application": "workspace:*",

@@ -3,7 +3,7 @@ import { requirePlatformMe, tryApi } from '../../../lib/api';
 import { copy, locale } from '../../../lib/copy';
 import { can, READ_CATALOGUE } from '../../../lib/permissions';
 import { ApiErrorNotice, Badge, Card, Notice, PageHeader, PermissionDenied, Shell } from '../../../components/shell';
-import type { PlatformCatalogueView } from '../../../lib/types';
+import type { PlatformCatalogueView, RuntimeComponentView } from '../../../lib/types';
 
 export default async function SettingsPage({ params }: { params: Promise<{ lang: string }> }) {
   const lang = locale((await params).lang);
@@ -36,6 +36,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ lang:
           <Card>
             <h2>{t.runtimeTitle}</h2>
             <p className="muted">{t.runtimeIntro}</p>
+            <p className="muted">{t.runtimeProbeNote}</p>
             <dl className="kv">
               <dt>{t.engineLabel}</dt>
               <dd>
@@ -43,7 +44,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ lang:
                 {catalogue.runtime.engine.configured ? null : (
                   <ul className="plain-list">{catalogue.runtime.engine.missing.map(item => <li key={item}><code>{item}</code></li>)}</ul>
                 )}
-                {catalogue.runtime.engine.verifiedLive === false && catalogue.runtime.engine.configured ? <p className="muted">{t.runtimeUnverified}</p> : null}
+                <RuntimeVerification lang={lang} component={catalogue.runtime.engine} />
               </dd>
               <dt>{t.orchestratorLabel}</dt>
               <dd>
@@ -51,6 +52,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ lang:
                 {catalogue.runtime.orchestrator.configured ? null : (
                   <ul className="plain-list">{catalogue.runtime.orchestrator.missing.map(item => <li key={item}><code>{item}</code></li>)}</ul>
                 )}
+                <RuntimeVerification lang={lang} component={catalogue.runtime.orchestrator} />
               </dd>
               <dt>{t.runtimeOverall}</dt>
               <dd><Badge tone={catalogue.runtime.overallState === 'OPERATIONAL' ? 'success' : 'warning'}>{catalogue.runtime.overallState ? t.operationalState[catalogue.runtime.overallState] : t.operationalState.BLOCKED}</Badge></dd>
@@ -111,5 +113,28 @@ export default async function SettingsPage({ params }: { params: Promise<{ lang:
         </>
       ) : null}
     </Shell>
+  );
+}
+
+/** A21.07: the component's own live-probe evidence, exactly as the API reports it (no credential exists in it). */
+function RuntimeVerification({ lang, component }: { lang: 'en' | 'fr'; component: RuntimeComponentView }) {
+  const t = copy[lang];
+  const v = component.verification;
+  if (!v) return <p className="muted">{t.runtimeUnverified}</p>;
+  const time = (value: string | null) => value ? new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'medium', timeZone: 'UTC' }).format(new Date(value)) + ' UTC' : '—';
+  return (
+    <div data-runtime-component={component.id} data-verification={v.status}>
+      <p><Badge tone={v.status === 'VERIFIED' ? 'success' : v.status === 'FAILED' ? 'danger' : 'warning'}>{t.runtimeVerificationStatus[v.status]}</Badge></p>
+      {v.status === 'NOT_CONFIGURED' || v.status === 'NOT_PROBED' ? null : (
+        <dl className="kv">
+          {v.identity ? <><dt>{t.runtimeIdentity}</dt><dd><code>{v.identity.deployment}</code> · <code>{v.identity.version}</code></dd></> : null}
+          {v.endpoint ? <><dt>{t.runtimeEndpoint}</dt><dd><code>{v.endpoint}</code></dd></> : null}
+          {v.evidenceRef ? <><dt>{t.runtimeEvidenceRef}</dt><dd><code>{v.evidenceRef}</code></dd></> : null}
+          <dt>{t.runtimeObservedAt}</dt><dd>{time(v.observedAt)}</dd>
+          <dt>{t.runtimeExpiresAt}</dt><dd>{time(v.expiresAt)}</dd>
+          {v.failure ? <><dt>{t.runtimeFailure}</dt><dd><code>{v.failure}</code>{v.detail ? ' · ' + v.detail : ''}</dd></> : null}
+        </dl>
+      )}
+    </div>
   );
 }
