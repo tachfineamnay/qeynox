@@ -4,6 +4,7 @@ import { confirmRecoveryAction, confirmVerificationAction, createMission, login,
 import { copy, type Locale } from '../lib/copy';
 import { Feedback } from './ui';
 import { registrationCopy } from '../lib/registration-copy';
+import { resendIsError, verificationResendCopy } from '../lib/verification-resend';
 export function errorText(code: string, lang: Locale) {
   const t = copy[lang];
   return code === 'NOT_CONFIGURED' ? t.notConfigured : code === 'SESSION_REQUIRED' ? t.signInRequired : code === 'DENIED' ? t.denied : code === 'INVALID_INPUT' ? t.invalid : code === 'UNKNOWN_OUTCOME' ? t.unknown : t.error;
@@ -114,12 +115,17 @@ export function VerificationForm({ lang, token }: { lang: Locale; token: string 
   </form>;
 }
 
+/**
+ * A21.06 — resend for the signed-in account. Shows the server's exact outcome: accepted by the
+ * provider, transport not configured, delivery failed, already verified, or too many requests.
+ */
 export function ResendVerification({ lang }: { lang: Locale }) {
-  const t = copy[lang]; const [state, action, pending] = useActionState(requestVerificationAction, { kind: 'IDLE' } as IdentityState);
-  return <form action={action}>{pending
+  const t = copy[lang]; const r = verificationResendCopy[lang];
+  const [state, action, pending] = useActionState(requestVerificationAction, { kind: 'IDLE' } as IdentityState);
+  return <form action={action} data-resend-state={state.kind === 'VERIFICATION_RESEND' ? state.view : state.kind}>{pending
     ? <button disabled>{t.pending}</button>
     : <button>{t.resendVerification}</button>}
-    {state.kind === 'CODE_SENT' && <Feedback title={t.deliveryNotConfigured}/>}
+    {state.kind === 'VERIFICATION_RESEND' && <Feedback title={r.title[state.view]} error={resendIsError(state.view)}>{r.body[state.view]}</Feedback>}
     {state.kind === 'ERROR' && <Feedback title={identityErrorText(state.code, lang)} error/>}
   </form>;
 }

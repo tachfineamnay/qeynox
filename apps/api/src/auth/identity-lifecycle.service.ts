@@ -9,6 +9,7 @@ import {
   type PasswordHasher,
   type RateLimitPolicy,
   type TokenRequestOutcome,
+  type VerificationResendResult,
 } from '@qeynox/application';
 import { DB_CONNECTION, QEYNOX_STORE } from '../database/database.module';
 import { EMAIL_TRANSPORT } from '../platform/platform.tokens';
@@ -23,6 +24,9 @@ const resetSchema = z.object({ token: z.string().min(43).max(256), password: z.s
 /** Throttling windows. Values are deployment policy, not secrets; each is applied per bucket. */
 const policies: Record<string, RateLimitPolicy> = {
   'verify-request': { maxAttempts: 5, windowSeconds: 15 * 60 },
+  // A21.06: authenticated resend, bucketed per ACCOUNT (user id), independent of the public bucket so
+  // an anonymous flood of the public route cannot lock the owner out of their own resend.
+  'verify-resend': { maxAttempts: 5, windowSeconds: 15 * 60 },
   'verify-confirm': { maxAttempts: 10, windowSeconds: 15 * 60 },
   'reset-request': { maxAttempts: 5, windowSeconds: 15 * 60 },
   'reset-confirm': { maxAttempts: 10, windowSeconds: 15 * 60 },
@@ -83,6 +87,23 @@ export class IdentityLifecycleApiService {
     if (!input.success) throw new DomainError('INVALID_INPUT', 'A valid e-mail address is required');
     await this.limiter.consume('verify-request', input.data.email, policies['verify-request']!);
     return this.lifecycle.requestVerification(input.data.email);
+  }
+
+  /**
+   * MISSION A21.06 — authenticated resend. The recipient is derived from the session's user id; the
+   * request body is never read, so a client-supplied address cannot choose whose token is issued or
+   * where it is sent. Already-verified accounts and unconfigured transports answer without consuming
+   * the throttle (nothing is issued or sent); every attempt that could send is throttled per account.
+   */
+  async resendVerification(userId: ID): Promise<VerificationResendResult> {
+    const current = await this.lifecycle.state(userId);
+    if (current.suspended) throw new DomainError('DENIED', 'Account unavailable');
+    if (current.verified) return { outcome: 'ALREADY_VERIFIED', sent: false, issued: false, notSentReason: null };
+    if (this.lifecycle.deliveryState.status !== 'CONFIGURED') {
+      return { outcome: 'NOT_CONFIGURED', sent: false, issued: false, notSentReason: this.lifecycle.deliveryState.reason ?? 'EMAIL_PROVIDER_NOT_CONFIGURED' };
+    }
+    await this.limiter.consume('verify-resend', userId, policies['verify-resend']!);
+    return this.lifecycle.resendVerificationForUser(userId);
   }
 
   /**

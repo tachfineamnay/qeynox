@@ -245,6 +245,15 @@ Operator follow-ups (not performed by the agent):
 
 No push to main, no merge, no deployment.
 
+## Authenticated e-mail verification resend (Mission A21.06)
+
+| Responsibility | Code area | Status |
+| --- | --- | --- |
+| Session-only `POST /v1/identity/verification/resend`; no body bound; recipient derived from the session user; suspended → DENIED; outcomes ACCEPTED / NOT_CONFIGURED (no token) / DELIVERY_FAILED / ALREADY_VERIFIED | apps/api/src/auth/identity.controller.ts; packages/application/src/identity-lifecycle.ts (`resendVerificationForUser`) | **VERIFIED IN DISPOSABLE QA** (`qa:verification-resend`, real HTTP, local Resend-contract fixture) |
+| Dedicated `verify-resend` throttle, 5 per 15 min per user id, consumed only when a send is attempted; 429 `BUDGET_EXHAUSTED` | apps/api/src/auth/identity-lifecycle.service.ts | **VERIFIED IN DISPOSABLE QA** |
+| Web action posts to the authenticated route with no body; zod-validated outcome → 5 distinct EN/FR states (+ UNKNOWN on malformed responses); `data-resend-state` | apps/web/src/lib/actions.ts, lib/verification-resend.ts, components/forms.tsx | **VERIFIED IN SMOKE (fixture API, real server action over HTTP) + BROWSER SCREENSHOTS** |
+| Real Resend delivery | packages/application/src/email-transports.ts (unchanged) | **NOT VERIFIED** — fixture only; requires operator credentials |
+
 ## Registration policy and invite-only registration (Mission A21.05)
 
 | Responsibility | Code area | Status |

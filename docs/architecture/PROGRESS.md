@@ -1,5 +1,31 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION A21.06: e-mail verification resend fixed; authenticated resend route (draft PR, branch `arena/31248bfb-qeynox`, off `291ed00`)
+
+**The bug.** The account page's resend button posted an empty body to the public
+`POST /v1/identity/verification/request`, which requires an e-mail. Every resend failed with 400, and the
+form labelled every success as "delivery not configured".
+
+**Fix.** A new session-only `POST /v1/identity/verification/resend` takes no body and derives the recipient
+from the authenticated user, so a client-supplied e-mail is never trusted. It reuses the existing
+single-use hashed tokens, the ledger and the Resend transport. It reports `ACCEPTED` / `NOT_CONFIGURED`
+(no token issued) / `DELIVERY_FAILED` / `ALREADY_VERIFIED`, or 429 when throttled (dedicated per-user
+budget of 5 per 15 min). The public route and its anti-enumeration answers are unchanged. The web maps
+each outcome to its own EN/FR state; malformed responses show an error, never success.
+
+**Verified:**
+- `qa:verification-resend` (new): 68 assertions, real HTTP and the real Resend adapter against a local
+  e-mail fixture, disposable PostgreSQL.
+- Smoke: 436 (386 at baseline). Flow2: 35.
+- Identity, registration, backend, agent-runtime, payment-freeze and beta suites are green.
+- `qa:task02` keeps its pre-existing parity failure.
+- typecheck and build pass.
+- Browser screenshots in EN and FR, with no mobile overflow.
+
+**Not verified:** real Resend delivery. Not deployed.
+
+Design: `docs/design/A21_VERIFICATION_RESEND.md`.
+
 ## 2026-11-21 — MISSION A21.05: registration configuration mismatch fixed; invite-only beta registration (draft PR, branch `arena/6d6d13aa-qeynox`, off `c2d2f62`)
 
 **The bug.** The two layers read different switches with opposite defaults:

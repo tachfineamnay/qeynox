@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Inject, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Post, Query, Req } from '@nestjs/common';
 import { DomainError, type Principal } from '@qeynox/domain';
-import type { TokenRequestOutcome } from '@qeynox/application';
+import type { TokenRequestOutcome, VerificationResendResult } from '@qeynox/application';
 import { PublicRoute } from './public-route';
 import { IdentityLifecycleApiService } from './identity-lifecycle.service';
 
@@ -32,6 +32,18 @@ export class IdentityController {
   @Post('verification/request')
   requestVerification(@Body() body: unknown): Promise<TokenRequestOutcome> {
     return this.lifecycle.requestVerification(body);
+  }
+
+  /**
+   * MISSION A21.06 — resend the verification link to the signed-in account's OWN address. Requires a
+   * session (no @PublicRoute). The body is deliberately not bound: the recipient comes from the
+   * session identity only. Outcomes: ACCEPTED | NOT_CONFIGURED | DELIVERY_FAILED | ALREADY_VERIFIED;
+   * throttling is 429 BUDGET_EXHAUSTED.
+   */
+  @Post('verification/resend')
+  @HttpCode(200)
+  resendVerification(@Req() request: ReqType): Promise<VerificationResendResult> {
+    return this.lifecycle.resendVerification(principal(request).userId);
   }
 
   /** Pre-flight for the verification landing page; does not consume the token. */
