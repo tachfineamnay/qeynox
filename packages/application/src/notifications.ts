@@ -25,9 +25,11 @@ import type { EmailTransport } from './platform-users';
  * 4. **Opt-outs apply to customer notification e-mails only.** Verification, recovery and
  *    invitation e-mails are transactional and always sent when the transport is configured.
  *    In-app rows are always recorded.
- * 5. **Recipients are workspace-scoped.** An event notifies the operation's creator and the
- *    workspace's ACTIVE OWNER/ADMIN members — the accounts able to act on it. Disabled accounts
- *    are never notified.
+ * 5. **Recipients are workspace-scoped.** An event notifies the operation's creator (while an ACTIVE
+ *    member) and the workspace's ACTIVE OWNER/ADMIN members — the accounts able to act on it.
+ *    Disabled accounts are never notified.
+ * 6. **No event loss (P13).** Every eligible event gets a durable receipt in the same transaction
+ *    as its inbox rows and delivery jobs; processing is oldest-first and resumes after downtime.
  */
 
 export const NOTIFICATION_CATEGORIES = ['APPROVALS', 'EXECUTION_FAILURES', 'RESULTS'] as const;
@@ -109,6 +111,17 @@ export interface InlineDeliveryRecord {
   readonly notificationId?: string | null;
 }
 
+/** P13 — what one event's materialization may touch; bound to the event's transaction. */
+export type NotificationEventScope = Pick<NotificationRepository, 'findOperation' | 'listRecipients' | 'insertNotification' | 'insertDelivery' | 'getPreferenceRows'>;
+export interface EventMaterialization { readonly outcome: 'MATERIALIZED' | 'SKIPPED'; readonly reason?: string | null; readonly notifications: number; readonly deliveries: number }
+/** P13 — late-commit safety window for the scan watermark. */
+export const NOTIFICATION_EVENT_SCAN_LAG_MS = 24 * 60 * 60 * 1000;
+/**
+ * P13 — an event older than this when first materialized still gets its inbox rows, but no e-mail
+ * (e.g. the first run after deployment catching up on history, or a very long outage).
+ */
+export const NOTIFICATION_EMAIL_MAX_EVENT_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
 export interface NotificationRepository {
   findOperation(operationId: string): Promise<OperationPointer | undefined>;
   /** ACTIVE OWNER/ADMIN members ∪ the operation creator; disabled accounts excluded. */
@@ -128,7 +141,15 @@ export interface NotificationRepository {
     locale: string | null; retryable: boolean; deduplicationKey: string; notificationId: string | null;
     createdAt: Date; sentAt: Date | null;
   }): Promise<boolean>;
-  listRecentEvents(kinds: readonly string[], limit: number): Promise<readonly NotificationEventRow[]>;
+  /** P13: eligible events without a processing receipt, oldest first, from the durable watermark. */
+  listUnprocessedEvents(kinds: readonly string[], limit: number): Promise<readonly NotificationEventRow[]>;
+  /** P13: claims the event's receipt and runs `work` in ONE transaction (receipt + inbox + deliveries). */
+  processEvent(
+    event: { id: string; workspaceId: string; kind: string },
+    work: (scoped: NotificationEventScope) => Promise<EventMaterialization>,
+  ): Promise<{ claimed: false } | ({ claimed: true } & Required<Pick<EventMaterialization, 'outcome' | 'notifications' | 'deliveries'>> & { reason: string | null })>;
+  /** P13: advances the scan watermark (never past an unprocessed event, never closer than the lag). */
+  advanceEventWatermark(kinds: readonly string[], now: Date, safetyLagMs: number): Promise<void>;
   listInbox(userId: string, workspaceId: string, input: { unreadOnly: boolean; before: { createdAt: Date; id: string } | null; take: number }): Promise<readonly InboxItem[]>;
   countUnread(userId: string, workspaceId: string): Promise<number>;
   markRead(userId: string, workspaceId: string, id: string, at: Date): Promise<boolean>;
@@ -236,69 +257,107 @@ export class NotificationService {
   // --- materialization (runs in the worker) --------------------------------------------------
 
   /**
-   * Converts new notification-relevant domain events into inbox rows and delivery jobs. Idempotent:
-   * the deduplication key is `evt:<eventId>:<userId>` in both tables, so any number of runs
-   * materialize each event at most once per recipient.
+   * Converts notification-relevant domain events into inbox rows and delivery jobs (MISSION P13).
+   *
+   * - Every eligible event without a durable receipt is processed, OLDEST first; a burst larger than
+   *   one batch continues in the next batch / drain, and a worker outage resumes where it stopped.
+   * - Each event is atomic: receipt + inbox rows + e-mail jobs commit together or not at all.
+   *   Concurrent workers serialize on the receipt; the loser skips.
+   * - Deduplication keys stay `evt:<eventId>:<userId>` in both tables, so events materialized before
+   *   this change (no receipt yet) are re-visited once without double-notifying.
+   * - Workspace isolation: the event's workspace must own the operation; recipients come from that
+   *   workspace only. Preferences decide the e-mail at first materialization, as before.
+   * - A failing event is rolled back and retried on the next pass; it does not block the others.
    */
-  async materialize(limit = 25): Promise<{ scanned: number; notifications: number; deliveries: number }> {
-    const events = await this.repository.listRecentEvents(NOTIFICATION_EVENT_KINDS, Math.min(Math.max(1, limit), 100));
+  async materialize(limit = 25, maxBatches = 4): Promise<{ scanned: number; notifications: number; deliveries: number; skipped: number; failed: number }> {
+    const batchSize = Math.min(Math.max(1, Math.floor(limit)), 100);
+    const totals = { scanned: 0, notifications: 0, deliveries: 0, skipped: 0, failed: 0 };
+    const failedIds = new Set<string>();
+    for (let batch = 0; batch < Math.max(1, Math.min(20, maxBatches)); batch++) {
+      const events = (await this.repository.listUnprocessedEvents(NOTIFICATION_EVENT_KINDS, batchSize + failedIds.size))
+        .filter(event => !failedIds.has(event.id)).slice(0, batchSize);
+      if (!events.length) break;
+      for (const event of events) {
+        totals.scanned++;
+        try {
+          const result = await this.repository.processEvent(
+            { id: event.id, workspaceId: event.workspaceId, kind: event.kind },
+            scoped => this.materializeEvent(scoped, event),
+          );
+          if (!result.claimed) continue; // another worker processed it
+          totals.notifications += result.notifications;
+          totals.deliveries += result.deliveries;
+          if (result.outcome === 'SKIPPED') totals.skipped++;
+        } catch (error: unknown) {
+          // Rolled back as a whole; the event keeps no receipt and is retried on the next pass.
+          failedIds.add(event.id);
+          totals.failed++;
+          console.error('[notifications] event ' + event.id + ' not materialized:', error instanceof Error ? error.message : 'unknown');
+        }
+      }
+      if (events.length < batchSize) break;
+    }
+    await this.repository.advanceEventWatermark(NOTIFICATION_EVENT_KINDS, this.now(), NOTIFICATION_EVENT_SCAN_LAG_MS);
+    return totals;
+  }
+
+  /** One event inside its transaction. Never sends; only records inbox rows and PENDING jobs. */
+  private async materializeEvent(scoped: NotificationEventScope, event: NotificationEventRow): Promise<EventMaterialization> {
+    const mapping = KIND_MAP[event.kind as NotificationEventKind];
+    if (!mapping) return { outcome: 'SKIPPED', reason: 'UNSUPPORTED_KIND', notifications: 0, deliveries: 0 };
+    const operation = await scoped.findOperation(event.operationId);
+    if (!operation) return { outcome: 'SKIPPED', reason: 'OPERATION_NOT_FOUND', notifications: 0, deliveries: 0 };
+    // Workspace isolation: an event never notifies anyone outside the workspace owning the operation.
+    if (operation.workspaceId !== event.workspaceId) return { outcome: 'SKIPPED', reason: 'WORKSPACE_MISMATCH', notifications: 0, deliveries: 0 };
+    const recipients = await scoped.listRecipients(event.workspaceId, operation.createdBy);
+    if (!recipients.length) return { outcome: 'SKIPPED', reason: 'NO_RECIPIENTS', notifications: 0, deliveries: 0 };
+    const errorCode = typeof event.data['errorCode'] === 'string' ? event.data['errorCode'] : null;
+    const occurredAt = Date.parse(event.occurredAt);
+    const emailEligible = this.email.status === 'CONFIGURED'
+      && Number.isFinite(occurredAt) && this.now().getTime() - occurredAt <= NOTIFICATION_EMAIL_MAX_EVENT_AGE_MS;
     let notifications = 0;
     let deliveries = 0;
-    for (const event of events) {
-      const mapping = KIND_MAP[event.kind as NotificationEventKind];
-      if (!mapping) continue;
-      const operation = await this.repository.findOperation(event.operationId);
-      if (!operation) continue;
-      const recipients = await this.repository.listRecipients(event.workspaceId, operation.createdBy);
-      const errorCode = typeof event.data['errorCode'] === 'string' ? event.data['errorCode'] : null;
-      for (const recipient of recipients) {
-        const locale = resolveEmailLocale(recipient.locale);
-        const dedup = 'evt:' + event.id + ':' + recipient.userId;
-        const strings = inboxCopy[mapping.kind][locale];
-        const body = strings.body
-          .replace('{operationTitle}', operation.title)
-          .replace('{errorCode}', errorCode ?? 'UNKNOWN');
-        const actionUrl = this.absoluteUrl('/' + locale + '/missions/' + operation.id);
-        const id = randomUUID();
-        const inserted = await this.repository.insertNotification({
-          id, userId: recipient.userId, workspaceId: event.workspaceId, kind: mapping.kind,
-          title: strings.title, body, operationId: operation.id,
-          linkPath: '/missions/' + operation.id,
-          deduplicationKey: dedup, createdAt: this.now(),
-        });
-        if (inserted) notifications++;
-        // The e-mail decision belongs to the FIRST materialization of (event, recipient). Re-drains
-        // re-scan recent events; if the notification row already existed, the decision — including
-        // "opted out at event time" — is already recorded, so never materialize a late e-mail.
-        if (!inserted) continue;
-        // E-mail only when opted in (default: opted in). In-app is recorded regardless.
-        const prefs = await this.repository.getPreferenceRows(recipient.userId);
-        if (!(prefs.get(mapping.kind) ?? true)) continue;
-        if (this.email.status !== 'CONFIGURED') {
-          // Record the delivery as PENDING but unretryable-by-template? No: never create a row that
-          // implies a send happened or will happen while no transport exists. The inbox row stands.
-          continue;
-        }
-        const templateVars: Record<string, string> = {
-          operationTitle: operation.title,
-          actionUrl,
-          ...(errorCode ? { errorCode } : {}),
-        };
-        const rendered = renderEmail(mapping.template, locale, templateVars);
-        const deliveryId = randomUUID();
-        const deliveryInserted = await this.repository.insertDelivery({
-          id: deliveryId, userId: recipient.userId, workspaceId: event.workspaceId,
-          category: mapping.kind, recipient: recipient.email, subject: rendered.subject,
-          provider: this.email.provider, status: 'PENDING', attemptCount: 0, maxAttempts: defaultMaxAttempts,
-          nextRetryAt: this.now(), lastErrorCode: null, providerMessageId: null,
-          templateId: mapping.template, templateVars, locale, retryable: true,
-          deduplicationKey: dedup, notificationId: inserted ? id : null,
-          createdAt: this.now(), sentAt: null,
-        });
-        if (deliveryInserted) deliveries++;
-      }
+    for (const recipient of recipients) {
+      const locale = resolveEmailLocale(recipient.locale);
+      const dedup = 'evt:' + event.id + ':' + recipient.userId;
+      const strings = inboxCopy[mapping.kind][locale];
+      const body = strings.body
+        .replace('{operationTitle}', operation.title)
+        .replace('{errorCode}', errorCode ?? 'UNKNOWN');
+      const actionUrl = this.absoluteUrl('/' + locale + '/missions/' + operation.id);
+      const id = randomUUID();
+      const inserted = await scoped.insertNotification({
+        id, userId: recipient.userId, workspaceId: event.workspaceId, kind: mapping.kind,
+        title: strings.title, body, operationId: operation.id,
+        linkPath: '/missions/' + operation.id,
+        deduplicationKey: dedup, createdAt: this.now(),
+      });
+      // The e-mail decision belongs to the FIRST materialization of (event, recipient): if the inbox
+      // row already existed (materialized before receipts existed), its decision is already recorded.
+      if (!inserted) continue;
+      notifications++;
+      // E-mail only when opted in (default: opted in). In-app is recorded regardless. Never create a
+      // delivery row while no transport exists: it would imply a send happened or will happen.
+      const prefs = await scoped.getPreferenceRows(recipient.userId);
+      if (!(prefs.get(mapping.kind) ?? true) || !emailEligible) continue;
+      const templateVars: Record<string, string> = {
+        operationTitle: operation.title,
+        actionUrl,
+        ...(errorCode ? { errorCode } : {}),
+      };
+      const rendered = renderEmail(mapping.template, locale, templateVars);
+      const deliveryInserted = await scoped.insertDelivery({
+        id: randomUUID(), userId: recipient.userId, workspaceId: event.workspaceId,
+        category: mapping.kind, recipient: recipient.email, subject: rendered.subject,
+        provider: this.email.provider, status: 'PENDING', attemptCount: 0, maxAttempts: defaultMaxAttempts,
+        nextRetryAt: this.now(), lastErrorCode: null, providerMessageId: null,
+        templateId: mapping.template, templateVars, locale, retryable: true,
+        deduplicationKey: dedup, notificationId: id,
+        createdAt: this.now(), sentAt: null,
+      });
+      if (deliveryInserted) deliveries++;
     }
-    return { scanned: events.length, notifications, deliveries };
+    return { outcome: 'MATERIALIZED', notifications, deliveries };
   }
 
   /**
@@ -343,7 +402,7 @@ export class NotificationService {
   }
 
   /** One drain pass: materialize new events, then send what is due. Safe to run on an interval. */
-  async drain(limit = 25): Promise<{ materialized: { scanned: number; notifications: number; deliveries: number }; deliveries: { claimed: number; sent: number; retrying: number; failed: number } }> {
+  async drain(limit = 25): Promise<{ materialized: { scanned: number; notifications: number; deliveries: number; skipped: number; failed: number }; deliveries: { claimed: number; sent: number; retrying: number; failed: number } }> {
     const materialized = await this.materialize(limit);
     const deliveries = await this.processDueDeliveries(limit);
     return { materialized, deliveries };

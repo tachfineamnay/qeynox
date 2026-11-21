@@ -3,7 +3,7 @@ import { and, asc, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { QeyNoxDatabase } from './database';
 import { operations, events } from './schema';
 import { identityMemberships, identityUsers } from './identity-schema';
-import { notifications, emailDeliveries, notificationPreferences, type NotificationKind } from './notification-schema';
+import { notifications, emailDeliveries, notificationPreferences, notificationEventReceipts, notificationCheckpoints, type NotificationKind } from './notification-schema';
 
 /**
  * MISSION A19 — Drizzle implementation of the notification repository contracts declared in
@@ -23,6 +23,7 @@ export interface InboxRow {
 }
 
 const iso = (value: Date | null): string | null => (value ? value.toISOString() : null);
+const EVENT_CHECKPOINT = 'notification-events';
 
 export class NotificationStore {
   constructor(private readonly db: QeyNoxDatabase) {}
@@ -34,7 +35,7 @@ export class NotificationStore {
     return { id: row.id, workspaceId: row.workspaceId, createdBy: row.createdBy, title: row.payload.title };
   }
 
-  /** Operation creator ∪ ACTIVE OWNER/ADMIN members; disabled accounts excluded. Creator first, deduplicated by userId. */
+  /** Operation creator (if an ACTIVE member) ∪ ACTIVE OWNER/ADMIN members; disabled accounts excluded. Creator first, deduplicated by userId. */
   async listRecipients(workspaceId: string, createdBy: string): Promise<readonly { userId: string; email: string; locale: string; role: string }[]> {
     const byId = new Map<string, { userId: string; email: string; locale: string; role: string }>();
     const adminRows = await this.db.select({ userId: identityUsers.id, email: identityUsers.email, locale: identityUsers.locale, role: identityMemberships.role })
@@ -42,8 +43,10 @@ export class NotificationStore {
       .innerJoin(identityUsers, eq(identityUsers.id, identityMemberships.userId))
       .where(and(eq(identityMemberships.workspaceId, workspaceId), eq(identityMemberships.status, 'ACTIVE'), inArray(identityMemberships.role, ['OWNER', 'ADMIN']), isNull(identityUsers.disabledAt)));
     for (const row of adminRows) byId.set(row.userId, row);
+    // P13: the creator is notified only while still an ACTIVE member of THIS workspace.
     const [creator] = await this.db.select({ userId: identityUsers.id, email: identityUsers.email, locale: identityUsers.locale })
       .from(identityUsers)
+      .innerJoin(identityMemberships, and(eq(identityMemberships.userId, identityUsers.id), eq(identityMemberships.workspaceId, workspaceId), eq(identityMemberships.status, 'ACTIVE')))
       .where(and(eq(identityUsers.id, createdBy), isNull(identityUsers.disabledAt))).limit(1);
     if (creator && !byId.has(creator.userId)) byId.set(creator.userId, { ...creator, role: 'CREATOR' });
     return [...byId.values()];
@@ -99,14 +102,79 @@ export class NotificationStore {
     }).onConflictDoNothing({ target: emailDeliveries.deduplicationKey });
   }
 
-  async listRecentEvents(kinds: readonly string[], limit: number) {
+  /**
+   * P13 — eligible events WITHOUT a processing receipt, oldest first. The scan starts at the durable
+   * watermark (never past an unprocessed event, see advanceEventWatermark), so a burst larger than
+   * `limit` is simply continued by the next call and no event is ever skipped.
+   */
+  async listUnprocessedEvents(kinds: readonly string[], limit: number) {
     if (kinds.length === 0) return [];
+    const [checkpoint] = await this.db.select({ watermark: notificationCheckpoints.watermark }).from(notificationCheckpoints)
+      .where(eq(notificationCheckpoints.name, EVENT_CHECKPOINT)).limit(1);
     const rows = await this.db.select({ id: events.id, workspaceId: events.workspaceId, operationId: events.operationId, kind: events.kind, occurredAt: events.occurredAt, payload: events.payload })
-      .from(events).where(inArray(events.kind, [...kinds])).orderBy(desc(events.occurredAt), desc(events.id)).limit(limit);
+      .from(events)
+      .where(and(
+        inArray(events.kind, [...kinds]),
+        checkpoint ? sql`${events.occurredAt} >= ${checkpoint.watermark}` : undefined,
+        sql`NOT EXISTS (SELECT 1 FROM notification_event_receipts r WHERE r.event_id = ${events.id})`,
+      ))
+      .orderBy(asc(events.occurredAt), asc(events.id))
+      .limit(limit);
     return rows.map(row => ({
       id: row.id, workspaceId: row.workspaceId, operationId: row.operationId, kind: row.kind,
       occurredAt: row.occurredAt, data: (row.payload.data ?? {}) as Record<string, unknown>,
     }));
+  }
+
+  /**
+   * P13 — materializes ONE event atomically. The receipt is claimed first (primary key; a concurrent
+   * worker blocks, then sees the conflict and gets `claimed: false`), then `work` runs against a
+   * store bound to the same transaction, then the receipt records the outcome. Any error rolls back
+   * the receipt, inbox rows and delivery jobs together, so the event is retried as a whole.
+   */
+  async processEvent(
+    event: { id: string; workspaceId: string; kind: string },
+    work: (scoped: NotificationStore) => Promise<{ outcome: 'MATERIALIZED' | 'SKIPPED'; reason?: string | null; notifications: number; deliveries: number }>,
+  ): Promise<{ claimed: false } | { claimed: true; outcome: 'MATERIALIZED' | 'SKIPPED'; reason: string | null; notifications: number; deliveries: number }> {
+    return this.db.transaction(async tx => {
+      const claimed = await tx.insert(notificationEventReceipts)
+        .values({ eventId: event.id, workspaceId: event.workspaceId, kind: event.kind, outcome: 'MATERIALIZED' })
+        .onConflictDoNothing({ target: notificationEventReceipts.eventId })
+        .returning({ eventId: notificationEventReceipts.eventId });
+      if (!claimed.length) return { claimed: false as const };
+      const result = await work(new NotificationStore(tx as unknown as QeyNoxDatabase));
+      const reason = result.reason ?? null;
+      await tx.update(notificationEventReceipts)
+        .set({ outcome: result.outcome, reason, notifications: result.notifications, deliveries: result.deliveries, processedAt: new Date() })
+        .where(eq(notificationEventReceipts.eventId, event.id));
+      return { claimed: true as const, outcome: result.outcome, reason, notifications: result.notifications, deliveries: result.deliveries };
+    });
+  }
+
+  /**
+   * P13 — moves the scan watermark forward, never backward, to the earlier of (a) the oldest eligible
+   * event still lacking a receipt and (b) `now - safetyLagMs`, so an event that commits late with an
+   * older occurred_at is still inside the scanned window.
+   */
+  async advanceEventWatermark(kinds: readonly string[], now: Date, safetyLagMs: number): Promise<void> {
+    if (kinds.length === 0) return;
+    const [checkpoint] = await this.db.select({ watermark: notificationCheckpoints.watermark }).from(notificationCheckpoints)
+      .where(eq(notificationCheckpoints.name, EVENT_CHECKPOINT)).limit(1);
+    const [oldest] = await this.db.select({ occurredAt: events.occurredAt }).from(events)
+      .where(and(
+        inArray(events.kind, [...kinds]),
+        checkpoint ? sql`${events.occurredAt} >= ${checkpoint.watermark}` : undefined,
+        sql`NOT EXISTS (SELECT 1 FROM notification_event_receipts r WHERE r.event_id = ${events.id})`,
+      ))
+      .orderBy(asc(events.occurredAt), asc(events.id)).limit(1);
+    const lagged = new Date(now.getTime() - safetyLagMs).toISOString();
+    const candidate = oldest && oldest.occurredAt < lagged ? oldest.occurredAt : lagged;
+    if (checkpoint && checkpoint.watermark >= candidate) return;
+    await this.db.insert(notificationCheckpoints).values({ name: EVENT_CHECKPOINT, watermark: candidate, updatedAt: now })
+      .onConflictDoUpdate({
+        target: notificationCheckpoints.name,
+        set: { watermark: sql`GREATEST(${notificationCheckpoints.watermark}, excluded.watermark)`, updatedAt: now },
+      });
   }
 
   async listInbox(userId: string, workspaceId: string, input: { unreadOnly: boolean; before: { createdAt: Date; id: string } | null; take: number }) {

@@ -1,5 +1,41 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION P13: notification event loss fixed (PR, branch `arena/1a108289-qeynox`, off `e48ab02`)
+
+**Defect.** `materialize()` re-scanned only the newest 25 events with no progress record, so bursts and
+worker outages lost older events.
+
+**Fix.**
+- **Migration `0031` (additive):**
+  - `notification_event_receipts`: one row per processed event (MATERIALIZED or SKIPPED, with a reason
+    and counts);
+  - `notification_checkpoints`: a scan watermark;
+  - a partial scan index on `operation_events`.
+- **Processing.** Events without a receipt are processed oldest first, in up to 4 batches per drain;
+  the remainder continues on the next drain. Each event is one transaction: the receipt is claimed
+  first, so concurrent workers serialize, then the inbox rows and PENDING email jobs are written.
+  Failure rolls the whole event back for a retry and does not block the others.
+- **Watermark.** It never passes an unprocessed event and stays at least 24 h behind now, so
+  late-committing events are still found. Receipts carry correctness.
+- **Unchanged.** Deduplication keys (`evt:<event>:<user>`) and preferences behave as before.
+- **Isolation.** An event is skipped when its workspace does not own the operation. The creator is
+  notified only while an ACTIVE member of that workspace.
+- **Email age.** Events older than 7 days on first materialization (the post-deploy backfill) get inbox
+  rows only, no email.
+
+**Verified.**
+- `pnpm typecheck` passes (4/4).
+- The existing `qa:notifications` suite passes 98/98 on a disposable local PostgreSQL.
+- A throwaway check (not committed) covered:
+  - a 130-event burst under concurrent drains, with no duplicates and no losses;
+  - resume after downtime;
+  - a forged cross-workspace event being skipped;
+  - stale events getting inbox rows only;
+  - the watermark lag;
+  - a late-committed event being processed.
+
+**Not verified.** Production: migration 0031 is not applied there.
+
 ## 2026-11-21 — MISSION P12: safe document deletion (PR, branch `arena/c199d114-qeynox`, off `3d6732f`)
 
 **Defect.** `DocumentVaultService.delete` and `purgeExpired` swallowed S3 `deleteObject` errors and

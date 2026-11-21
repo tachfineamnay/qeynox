@@ -78,3 +78,28 @@ export const notificationPreferences = pgTable('notification_preferences', {
   primaryKey({ columns: [t.userId, t.category] }),
   check('notification_preferences_category_check', sql`${t.category} IN ('APPROVALS', 'EXECUTION_FAILURES', 'RESULTS')`),
 ]);
+
+/**
+ * P13 (migration 0031) — durable per-event checkpoint for notification materialization. Written in
+ * the same transaction as the event's inbox rows and delivery jobs.
+ */
+export const notificationEventReceipts = pgTable('notification_event_receipts', {
+  eventId: text('event_id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  kind: text('kind').notNull(),
+  outcome: text('outcome').$type<'MATERIALIZED' | 'SKIPPED'>().notNull(),
+  reason: text('reason'),
+  notifications: integer('notifications').notNull().default(0),
+  deliveries: integer('deliveries').notNull().default(0),
+  processedAt: timestamp('processed_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  index('notification_event_receipts_workspace_idx').on(t.workspaceId, t.processedAt),
+  check('notification_event_receipts_outcome_check', sql`${t.outcome} IN ('MATERIALIZED', 'SKIPPED')`),
+]);
+
+/** P13 — conservative scan watermark (bounds the anti-join only; receipts carry correctness). */
+export const notificationCheckpoints = pgTable('notification_checkpoints', {
+  name: text('name').primaryKey(),
+  watermark: text('watermark').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
