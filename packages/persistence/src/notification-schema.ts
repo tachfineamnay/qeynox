@@ -1,0 +1,80 @@
+import { boolean, check, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { identityUsers } from './identity-schema';
+
+/**
+ * MISSION A19 — in-app notification inbox, durable e-mail delivery ledger and per-category
+ * notification preferences. See migration 0024 for the rationale; every row is written by the
+ * application services, never by ad-hoc SQL elsewhere.
+ */
+
+export const notificationKinds = ['APPROVALS', 'EXECUTION_FAILURES', 'RESULTS'] as const;
+export type NotificationKind = (typeof notificationKinds)[number];
+
+export type StoredNotification = typeof notifications.$inferSelect;
+export const notifications = pgTable('notifications', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => identityUsers.id, { onDelete: 'cascade' }),
+  workspaceId: text('workspace_id'),
+  kind: text('kind').$type<NotificationKind>().notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  operationId: text('operation_id'),
+  linkPath: text('link_path'),
+  deduplicationKey: text('deduplication_key').notNull(),
+  readAt: timestamp('read_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  uniqueIndex('notifications_dedup_unique').on(t.deduplicationKey),
+  index('notifications_user_created_idx').on(t.userId, t.createdAt.desc(), t.id.desc()),
+  index('notifications_user_unread_idx').on(t.userId, t.createdAt.desc(), t.id.desc()).where(sql`${t.readAt} IS NULL`),
+  check('notifications_kind_check', sql`${t.kind} IN ('APPROVALS', 'EXECUTION_FAILURES', 'RESULTS')`),
+]);
+
+export const deliveryStatuses = ['PENDING', 'SENT', 'FAILED', 'SKIPPED'] as const;
+export type DeliveryStatus = (typeof deliveryStatuses)[number];
+
+export type StoredEmailDelivery = typeof emailDeliveries.$inferSelect;
+export const emailDeliveries = pgTable('email_deliveries', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => identityUsers.id, { onDelete: 'set null' }),
+  workspaceId: text('workspace_id'),
+  category: text('category').notNull(),
+  recipient: text('recipient').notNull(),
+  subject: text('subject').notNull(),
+  provider: text('provider').notNull(),
+  status: text('status').$type<DeliveryStatus>().notNull().default('PENDING'),
+  attemptCount: integer('attempt_count').notNull().default(0),
+  maxAttempts: integer('max_attempts').notNull().default(3),
+  nextRetryAt: timestamp('next_retry_at', { withTimezone: true }).notNull().defaultNow(),
+  lastErrorCode: text('last_error_code'),
+  providerMessageId: text('provider_message_id'),
+  templateId: text('template_id'),
+  templateVars: jsonb('template_vars').$type<Record<string, string>>(),
+  locale: text('locale'),
+  retryable: boolean('retryable').notNull().default(true),
+  deduplicationKey: text('deduplication_key').notNull(),
+  notificationId: text('notification_id').references(() => notifications.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+}, t => [
+  uniqueIndex('email_deliveries_dedup_unique').on(t.deduplicationKey),
+  index('email_deliveries_due_idx').on(t.status, t.nextRetryAt),
+  index('email_deliveries_user_idx').on(t.userId, t.createdAt.desc()),
+  check('email_deliveries_status_check', sql`${t.status} IN ('PENDING', 'SENT', 'FAILED', 'SKIPPED')`),
+]);
+
+export const notificationPreferenceCategories = notificationKinds;
+export type NotificationPreferenceCategory = NotificationKind;
+
+export type StoredNotificationPreference = typeof notificationPreferences.$inferSelect;
+export const notificationPreferences = pgTable('notification_preferences', {
+  userId: text('user_id').notNull().references(() => identityUsers.id, { onDelete: 'cascade' }),
+  category: text('category').$type<NotificationPreferenceCategory>().notNull(),
+  emailEnabled: boolean('email_enabled').notNull().default(true),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  primaryKey({ columns: [t.userId, t.category] }),
+  check('notification_preferences_category_check', sql`${t.category} IN ('APPROVALS', 'EXECUTION_FAILURES', 'RESULTS')`),
+]);

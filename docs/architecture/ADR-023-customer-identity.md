@@ -11,6 +11,8 @@ ADR-009 explicitly listed what the identity layer still lacked: *"IP rate limiti
 password recovery, optional MFA, abuse mitigation remain follow-up work before public use."* A04
 closes the registration, verification and recovery gaps.
 
+> **Update (2026-11-20, MISSION A19):** QeyNox now ships a real provider path (`ResendEmailTransport`, env-selected; self-service verification/recovery/invitation sends inline post-commit; notification deliveries via the worker drain). The transport is still **not assumed configured** — with deployment secrets unset every send fails closed exactly as described below. Operator-triggered lifecycle sends remain blocked by design. Deployment secrets (`QEYNOX_RESEND_API_KEY`, `QEYNOX_EMAIL_FROM`, `QEYNOX_PUBLIC_URL`) hold the credentials; none live in the repository. See [A19_NOTIFICATIONS.md](../design/A19_NOTIFICATIONS.md).
+
 The constraint that shaped every decision: **QeyNox ships no e-mail provider.** `createEmailTransport()`
 returns `NotConfiguredEmailTransport`, and that has been the truthful state since platform user
 administration was built. A04 must add the flows without inventing a delivery capability.

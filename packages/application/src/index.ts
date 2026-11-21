@@ -52,3 +52,6 @@ export * from './connection-vault';
 export * from './connections';
 export * from './workspace-team';
 export * from './account-settings';
+export * from './email-templates';
+export * from './email-transports';
+export * from './notifications';

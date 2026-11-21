@@ -21,24 +21,44 @@ import type {
 import { PlatformAdminService, type PlatformPermissionContext } from './platform-admin';
 
 /**
- * Email transport port. The only implementation shipped in this repository is
- * NotConfiguredEmailTransport: no provider is configured, so invitation, e-mail verification and
- * account recovery must stay explicitly blocked. A future provider adapter implements this port
- * and is only wired after independent review; until then no message is ever "sent".
+ * Email transport port. Implementations:
+ *   - NotConfiguredEmailTransport: the fail-closed default when no provider is configured.
+ *   - ResendEmailTransport (email-transports.ts): a real HTTPS adapter for the Resend API.
+ *
+ * `send` resolves ONLY when the provider accepted the message for delivery, and carries the
+ * provider's message id when one is returned. Anything else — network failure, timeout,
+ * provider rejection — throws. Callers record the outcome in the delivery ledger; they never
+ * infer delivery from a returned promise alone.
  */
+export interface EmailSendReceipt {
+  /** The provider-side id of the accepted message, or null when the provider returns none. */
+  readonly providerMessageId: string | null;
+}
+
 export interface EmailTransport {
   readonly status: 'CONFIGURED' | 'NOT_CONFIGURED';
   readonly reason: string | null;
-  send(message: { readonly to: string; readonly subject: string; readonly text: string }): Promise<void>;
+  /** Stable name of the concrete provider (e.g. 'resend'), for the delivery ledger. */
+  readonly provider: string;
+  send(message: {
+    readonly to: string;
+    readonly subject: string;
+    readonly text: string;
+    readonly html?: string;
+    readonly category?: string;
+    /** Provider-side idempotency hint where supported; safe to reuse across retries. */
+    readonly deduplicationKey?: string;
+  }): Promise<EmailSendReceipt>;
 }
 
 export class NotConfiguredEmailTransport implements EmailTransport {
   readonly status = 'NOT_CONFIGURED' as const;
   readonly reason: string;
+  readonly provider = 'none';
   constructor(reason = 'EMAIL_PROVIDER_NOT_CONFIGURED') {
     this.reason = reason;
   }
-  async send(): Promise<void> {
+  async send(): Promise<EmailSendReceipt> {
     throw new DomainError('NOT_CONFIGURED', 'Email transport is not configured; no message was sent');
   }
 }
@@ -544,8 +564,9 @@ export class PlatformUsersService {
   async capabilities(principal: PlatformPrincipal): Promise<AccountCapabilities> {
     await this.platform.requireAnyPermission(principal, readActivityPermissions, { action: 'READ_ACCOUNT_CAPABILITIES', targetType: 'ACCOUNT_LIFECYCLE' });
     const configured = this.email.status === 'CONFIGURED';
-    const reason = configured ? 'ACCOUNT_LIFECYCLE_FLOW_NOT_IMPLEMENTED' : (this.email.reason ?? 'EMAIL_TRANSPORT_NOT_CONFIGURED');
-    const features = accountFeatures.map(feature => ({ feature, status: 'BLOCKED' as const, reason }));
+    const reason = configured ? 'CONFIGURED' : (this.email.reason ?? 'EMAIL_TRANSPORT_NOT_CONFIGURED');
+    const status = configured ? 'AVAILABLE' as const : 'BLOCKED' as const;
+    const features = accountFeatures.map(feature => ({ feature, status, reason }));
     await this.platform.recordAudit({
       actor: principal, targetType: 'ACCOUNT_LIFECYCLE', action: 'READ_ACCOUNT_CAPABILITIES',
       permission: readActivityPermissions.join('|'), outcome: 'SUCCESS', detail: { emailTransport: this.email.status },
@@ -553,7 +574,9 @@ export class PlatformUsersService {
     return {
       emailTransport: this.email.status,
       features,
-      note: 'No email is sent while the transport is not configured and no invitation, verification or recovery flow is implemented: these features stay explicitly blocked.',
+      note: configured
+        ? 'Customer self-service flows are implemented: invitation, verification and recovery messages are sent through the configured transport and recorded in the delivery ledger. Operator-triggered sends are not implemented and stay blocked.'
+        : 'No e-mail transport is configured: customer self-service flows fail closed with 503 NOT_CONFIGURED and no message is ever sent. Operator-triggered sends are not implemented either.',
     };
   }
 

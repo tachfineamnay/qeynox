@@ -24,7 +24,7 @@ Platform administration (`/v1/platform/organizations`, platform session required
 | GET | `/` | ADMINISTRATION or SUPPORT | paginated organisation list (name search, counts) |
 | GET | `/:workspaceId` | ADMINISTRATION or SUPPORT | detail: creator, created date, member/role counts |
 | GET | `/:workspaceId/members` | ADMINISTRATION or SUPPORT | paginated members (role/status filters, joined/invited dates) |
-| POST | `/:workspaceId/invitations` | ADMINISTRATION | invite an **existing identity account**; returns a single-use acceptance token (delivery BLOCKED, no e-mail) |
+| POST | `/:workspaceId/invitations` | ADMINISTRATION | invite an **existing identity account**; returns a single-use acceptance token; delivery attempted through the configured transport and reported `SENT`/`BLOCKED`/`FAILED` |
 | POST | `/:workspaceId/members/:membershipId/role` | ADMINISTRATION | change OWNER/ADMIN/MEMBER (justification, before/after audited) |
 | POST | `/:workspaceId/members/:membershipId/revoke` | ADMINISTRATION | revoke access or cancel a pending invitation |
 
@@ -46,12 +46,14 @@ Invitations (`/v1/invitations`):
 
 ## Invitations without e-mail
 
-No e-mail transport exists (Mission 02). An invitation therefore records `status=INVITED` on the
+When no e-mail transport is configured (the deployment default), an invitation records `status=INVITED` on the
 membership row, invites only **existing, non-suspended identity accounts** (unknown e-mail returns
 `404` with the reason "account required; e-mail onboarding blocked"), and returns a
 cryptographically random single-use token (hashed at rest, 7-day expiry) to the authenticated
-administrator. The response always carries `delivery.email = BLOCKED`; **no message is ever claimed
-or sent**. The operator delivers the token out of band. The token path is what prevents an
+administrator. The response then carries `delivery.email = BLOCKED`; **no message is ever claimed
+or sent**, and the operator delivers the token out of band. When a Resend transport is configured,
+the invitation e-mail is additionally sent inline (post-commit) and the response reports
+`delivery.email = SENT`/`FAILED` honestly — the token is still returned once either way. The token path is what prevents an
 irreversible lock-out: an account whose last membership was revoked cannot log in, but it can still
 accept a re-invitation via the token and then log in again (QA-verified).
 
@@ -112,7 +114,7 @@ was stopped/deleted manually; every assertion ran against the real database.
 ## Known limits
 
 - No customer-facing organisation settings UI; the API is exposed (platform admin + tenant identity).
-- Invitation delivery is manual by design until a reviewed e-mail transport and acceptance/onboarding
+- Without a configured transport, invitation delivery remains manual by design until an acceptance/onboarding
   policy exist; onboarding a brand-new person still requires the blocked registration/identity flow.
 - Invitation tokens are returned once in the API response (never e-mailed, never logged); the operator
   is responsible for delivering them.

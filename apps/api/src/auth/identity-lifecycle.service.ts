@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { DomainError, type ID } from '@qeynox/domain';
-import type { QeyNoxStore, DatabaseConnection } from '@qeynox/persistence';
+import { NotificationStore, type QeyNoxStore, type DatabaseConnection } from '@qeynox/persistence';
 import {
   IdentityLifecycleService,
   IdentityRateLimiter,
@@ -59,6 +59,9 @@ export class IdentityLifecycleApiService {
       verificationTtlSeconds: numberOr(environment.QEYNOX_VERIFICATION_TTL_SECONDS, 24 * 60 * 60),
       resetTtlSeconds: numberOr(environment.QEYNOX_RESET_TTL_SECONDS, 60 * 60),
       publicBaseUrl: environment.QEYNOX_PUBLIC_URL,
+      // Identity e-mails embed single-use links and are never stored retryable; the ledger
+      // records the real outcome (SENT with provider id, or FAILED with the provider error).
+      deliveryLedger: new NotificationStore(store.db),
     });
     this.limiter = new IdentityRateLimiter(store);
     void connection;

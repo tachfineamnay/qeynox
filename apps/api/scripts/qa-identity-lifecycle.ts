@@ -84,7 +84,7 @@ const postAuthed = (token: string, body: unknown): RequestInit => ({
 });
 const errorCode = (result: HttpResult): string | undefined => (result.body as { error?: { code?: string } }).error?.code;
 
-interface SentMessage { readonly to: string; readonly subject: string; readonly text: string }
+interface SentMessage { readonly to: string; readonly subject: string; readonly text: string; readonly html?: string; readonly category?: string; readonly deduplicationKey?: string }
 
 /**
  * Records what a configured transport was asked to send. No socket, no provider, no delivery.
@@ -93,8 +93,9 @@ interface SentMessage { readonly to: string; readonly subject: string; readonly 
 class RecordingEmailTransport implements EmailTransport {
   readonly status = 'CONFIGURED' as const;
   readonly reason = null;
+  readonly provider = 'recording';
   readonly messages: SentMessage[] = [];
-  async send(message: SentMessage): Promise<void> { this.messages.push(message); }
+  async send(message: SentMessage): Promise<{ providerMessageId: string }> { this.messages.push(message); return { providerMessageId: 'qa-recording-' + this.messages.length }; }
   /** Newest unconsumed-style extraction: always read the most recent message for a path. */
   tokenFor(path: string): string {
     const candidates = this.messages.filter(candidate => candidate.text.includes(path));

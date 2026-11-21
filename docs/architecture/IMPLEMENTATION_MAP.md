@@ -41,7 +41,7 @@ Target Git branch: feat/qeynox-2027-foundations. Baseline: 9646976. Commits 10â€
 1. TypeScript typecheck passes, migrations apply and agent-runtime contracts are exercised in a disposable QA database. Installed Hatchet/Hermes integration contracts are verified by typing and local fixtures; live external runtime compatibility remains UNVERIFIED; production certification is still required.
 2. Installed Hatchet SDK contracts for run-ID mapping, cancellation and run detail are implemented and contract-verified, but no Hatchet server/token was available: live dispatch, cancellation and observation are NOT VERIFIED; do not enable production operation dispatch.
 3. Hermes requires real native-tool and egress containment. The adapter fails closed without both operator attestations and rejects native tool-call responses, but flags are not proof: deployment isolation remains BLOCKED and NOT VERIFIED.
-4. No identity emails, rate limits at gateway, MFA, session storage in client or account recovery mechanisms for public launch.
+4. No operator-triggered identity emails (self-service verification/recovery/invitation delivery exists as of A19, env-configured), rate limits at gateway, MFA, session storage in client mechanisms for public launch.
 5. The documented World Bank adapter was activated against its live public API in isolated QA; provider licensing/attribution review and a citation-freshness SLA remain operator responsibilities. No second research provider was added: no documented, licensed and provisioned endpoint was available, and inventing one is prohibited.
 6. No configured eight business skills/profiles; names not invented.
 7. Pricing, tax and payment service provider not decided; any paid operation remains PAYMENT_REQUIRED.
@@ -88,7 +88,7 @@ revoked atomically; platform sessions/roles are disclosed only to ADMINISTRATION
 the Mission 01 platform sessions/audit; suspension is reversible via disabled_at, session revocation
 marks revoked_at, and no delete operation exists. Migration 0013 adds additive indexes only.
 Invitations, e-mail verification and account recovery stay explicitly BLOCKED behind a
-not-configured EmailTransport (503 NOT_CONFIGURED, audited, no e-mail claimed or sent).
+not-configured EmailTransport (503 NOT_CONFIGURED, audited, no e-mail claimed or sent). (Superseded by A19: a real env-selected Resend transport ships; customer self-service flows deliver when deployment secrets are set; operator-triggered sends stay blocked.)
 
 NOT VERIFIED: the isolated-PostgreSQL users-management end-to-end flow (part C of
 `pnpm qa:platform-users`) is BLOCKED without QEYNOX_QA_DATABASE_URL. No admin UI exists. No
@@ -99,7 +99,7 @@ production deployment, push or merge was performed.
 Source implemented and verified end-to-end on an isolated PostgreSQL 16.6 database (87 assertions;
 docs/architecture/WORKSPACES_ORGANIZATIONS.md). Uses identity_workspaces/identity_memberships only
 (no second organisation entity); migrations 0014/0015 are additive. Provides paginated
-organisation/member consultation, invitations of existing accounts without fake e-mail (single-use
+organisation/member consultation, invitations of existing accounts (single-use
 hashed token, delivery BLOCKED), role changes with before/after audit, revocation, explicit workspace
 switch with session rotation, last-enabled-owner protection (role change, revocation and Mission 02
 suspension), and session invalidation when the last active membership is removed. Cross-tenant access
@@ -107,7 +107,7 @@ and cross-user invitation acceptance are denied and audited.
 
 VERIFIED: qa:platform-organizations PASS (87 assertions on disposable PostgreSQL); regressions
 qa:platform-admin PASS (70) and qa:platform-users PASS (165) on the same isolated database.
-NOT VERIFIED: production deployment, public identity hardening, e-mail transport, workspace deletion
+NOT VERIFIED: production deployment, public identity hardening, workspace deletion; e-mail transport implemented in code (A19) but never exercised against a live provider â€” no key on this deployment, no mailbox confirmed
 (deliberately out of scope). No push, merge or deployment.
 
 ## Soul pre-mission onboarding (Mission 05, code-only)

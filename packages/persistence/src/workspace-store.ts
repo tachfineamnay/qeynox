@@ -46,7 +46,7 @@ export interface WorkspaceInvitationRow {
   readonly invitedBy: string | null;
   readonly invitedAt: Date | null;
 }
-export interface WorkspaceUserSummary { readonly userId: string; readonly email: string; readonly disabledAt: Date | null }
+export interface WorkspaceUserSummary { readonly userId: string; readonly email: string; readonly locale: string; readonly disabledAt: Date | null }
 
 export type InviteOutcome = 'INVITED' | 'REINVITED' | 'ALREADY_MEMBER' | 'ALREADY_INVITED' | 'USER_NOT_FOUND';
 export type RoleChangeOutcome = 'CHANGED' | 'UNCHANGED' | 'NOT_FOUND' | 'INVALID_STATE' | 'LAST_OWNER';
@@ -216,13 +216,13 @@ export class WorkspaceStore {
   }
 
   async findUserByEmail(email: string): Promise<WorkspaceUserSummary | undefined> {
-    const [row] = await this.db.select({ userId: identityUsers.id, email: identityUsers.email, disabledAt: identityUsers.disabledAt })
+    const [row] = await this.db.select({ userId: identityUsers.id, email: identityUsers.email, locale: identityUsers.locale, disabledAt: identityUsers.disabledAt })
       .from(identityUsers).where(eq(identityUsers.email, email)).limit(1);
     return row;
   }
 
   async findUser(userId: string): Promise<WorkspaceUserSummary | undefined> {
-    const [row] = await this.db.select({ userId: identityUsers.id, email: identityUsers.email, disabledAt: identityUsers.disabledAt })
+    const [row] = await this.db.select({ userId: identityUsers.id, email: identityUsers.email, locale: identityUsers.locale, disabledAt: identityUsers.disabledAt })
       .from(identityUsers).where(eq(identityUsers.id, userId)).limit(1);
     return row;
   }

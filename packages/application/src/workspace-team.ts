@@ -19,6 +19,9 @@ import type {
   WorkspaceUserSummary,
 } from '@qeynox/persistence';
 import { decodeMemberCursor, encodeMemberCursor } from './pagination';
+import { deliverInvitationEmail, type InvitationDeliveryDeps } from './invitation-delivery';
+import type { EmailTransport } from './platform-users';
+import type { DeliveryLedger } from './notifications';
 
 const defaultLimit = 25;
 const maximumLimit = 100;
@@ -83,7 +86,15 @@ export interface WorkspaceTeamRepository {
   insertPlatformAudit(record: PlatformAuditRecord): Promise<void>;
 }
 
-export interface WorkspaceTeamServiceOptions { readonly now?: () => Date }
+export interface WorkspaceTeamServiceOptions {
+  readonly now?: () => Date;
+  /** Optional: when absent, invitations report e-mail as BLOCKED exactly as before. */
+  readonly email?: EmailTransport;
+  /** Optional sink for inline delivery outcomes (invitation links are single-use; never persisted). */
+  readonly deliveryLedger?: DeliveryLedger;
+  /** Absolute base URL used to build links inside e-mails. Relative paths are emitted when unset. */
+  readonly publicBaseUrl?: string | null;
+}
 
 export interface WorkspaceOverviewView {
   readonly workspaceId: string;
@@ -106,6 +117,9 @@ export interface TeamMemberView {
   readonly isSelf: boolean;
 }
 export interface TeamMembersPage { readonly items: readonly TeamMemberView[]; readonly nextCursor: string | null; readonly limit: number }
+export type { InvitationDelivery } from './invitation-delivery';
+import type { InvitationDelivery } from './invitation-delivery';
+
 export interface TeamInvitationView {
   readonly membershipId: string;
   readonly userId: string;
@@ -113,7 +127,7 @@ export interface TeamInvitationView {
   readonly role: WorkspaceRole;
   readonly invitationToken: string;
   readonly invitationExpiresAt: string;
-  readonly delivery: { readonly email: 'BLOCKED'; readonly reason: 'EMAIL_PROVIDER_NOT_CONFIGURED' };
+  readonly delivery: InvitationDelivery;
 }
 export interface CreateWorkspaceInput { readonly name: string }
 export interface MyWorkspaceSummary { readonly workspaceId: string; readonly name: string; readonly role: string }
@@ -135,8 +149,14 @@ const boundedLimit = (value: number | undefined) => value === undefined ? defaul
 
 export class WorkspaceTeamService {
   private readonly now: () => Date;
+  private readonly email: EmailTransport | null;
+  private readonly deliveryLedger: DeliveryLedger | null;
+  private readonly publicBaseUrl: string | null;
   constructor(private readonly repository: WorkspaceTeamRepository, options: WorkspaceTeamServiceOptions = {}) {
     this.now = options.now ?? (() => new Date());
+    this.email = options.email ?? null;
+    this.deliveryLedger = options.deliveryLedger ?? null;
+    this.publicBaseUrl = options.publicBaseUrl?.replace(/\/+$/, '') ?? null;
   }
 
   /** Active workspace memberships for the caller, ordered by name — the switchable contexts. */
@@ -212,7 +232,7 @@ export class WorkspaceTeamService {
     const user = await this.repository.findUserByEmail(email);
     if (!user) {
       await this.recordDenied(actor, 'SELF_SERVICE_INVITE_MEMBER', 'IDENTITY_ACCOUNT_REQUIRED', { email });
-      throw new DomainError('NOT_FOUND', 'An existing identity account is required: e-mail onboarding is blocked (no delivery transport configured)');
+      throw new DomainError('NOT_FOUND', 'An existing identity account is required to invite a member');
     }
     if (user.disabledAt) {
       await this.recordDenied(actor, 'SELF_SERVICE_INVITE_MEMBER', 'ACCOUNT_DISABLED', { email });
@@ -228,7 +248,7 @@ export class WorkspaceTeamService {
       buildAudit: membershipId => this.auditRecord(actor, {
         targetType: 'IDENTITY_ACCOUNT', targetId: user.userId, action: 'SELF_SERVICE_INVITE_MEMBER',
         outcome: 'SUCCESS', reason,
-        detail: { workspaceId: actor.workspaceId, membershipId, role, emailDelivery: 'BLOCKED' },
+        detail: { workspaceId: actor.workspaceId, membershipId, role, emailDelivery: this.email?.status === 'CONFIGURED' ? 'PENDING' : 'BLOCKED' },
       }),
     });
     if (invitation.outcome === 'ALREADY_MEMBER') {
@@ -239,11 +259,27 @@ export class WorkspaceTeamService {
       await this.recordDenied(actor, 'SELF_SERVICE_INVITE_MEMBER', 'ALREADY_INVITED', { userId: user.userId });
       throw new DomainError('CONFLICT', 'An invitation is already pending for this account');
     }
+    const delivery = await this.deliverInvitationEmail({
+      membershipId: invitation.membershipId, userId: user.userId, email, locale: user.locale,
+      workspaceId: actor.workspaceId, role, invitationToken, invitationExpiresAt,
+    });
     return {
       membershipId: invitation.membershipId, userId: user.userId, email, role,
       invitationToken, invitationExpiresAt: invitationExpiresAt.toISOString(),
-      delivery: { email: 'BLOCKED', reason: 'EMAIL_PROVIDER_NOT_CONFIGURED' },
+      delivery,
     };
+  }
+
+  /** See invitation-delivery.ts — shared with the platform invitation path. */
+  private async deliverInvitationEmail(input: { membershipId: string; userId: string; email: string; locale: string; workspaceId: string; role: WorkspaceRole; invitationToken: string; invitationExpiresAt: Date }): Promise<InvitationDelivery> {
+    const workspace = await this.repository.findWorkspace(input.workspaceId);
+    const deps: InvitationDeliveryDeps = { email: this.email, deliveryLedger: this.deliveryLedger, publicBaseUrl: this.publicBaseUrl, now: this.now };
+    return deliverInvitationEmail(deps, {
+      membershipId: input.membershipId, userId: input.userId, workspaceId: input.workspaceId,
+      workspaceName: workspace?.name ?? input.workspaceId,
+      recipientEmail: input.email, recipientLocale: input.locale,
+      role: input.role, expiresAt: input.invitationExpiresAt,
+    });
   }
 
   async changeMemberRole(principal: Principal, membershipId: string, input: { role: string; reason: string }): Promise<{ membershipId: string; role: WorkspaceRole; changed: boolean }> {

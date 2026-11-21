@@ -16,8 +16,9 @@ function principal(request: AuthedRequest): Principal {
 }
 
 /**
- * Tenant-facing invitation inbox. A user only sees and answers their own invitations; no e-mail is
- * sent (invitations are delivered manually by the operator).
+ * Tenant-facing invitation inbox. A user only sees and answers their own invitations. When an
+ * e-mail provider is configured the invitation is also sent by e-mail; otherwise the inviting
+ * admin delivers the single-use token manually.
  *
  * Static token routes are declared before the parameterised membership routes so that
  * POST /v1/invitations/token/accept is never captured by /:membershipId/accept.
@@ -33,8 +34,8 @@ export class WorkspacesController {
 
   /**
    * Token-based acceptance for accounts that hold no ACTIVE membership (they cannot open a
-   * workspace session). The single-use token is delivered manually by the operator: no e-mail is
-   * sent while no transport is configured.
+   * workspace session). When no e-mail transport is configured the single-use token is delivered
+   * manually by the operator; when one is configured the invitation e-mail is sent automatically.
    */
   @PublicRoute()
   @Post('token/accept')

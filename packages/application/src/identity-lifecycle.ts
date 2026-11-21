@@ -4,6 +4,9 @@ import { DomainError, type ID } from '@qeynox/domain';
 import type { QeyNoxStore } from '@qeynox/persistence';
 import { identityAttempts, identityAudit, identityCredentials, identitySessions, identityTokens, identityUsers } from '@qeynox/persistence';
 import type { EmailTransport } from './platform-users';
+import { renderEmail, type EmailTemplateId } from './email-templates';
+import { EmailDeliveryError } from './email-transports';
+import type { DeliveryLedger } from './notifications';
 
 /**
  * MISSION A04 — customer identity completion.
@@ -108,6 +111,11 @@ export interface IdentityLifecycleOptions {
   /** Base URL used to build the link handed to the transport. Must be an absolute https URL. */
   readonly publicBaseUrl?: string;
   readonly now?: () => Date;
+  /**
+   * Optional sink recording every inline delivery outcome (identity e-mails embed single-use
+   * links and are deliberately NOT stored retryable). When absent, outcomes are not persisted.
+   */
+  readonly deliveryLedger?: DeliveryLedger;
 }
 
 const defaultVerificationTtl = 24 * 60 * 60;
@@ -119,6 +127,7 @@ export class IdentityLifecycleService {
   private readonly verificationTtl: number;
   private readonly resetTtl: number;
   private readonly publicBaseUrl: string | null;
+  private readonly deliveryLedger: DeliveryLedger | null;
 
   constructor(
     private readonly store: QeyNoxStore,
@@ -129,6 +138,7 @@ export class IdentityLifecycleService {
     this.verificationTtl = options.verificationTtlSeconds ?? defaultVerificationTtl;
     this.resetTtl = options.resetTtlSeconds ?? defaultResetTtl;
     this.publicBaseUrl = options.publicBaseUrl?.replace(/\/+$/, '') ?? null;
+    this.deliveryLedger = options.deliveryLedger ?? null;
     if (this.verificationTtl < 60 || this.resetTtl < 60) {
       throw new DomainError('NOT_CONFIGURED', 'Identity token lifetime must be at least 60 seconds');
     }
@@ -149,7 +159,7 @@ export class IdentityLifecycleService {
     const user = await this.findUser(emailAddress);
     if (!user) return { sent: false, notSentReason: null, issued: false };
     if (user.verifiedAt) return { sent: false, notSentReason: null, issued: false };
-    return this.issue(user.id as ID, 'EMAIL_VERIFICATION', this.verificationTtl, user.email, '/account/verify');
+    return this.issue(user.id as ID, 'EMAIL_VERIFICATION', this.verificationTtl, user.email, '/account/verify', user.locale);
   }
 
   /**
@@ -177,7 +187,7 @@ export class IdentityLifecycleService {
   async requestPasswordReset(emailAddress: string): Promise<TokenRequestOutcome> {
     const user = await this.findUser(emailAddress);
     if (!user || user.disabledAt) return { sent: false, notSentReason: null, issued: false };
-    return this.issue(user.id as ID, 'PASSWORD_RESET', this.resetTtl, user.email, '/account/reset');
+    return this.issue(user.id as ID, 'PASSWORD_RESET', this.resetTtl, user.email, '/account/reset', user.locale);
   }
 
   /**
@@ -260,12 +270,12 @@ export class IdentityLifecycleService {
     return createHash('sha256').update(value).digest('hex');
   }
 
-  private async findUser(emailAddress: string): Promise<{ id: string; email: string; verifiedAt: Date | null; disabledAt: Date | null } | undefined> {
+  private async findUser(emailAddress: string): Promise<{ id: string; email: string; locale: string; verifiedAt: Date | null; disabledAt: Date | null } | undefined> {
     if (typeof emailAddress !== 'string') return undefined;
     const normalized = emailAddress.trim().toLowerCase();
     if (!normalized || normalized.length > 320) return undefined;
     const [row] = await this.store.db.select({
-      id: identityUsers.id, email: identityUsers.email, verifiedAt: identityUsers.verifiedAt, disabledAt: identityUsers.disabledAt,
+      id: identityUsers.id, email: identityUsers.email, locale: identityUsers.locale, verifiedAt: identityUsers.verifiedAt, disabledAt: identityUsers.disabledAt,
     }).from(identityUsers).where(eq(identityUsers.email, normalized)).limit(1);
     return row;
   }
@@ -274,34 +284,64 @@ export class IdentityLifecycleService {
    * Issue and store one token, superseding any live token for that user and purpose, then hand the
    * link to the transport. The raw token exists only in this scope and in the outbound message.
    */
-  private async issue(userId: ID, purpose: TokenPurpose, ttlSeconds: number, emailAddress: string, path: string): Promise<TokenRequestOutcome> {
+  private async issue(userId: ID, purpose: TokenPurpose, ttlSeconds: number, emailAddress: string, path: string, locale: string): Promise<TokenRequestOutcome> {
     const raw = randomBytes(48).toString('base64url');
     const now = this.now();
     const expiresAt = new Date(now.getTime() + ttlSeconds * 1000);
+    const tokenId = randomUUID();
     await this.store.db.transaction(async tx => {
       // Supersede: any live token for this user+purpose becomes unusable before the new one exists.
       await tx.update(identityTokens).set({ revokedAt: now })
         .where(and(eq(identityTokens.userId, userId), eq(identityTokens.purpose, purpose), isNull(identityTokens.usedAt), isNull(identityTokens.revokedAt)));
       await tx.insert(identityTokens).values({
-        id: randomUUID(), userId, purpose, tokenHash: this.digest(raw), issuedAt: now, expiresAt,
+        id: tokenId, userId, purpose, tokenHash: this.digest(raw), issuedAt: now, expiresAt,
         requestFingerprint: this.digest(purpose + ':' + raw).slice(0, 32),
       });
     });
-    const link = this.publicBaseUrl ? this.publicBaseUrl + path + '?token=' + encodeURIComponent(raw) : path + '?token=' + encodeURIComponent(raw);
+    const shortLocale = (locale ?? 'en').trim().toLowerCase().split('-')[0] || 'en';
+    const localizedPath = '/' + shortLocale + path;
+    const link = this.publicBaseUrl ? this.publicBaseUrl + localizedPath + '?token=' + encodeURIComponent(raw) : localizedPath + '?token=' + encodeURIComponent(raw);
+    const templateId: EmailTemplateId = purpose === 'EMAIL_VERIFICATION' ? 'EMAIL_VERIFICATION' : 'PASSWORD_RESET';
+    const rendered = renderEmail(templateId, shortLocale, { link, expiresAt: expiresAt.toISOString() });
     if (this.email.status !== 'CONFIGURED') {
       // Nothing is delivered. The token exists and is stored, but the caller is told the truth.
       return { sent: false, notSentReason: this.email.reason ?? 'EMAIL_PROVIDER_NOT_CONFIGURED', issued: true };
     }
+    // The rendered message carries a single-use secret; it is delivered at most once, inline, and
+    // NEVER persisted. The ledger records the outcome with a per-issue key, not the content.
+    const dedup = 'identity:' + purpose + ':' + userId + ':' + tokenId;
     try {
-      await this.email.send({
+      const receipt = await this.email.send({
         to: emailAddress,
-        subject: purpose === 'EMAIL_VERIFICATION' ? 'Confirm your QeyNox e-mail address' : 'Reset your QeyNox password',
-        text: 'Open this single-use link to continue: ' + link + '\nIt expires at ' + expiresAt.toISOString() + '.\nIf you did not request this, ignore this message.',
+        subject: rendered.subject,
+        text: rendered.text,
+        html: rendered.html,
+        category: 'TRANSACTIONAL',
+        deduplicationKey: dedup,
       });
+      await this.recordInline({ dedup, userId, category: 'TRANSACTIONAL:' + purpose, recipient: emailAddress, subject: rendered.subject, status: 'SENT', providerMessageId: receipt.providerMessageId, lastErrorCode: null, locale: shortLocale, sentAt: this.now() });
       return { sent: true, notSentReason: null, issued: true };
-    } catch {
+    } catch (error) {
       // A transport failure is reported as NOT SENT. It is never swallowed into a success shape.
+      const code = error instanceof EmailDeliveryError ? error.code : 'EMAIL_DELIVERY_FAILED';
+      await this.recordInline({ dedup, userId, category: 'TRANSACTIONAL:' + purpose, recipient: emailAddress, subject: rendered.subject, status: 'FAILED', providerMessageId: null, lastErrorCode: code, locale: shortLocale, sentAt: null });
       return { sent: false, notSentReason: 'EMAIL_DELIVERY_FAILED', issued: true };
+    }
+  }
+
+  /** Best-effort ledger write: a ledger failure must not mask the real delivery outcome. */
+  private async recordInline(input: { dedup: string; userId: ID; category: string; recipient: string; subject: string; status: 'SENT' | 'FAILED'; providerMessageId: string | null; lastErrorCode: string | null; locale: string; sentAt: Date | null }): Promise<void> {
+    if (!this.deliveryLedger) return;
+    try {
+      await this.deliveryLedger.recordInline({
+        deduplicationKey: input.dedup, userId: input.userId, workspaceId: null,
+        category: input.category, recipient: input.recipient, subject: input.subject,
+        provider: this.email.provider, status: input.status, attemptCount: 1,
+        lastErrorCode: input.lastErrorCode, providerMessageId: input.providerMessageId,
+        locale: input.locale, sentAt: input.sentAt,
+      });
+    } catch {
+      // Never let bookkeeping turn a truthful outcome into a false one.
     }
   }
 
