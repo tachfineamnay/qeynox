@@ -101,6 +101,7 @@ import { AppModule } from '../src/app.module';
 import { peekWorkspaceBudget } from '../src/pilot/pilot.module';
 import { DomainExceptionFilter } from '../src/transport/domain-exception.filter';
 import { createIsolatedQaDatabase } from './qa-isolated-database';
+import { seedQaBetaGrant } from './qa-beta-fixture';
 
 const repoRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../..');
 const suiteBundlePath = resolve(repoRoot, 'infra/operator/a16-business-packs.json');
@@ -995,6 +996,8 @@ try {
     { id: randomUUID(), userId: memberId, workspaceId: workspaceA, role: 'MEMBER', status: 'ACTIVE' },
     { id: randomUUID(), userId: foreignUserId, workspaceId: workspaceB, role: 'OWNER', status: 'ACTIVE' },
   ]);
+  // A21.02: launches and provider spend require an ACTIVE beta grant (explicit QA precondition).
+  await seedQaBetaGrant(db, workspaceA);
 
   const operator: Principal = { userId: operatorId as ID, workspaceId: workspaceA as ID, roles: ['OWNER', 'ADMIN'] };
   const member: Principal = { userId: memberId as ID, workspaceId: workspaceA as ID, roles: ['MEMBER'] };
@@ -1268,6 +1271,7 @@ try {
   check(regA.status === 201, 'registered HTTP Tenant A');
   const authA = regA.body as { token: string; userId: string; workspaceId: string };
   const headersA = { authorization: `Bearer ${authA.token}`, 'x-qeynox-workspace': authA.workspaceId };
+  await seedQaBetaGrant(db, authA.workspaceId);
 
   const regB = await http('/v1/auth/register', {
     body: { email: 'qa-a16-http-b@example.invalid', password: 'qa-a16-strong-password-2', workspaceName: 'QA A16 HTTP Tenant B' },

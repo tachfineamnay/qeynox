@@ -43,6 +43,7 @@ import {
 import { DomainError, type ID, type Principal, type Source } from '@qeynox/domain';
 import type { ConfigurationEntry } from '@qeynox/application';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
+import { seedQaBetaGrant } from '../../api/scripts/qa-beta-fixture';
 
 const PASS = 0;
 const FAILED = 1;
@@ -232,6 +233,8 @@ async function partTwo(): Promise<'PASSED' | 'BLOCKED'> {
       { id: randomUUID(), userId: memberId, workspaceId, role: 'MEMBER', status: 'ACTIVE' },
       { id: randomUUID(), userId: outsiderId, workspaceId: otherWorkspaceId, role: 'OWNER', status: 'ACTIVE' },
     ]);
+    // A21.02: launches and provider spend require an ACTIVE beta grant (explicit QA precondition).
+    await seedQaBetaGrant(db, workspaceId, { currency: budgetEntry.currency });
     const owner: Principal = { userId: ownerId as ID, workspaceId: workspaceId as ID, roles: ['OWNER'] };
     const member: Principal = { userId: memberId as ID, workspaceId: workspaceId as ID, roles: ['MEMBER'] };
     const outsider: Principal = { userId: outsiderId as ID, workspaceId: otherWorkspaceId as ID, roles: ['OWNER'] };

@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { api, ApiError, CONTROL_COOKIE, controlPath, sessionSchema } from './api';
 import { locale } from './copy';
-import type { ConfigurationActionState, ConfigurationApplyResultView, InviteState } from './types';
+import type { BetaGrantState, ConfigurationActionState, ConfigurationApplyResultView, InviteState } from './types';
 
 const emailSchema = z.email();
 const reasonSchema = z.string().trim().min(10).max(500);
@@ -249,4 +249,55 @@ export async function validateServiceAction(previous: ServiceValidationState, fo
   } catch (error) {
     return { status: 'error', code: errorCode(error) };
   }
+}
+
+// ── A21.02 — invite-only beta access ─────────────────────────────────────────────────────────────
+const betaIdSchema = z.string().trim().regex(/^[A-Za-z0-9_-]{4,120}$/);
+const betaGrantSchema = z.object({
+  workspaceId: betaIdSchema,
+  expiresAt: z.string().trim().min(10).max(40),
+  missionQuota: z.coerce.number().int().min(1).max(10_000),
+  concurrentLimit: z.coerce.number().int().min(1).max(100),
+  maxProviderSpendMinor: z.coerce.number().int().min(0).max(100_000_000),
+  currency: z.string().trim().regex(/^[A-Z]{3}$/),
+  reason: reasonSchema,
+});
+
+/** Grant beta access; the platform API re-validates, refuses self-grants and audits. Token shown once. */
+export async function grantBetaAction(previous: BetaGrantState, form: FormData): Promise<BetaGrantState> {
+  void previous;
+  const lang = langOf(form);
+  const parsed = betaGrantSchema.safeParse({
+    workspaceId: String(form.get('workspaceId') ?? ''), expiresAt: String(form.get('expiresAt') ?? ''),
+    missionQuota: form.get('missionQuota'), concurrentLimit: form.get('concurrentLimit'),
+    maxProviderSpendMinor: form.get('maxProviderSpendMinor'), currency: String(form.get('currency') ?? '').toUpperCase(),
+    reason: String(form.get('reason') ?? ''),
+  });
+  if (!parsed.success) return { status: 'error', code: 'INVALID_INPUT' };
+  // <input type="datetime-local"> has no zone; the form labels it UTC and it is sent as such.
+  const expires = new Date(/(?:[zZ]|[+-]\d{2}:\d{2})$/.test(parsed.data.expiresAt) ? parsed.data.expiresAt : parsed.data.expiresAt + 'Z');
+  if (Number.isNaN(expires.getTime())) return { status: 'error', code: 'INVALID_INPUT' };
+  try {
+    const result = await api('/v1/platform/beta-grants', 'POST', { ...parsed.data, expiresAt: expires.toISOString() }) as {
+      invitationToken?: string; grant?: { grantId?: string; invitationExpiresAt?: string | null };
+    };
+    revalidate(lang, '/beta');
+    return { status: 'ok', token: result.invitationToken, grantId: result.grant?.grantId, invitationExpiresAt: result.grant?.invitationExpiresAt ?? null };
+  } catch (error) {
+    return { status: 'error', code: errorCode(error) };
+  }
+}
+
+export async function revokeBetaAction(form: FormData): Promise<void> {
+  const lang = langOf(form);
+  const grantId = betaIdSchema.safeParse(String(form.get('grantId') ?? ''));
+  const reason = reasonSchema.safeParse(String(form.get('reason') ?? ''));
+  const back = String(form.get('back') ?? '') === 'detail' && grantId.success ? '/beta/' + grantId.data : '/beta';
+  if (!grantId.success || !reason.success) withError(lang, back, 'INVALID_INPUT');
+  try {
+    await api('/v1/platform/beta-grants/' + encodeURIComponent(grantId.data) + '/revoke', 'POST', { reason: reason.data });
+  } catch (error) { withError(lang, back, errorCode(error)); }
+  revalidate(lang, '/beta');
+  revalidate(lang, back);
+  withDone(lang, back);
 }

@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { CapabilityDefinition, ID, OperationStatus, Principal, WorkStep } from '@qeynox/domain';
-import { QeyNoxStore, approvals, attempts, budgetPolicies, commercialOrders, offers, operationBudgets } from '@qeynox/persistence';
+import { QeyNoxStore, BetaAccessStore, approvals, attempts, budgetPolicies, commercialOrders, offers, operationBudgets } from '@qeynox/persistence';
 import { capabilityAvailability, type CapabilityAvailability } from './capability-availability';
 import { failClosedRuntime, type OperationalState, type RuntimeReadinessSource } from './runtime-readiness';
 
@@ -255,6 +255,13 @@ export class PlanReadService {
         blockers.push({ code: 'PAYMENTS_FROZEN', category: 'OFFER', detail: 'Payments are frozen (QEYNOX_COMMERCE_MODE); the accepted paid order cannot be paid or executed' });
       } else if (!authorizedOrderStates.includes(order.state)) {
         blockers.push({ code: 'ORDER_NOT_AUTHORIZED', category: 'OFFER', detail: 'Order state is ' + order.state });
+      }
+
+      // A21.02: invite-only beta. Mirrors the locked launch gate in OperationExecutionService.start.
+      const betaBlocker = await new BetaAccessStore(this.store.db).previewAdmission(actor.workspaceId, operationId, new Date());
+      if (betaBlocker) {
+        const limit = betaBlocker === 'CONCURRENT_LIMIT_REACHED' || betaBlocker === 'MISSION_QUOTA_REACHED';
+        blockers.push({ code: limit ? 'BETA_LIMIT_REACHED' : 'BETA_ACCESS_REQUIRED', category: 'AUTHORIZATION', detail: 'Beta access: ' + betaBlocker });
       }
 
       if (!runtime.engine.configured) {

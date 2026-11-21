@@ -194,3 +194,21 @@ Operator follow-ups (not performed by the agent):
 - Optionally set `QEYNOX_COMMERCE_MODE` explicitly per environment (the default is already frozen).
 
 No push to main, no merge, no deployment, no migration.
+
+## Invite-only beta access (Mission A21.02)
+
+| Responsibility | Code area | Status |
+| --- | --- | --- |
+| Durable, workspace-scoped beta grants (INVITED → ACTIVE → EXPIRED / REVOKED; expiry, mission quota, concurrent limit, provider-spend cap; append-only ledger) | packages/persistence/migrations/0026_beta_access.sql, packages/persistence/src/beta-access-schema.ts, packages/persistence/src/beta-access-store.ts | **VERIFIED IN DISPOSABLE QA (2026-11-21)** on real PostgreSQL 14.1: `qa:beta-access` 11 groups / 126 assertions. Migration is additive; Drizzle↔SQL parity holds for the three new tables (the remaining `qa:task02` parity failures are pre-existing in 0024/0025). |
+| Operator grant / revoke / read (PLATFORM_ADMIN only for mutations, ADMINISTRATION or SUPPORT for reads; self-grant forbidden for a workspace the operator created or holds any membership in; every success and denial in `platform_admin_audit`) | packages/application/src/beta-access.ts (`PlatformBetaAccessService`), apps/api/src/platform/platform-beta-access.controller.ts (`/v1/platform/beta-grants`) | **VERIFIED IN DISPOSABLE QA** over real `AppModule` HTTP: anonymous, workspace sessions, SUPPORT/AUDITOR/OPERATIONS mutations, self-grants and invalid grants refused and audited; no row written. |
+| Workspace activation and status (OWNER/ADMIN of the same workspace; single-use hashed token; issuer cannot activate; other workspaces get 404) | `WorkspaceBetaAccessService`, apps/api/src/workspaces/beta-access.controller.ts (`/v1/workspaces/current/beta-access`) | **VERIFIED IN DISPOSABLE QA**. Invitation delivery is manual: there is no e-mail send (reported as `delivery.email = BLOCKED`). |
+| Mandatory server-side gate on every launch (start, retry, redo) and every provider-spend reservation; fail closed | packages/application/src/execution.ts, interruption.ts, controls.ts, budgets.ts, plan-read.ts (readiness blocker) | **VERIFIED IN DISPOSABLE QA**: no grant / invited / expired / revoked → 403 `BETA_ACCESS_REQUIRED`; quota / concurrency / spend cap → 429 `BETA_LIMIT_REACHED`; exact limits under parallel launches and reservations; DB CHECKs backstop quota and cap. A mutant without the START gate fails the suite. |
+| Control `/beta` list, grant form, detail with usage and ledger, revoke | apps/control/src/app/[lang]/beta/**, components/beta-grant-form.tsx, lib/actions.ts | Typecheck and build PASS. **Browser rendering NOT VERIFIED.** |
+| Web mission copy for beta blockers (EN/FR) | apps/web/src/lib/mission-copy.ts, components/mission-flow.tsx | Typecheck, build, `test:smoke` 199 and `test:flow2` 35 PASS. **Browser rendering NOT VERIFIED.** |
+
+Operator follow-ups (not performed by the agent):
+- Apply migration 0026 to a target environment only through the normal release procedure.
+- Once deployed, **no workspace can launch until an operator grants it and the workspace activates the grant**: issue grants before enabling customer traffic.
+- Hand invitation tokens over through an out-of-band channel (no e-mail is sent).
+
+No push to main, no merge, no deployment; the migration was applied only to disposable databases.

@@ -32,6 +32,7 @@ import { HatchetClient } from '@hatchet-dev/typescript-sdk/v1';
 import { DomainError, type ID, type Principal } from '@qeynox/domain';
 import { createWorkerDependencies } from '../src/runtime';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
+import { seedQaBetaGrant } from '../../api/scripts/qa-beta-fixture';
 
 let assertions = 0;
 function assert(condition: unknown, message: string): asserts condition {
@@ -140,6 +141,8 @@ async function main(): Promise<void> {
     await db.insert(identityMemberships).values({ id: randomUUID(), userId: ownerUserId, workspaceId, role: 'OWNER', status: 'ACTIVE' });
     const owner: Principal = { userId: ownerUserId as ID, workspaceId: workspaceId as ID, roles: ['OWNER'] };
 
+    // A21.02: launches and provider spend require an ACTIVE beta grant (explicit QA precondition).
+    await seedQaBetaGrant(db, workspaceId);
     // --- Operator configuration: capability, business/soul/pilot profiles, free offer, budget. ---
     process.env.QEYNOX_OPERATOR_USER_IDS = ownerUserId;
     const configuration = new ConfigurationService(store);

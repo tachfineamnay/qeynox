@@ -1,6 +1,7 @@
 import { and,desc,eq,sql } from 'drizzle-orm';
 import { DomainError,newId,type ID,type Principal } from '@qeynox/domain';
-import { QeyNoxStore,operationBudgets,budgetPolicies,usageReservations,usageLedger,loopFingerprints } from '@qeynox/persistence';
+import { QeyNoxStore,BetaAccessStore,operationBudgets,budgetPolicies,usageReservations,usageLedger,loopFingerprints } from '@qeynox/persistence';
+import { withBetaDenialLedger } from './beta-access';
 export interface BudgetPolicy {
  version:number;currency:string;maxMoneyMinor:number;maxAgentCalls:number;maxToolCalls:number;
  maxDurationSeconds:number;maxConcurrent:number;unitMaxMinor:Record<string,number>;
@@ -42,7 +43,11 @@ export class BudgetService {
  async reserve(actor:Principal,operationId:ID,attemptId:ID,kind:ActivityKind,providerKey:string,key:string):Promise<{reservationId:string;maximumCostMinor:number}>{
   await this.store.getOperation(actor,operationId);
   const now=new Date();
-  return this.store.db.transaction(async tx=>{
+  const beta=new BetaAccessStore(this.store.db);
+  // A21.02: every provider-spend reservation is also charged, under a row lock, against the beta
+  // grant the mission was admitted under. No admission, a revoked/expired grant, a currency mismatch
+  // or an exhausted cap refuses the reservation; the refusal is recorded in the beta ledger.
+  return withBetaDenialLedger(beta,{workspaceId:actor.workspaceId,actorUserId:actor.userId,operationId,kind:'SPEND_DENIED'},()=>this.store.db.transaction(async tx=>{
    const [budget]=await tx.select().from(operationBudgets).where(and(eq(operationBudgets.workspaceId,actor.workspaceId),eq(operationBudgets.operationId,operationId))).for('update').limit(1);
    if(!budget)throw new DomainError('NOT_CONFIGURED','Operation budget missing');
    const policy=budget.policy as unknown as BudgetPolicy;
@@ -57,10 +62,11 @@ export class BudgetService {
    if(kind==='ENGINE'&&budget.usedAgentCalls>=budget.maxAgentCalls)throw new DomainError('BUDGET_EXHAUSTED','Agent call ceiling exceeded');
    if(kind==='TOOL'&&budget.usedToolCalls>=budget.maxToolCalls)throw new DomainError('BUDGET_EXHAUSTED','Tool call ceiling exceeded');
    const id=newId();
+   await beta.reserveSpend(tx,{workspaceId:actor.workspaceId,operationId,reservationId:id,amountMinor:max,currency:budget.currency,actorUserId:actor.userId,at:now});
    await tx.insert(usageReservations).values({id,workspaceId:actor.workspaceId,operationId,attemptId,key,kind,providerKey,policyVersion:budget.version,reservedMinor:max,state:'RESERVED',createdAt:now.toISOString()});
    await tx.update(operationBudgets).set({reservedMinor:budget.reservedMinor+max,usedAgentCalls:budget.usedAgentCalls+(kind==='ENGINE'?1:0),usedToolCalls:budget.usedToolCalls+(kind==='TOOL'?1:0)}).where(eq(operationBudgets.id,budget.id));
    return {reservationId:id,maximumCostMinor:max};
-  });
+  }));
  }
  async settle(actor:Principal,reservationId:ID,details:{costMinor?:number;origin:'PROVIDER_REPORTED'|'ESTIMATED'|'UNKNOWN';tokensIn?:number;tokensOut?:number}):Promise<void>{
   return this.store.db.transaction(async tx=>{
@@ -74,6 +80,8 @@ export class BudgetService {
    await tx.update(usageReservations).set({state:newState,settledAt:new Date().toISOString()}).where(eq(usageReservations.id,reservationId));
    await tx.update(operationBudgets).set({reservedMinor:budget.reservedMinor-(uncertain?0:reservation.reservedMinor),spentMinor:budget.spentMinor+(uncertain?0:details.costMinor!)}).where(eq(operationBudgets.id,budget.id));
    await tx.insert(usageLedger).values({id:newId(),workspaceId:actor.workspaceId,operationId:reservation.operationId,reservationId,origin:details.origin,costMinor:details.costMinor,currency:budget.currency,tokensIn:details.tokensIn,tokensOut:details.tokensOut,recordedAt:new Date().toISOString()});
+   // A21.02: settlement is never blocked (also after revocation/expiry); an uncertain cost stays reserved on the grant.
+   await new BetaAccessStore(this.store.db).settleSpend(tx,{workspaceId:actor.workspaceId,reservationId,reservedMinor:reservation.reservedMinor,costMinor:details.costMinor,uncertain,actorUserId:actor.userId,at:new Date()});
   });
  }
  async progress(actor:Principal,operationId:ID,fingerprint:string,progressHash:string):Promise<void>{

@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { DomainError, newId, transitionOperation, type ID, type Principal, type StepAttempt } from '@qeynox/domain';
-import { QeyNoxStore, attempts, events, executions, operations, outbox, toolLedger } from '@qeynox/persistence';
+import { QeyNoxStore, BetaAccessStore, attempts, events, executions, operations, outbox, toolLedger } from '@qeynox/persistence';
+import { withBetaDenialLedger } from './beta-access';
 import type { OrchestratorPort } from '@qeynox/orchestration';
 
 /**
@@ -193,7 +194,9 @@ export class InterruptionService {
     if (ambiguousTool.length) throw new DomainError('UNKNOWN_OUTCOME', 'A tool write outcome is unknown; retrying could duplicate a remote side effect');
 
     const revisionId = operation.currentRevisionId;
-    return this.store.db.transaction(async tx => {
+    const beta = new BetaAccessStore(this.store.db);
+    // A21.02: a retry re-launches work, so it passes the same beta gate as a start (inside the transaction).
+    return withBetaDenialLedger(beta, { workspaceId: actor.workspaceId, actorUserId: actor.userId, operationId, kind: 'LAUNCH_DENIED' }, () => this.store.db.transaction(async tx => {
       // Idempotency is checked inside the transaction so concurrent retries cannot both proceed.
       const [duplicate] = await tx
         .select()
@@ -211,6 +214,7 @@ export class InterruptionService {
         .for('update')
         .limit(1);
       if (!current) throw new DomainError('CONFLICT', 'Concurrent operation change');
+      await beta.admitMission(tx, { workspaceId: actor.workspaceId, operationId, actorUserId: actor.userId, at: new Date(), trigger: 'RETRY' });
       const [failedAttempt] = await tx
         .select()
         .from(attempts)
@@ -244,6 +248,6 @@ export class InterruptionService {
       };
       await tx.insert(events).values({ id: event.id, workspaceId: event.workspaceId, operationId, kind: event.kind, occurredAt: now, payload: event });
       return { attemptId: attempt.id, alreadyAccepted: false };
-    });
+    }));
   }
 }

@@ -1,15 +1,16 @@
 import { Module } from '@nestjs/common';
-import { WorkspaceAccessService, createEmailTransportFromEnv } from '@qeynox/application';
-import { NotificationStore, WorkspaceStore, type DatabaseConnection } from '@qeynox/persistence';
+import { WorkspaceAccessService, WorkspaceBetaAccessService, createEmailTransportFromEnv } from '@qeynox/application';
+import { BetaAccessStore, NotificationStore, WorkspaceStore, type DatabaseConnection } from '@qeynox/persistence';
 import { DB_CONNECTION } from '../database/database.module';
 import { WorkspacesController } from './workspaces.controller';
 import { WorkspaceTeamController } from './team.controller';
 import { WorkspaceTeamService } from '@qeynox/application';
-import { WORKSPACE_ACCESS_SERVICE, WORKSPACE_STORE } from './workspaces.tokens';
+import { WORKSPACE_ACCESS_SERVICE, WORKSPACE_BETA_ACCESS_SERVICE, WORKSPACE_STORE } from './workspaces.tokens';
+import { WorkspaceBetaAccessController } from './beta-access.controller';
 import { WORKSPACE_TEAM_SERVICE } from './team.tokens';
 
 @Module({
-  controllers: [WorkspacesController, WorkspaceTeamController],
+  controllers: [WorkspacesController, WorkspaceTeamController, WorkspaceBetaAccessController],
   providers: [
     {
       provide: WORKSPACE_STORE,
@@ -31,6 +32,12 @@ import { WORKSPACE_TEAM_SERVICE } from './team.tokens';
         publicBaseUrl: process.env.QEYNOX_PUBLIC_URL ?? null,
       }),
       inject: [WORKSPACE_STORE, DB_CONNECTION],
+    },
+    {
+      // A21.02: status + activation of the acting workspace's beta grant (session-bound workspace).
+      provide: WORKSPACE_BETA_ACCESS_SERVICE,
+      useFactory: (connection: DatabaseConnection) => new WorkspaceBetaAccessService(new BetaAccessStore(connection.db)),
+      inject: [DB_CONNECTION],
     },
   ],
 })
