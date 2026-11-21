@@ -31,3 +31,4 @@ export * from './configuration';
 export * from './business-packs';
 export * from './service-catalogue';
 export * from './connections';
+export * from './atlas-library';

@@ -618,3 +618,86 @@
 @media(max-width:1100px){.qx-service-columns{grid-template-columns:1fr}.qx-service-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.qx-service-grid{grid-template-columns:1fr}.qx-service-row{grid-template-columns:1fr}}
 .qx-connection-grid{list-style:none;margin:0 0 24px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px}.qx-connection-card{background:var(--qx-surface);border:1px solid var(--qx-border);border-radius:var(--qx-radius-lg);box-shadow:var(--qx-shadow-card);padding:24px;display:flex;flex-direction:column;gap:12px;min-width:0}.qx-connection-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.qx-connection-head h2{margin:0;overflow-wrap:anywhere}.qx-connection-meta{display:grid;gap:10px;margin:0}.qx-connection-meta div{display:grid;gap:2px}.qx-connection-meta dt{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--qx-text-muted);font-weight:700}.qx-connection-meta dd{margin:0;font-size:14px;overflow-wrap:anywhere}.qx-connection-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.qx-connection-actions form{display:flex;flex-direction:column;gap:8px}.qx-connection-card code{overflow-wrap:anywhere}
+
+/* MISSION A20 — Global Atlas Library, Version Comparison, Exports & Controlled Sharing */
+.qx-metrics-four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.qx-storage-banner{border-left:4px solid var(--qx-warning);background:var(--qx-surface-soft)}
+.qx-storage-banner p{margin:0}
+.qx-atlas-filter-form{display:grid;gap:16px;margin-top:8px}
+.qx-atlas-filter-search label{display:block;font-weight:650;margin-bottom:6px}
+.qx-atlas-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.qx-atlas-filter-grid .qx-field{margin:0}
+.qx-failed-ops-card{border-left:4px solid var(--qx-danger);background:var(--qx-surface)}
+.qx-failed-ops-list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:12px}
+.qx-failed-op-item{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--qx-border)}
+.qx-failed-op-item:first-child{padding-top:0;border-top:0}
+.qx-empty-actions{display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.qx-atlas-card-list{list-style:none;margin:0 0 24px;padding:0;display:grid;gap:20px}
+.qx-result-card{background:var(--qx-surface);border:1px solid var(--qx-border);border-radius:var(--qx-radius-lg);box-shadow:var(--qx-shadow-card);padding:24px;display:grid;gap:14px;min-width:0}
+.qx-result-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.qx-result-card-titles{min-width:0;flex:1 1 280px}
+.qx-result-card-titles h2{margin:4px 0 0;font-size:20px;overflow-wrap:anywhere}
+.qx-result-card-titles h2 a{color:var(--qx-ink);text-decoration:none}
+.qx-result-card-titles h2 a:hover{color:var(--qx-blue-700);text-decoration:underline}
+.qx-result-alert{padding:12px 14px;border-radius:var(--qx-radius-md);font-size:14px}
+.qx-result-alert-warn{border-left:4px solid var(--qx-warning);background:var(--qx-warning-bg);color:var(--qx-warning)}
+.qx-result-alert-danger{border-left:4px solid var(--qx-danger);background:var(--qx-danger-bg);color:var(--qx-danger)}
+.qx-result-objective{margin:0;color:var(--qx-text-secondary);max-width:75ch}
+.qx-result-verdict{margin:0;font-weight:600;color:var(--qx-ink)}
+.qx-result-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px;margin:0;padding:14px 16px;background:var(--qx-surface-soft);border:1px solid var(--qx-border);border-radius:var(--qx-radius-md)}
+.qx-result-facts dt{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--qx-text-muted)}
+.qx-result-facts dd{margin:2px 0 0;font-size:14px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.qx-result-card-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.qx-pagination-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.qx-pagination-bar p{margin:0}
+.qx-breadcrumb-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.qx-version-list{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:12px}
+.qx-version-item{padding:14px 16px;border:1px solid var(--qx-border);border-radius:var(--qx-radius-md);background:var(--qx-surface-soft);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.qx-version-item.is-current{border-color:var(--qx-blue-600);background:var(--qx-blue-50)}
+.qx-version-item p{margin:4px 0 0}
+.qx-compare-selector{margin-top:10px;max-width:620px}
+.qx-compare-selector-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.qx-compare-selector-row select{flex:1 1 260px;border:1px solid var(--qx-border);border-radius:12px;padding:12px 14px;background:var(--qx-surface);color:var(--qx-ink)}
+.qx-comparison-body{margin-top:18px;padding-top:18px;border-top:1px solid var(--qx-border);display:grid;gap:16px}
+.qx-comparison-summary{display:grid;gap:12px}
+.qx-delta-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0}
+.qx-delta-grid>div{padding:12px 14px;border:1px solid var(--qx-border);border-radius:var(--qx-radius-md);background:var(--qx-surface-soft)}
+.qx-delta-grid dt{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--qx-text-muted)}
+.qx-delta-grid dd{margin:4px 0 0;font-size:20px;font-weight:750;font-variant-numeric:tabular-nums}
+.qx-diff-sections{display:grid;gap:16px}
+.qx-diff-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:10px}
+.qx-diff-list li{padding:12px 14px;border:1px solid var(--qx-border);border-radius:var(--qx-radius-md);background:var(--qx-surface);display:grid;gap:4px;overflow-wrap:anywhere}
+.qx-export-panel,.qx-share-panel{display:grid;gap:18px;margin-top:12px}
+.qx-export-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.qx-export-unit{padding:14px;border:1px solid var(--qx-border);border-radius:var(--qx-radius-md);background:var(--qx-surface-soft);display:grid;gap:10px;align-content:start}
+.qx-digest-line{margin:0;font-size:12px;overflow-wrap:anywhere}
+.qx-artifact-section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.qx-artifact-section-head h3,.qx-share-list-section h3{margin:0}
+.qx-artifact-list,.qx-share-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:12px}
+.qx-artifact-item,.qx-share-item{padding:14px 16px;border:1px solid var(--qx-border);border-radius:var(--qx-radius-md);background:var(--qx-surface-soft);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.qx-artifact-meta,.qx-share-item-main{flex:1 1 280px;min-width:0}
+.qx-artifact-grant-form{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.qx-share-create-form{display:grid;gap:14px;max-width:760px}
+.qx-share-fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:14px}
+.qx-share-fields .qx-field{margin:0}
+.qx-share-once-box{padding:16px;border:1px solid var(--qx-blue-600);border-left-width:4px;border-radius:var(--qx-radius-md);background:var(--qx-blue-50);display:grid;gap:8px}
+.qx-share-once-box p{margin:0}
+.qx-share-url-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.qx-share-url{padding:8px 12px;background:var(--qx-surface);border:1px solid var(--qx-border);border-radius:var(--qx-radius-sm);font-size:13px;overflow-wrap:anywhere;flex:1 1 260px}
+.qx-danger-btn{color:var(--qx-danger);border-color:var(--qx-danger)}
+.qx-inline-form{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}
+.qx-shared-container{padding-top:32px;padding-bottom:48px}
+.qx-shared-banner{border-left:4px solid var(--qx-blue-600)}
+#atlas-versions,#atlas-version-compare,#atlas-sharing{scroll-margin-top:24px}
+@media(max-width:1100px){
+  .qx-metrics-four{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .qx-atlas-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .qx-delta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .qx-export-grid{grid-template-columns:1fr}
+}
+@media(max-width:767px){
+  .qx-metrics-four,.qx-atlas-filter-grid,.qx-result-facts,.qx-delta-grid,.qx-share-fields{grid-template-columns:1fr}
+  .qx-result-card{padding:18px}
+  .qx-result-card-actions .button{flex:1 1 auto}
+}
+

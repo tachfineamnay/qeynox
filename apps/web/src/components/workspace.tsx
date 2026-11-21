@@ -119,7 +119,11 @@ export async function Workspace({ lang, listOnly = false }: { lang: Locale; list
                     <td data-label={t.missions}><Link className="mission-title" href={'/' + lang + '/missions/' + encodeURIComponent(row.operationId)}>{row.title}</Link></td>
                     <td data-label={t.status}><StatusBadge status={row.status} lang={lang} /></td>
                     <td data-label={t.stepsLabel}>{row.completedSteps + ' / ' + row.stepCount}</td>
-                    <td data-label={t.resultsCount}>{row.resultCount}</td>
+                    <td data-label={t.resultsCount}>
+                      {row.resultCount > 0 ? (
+                        <Link href={'/' + lang + '/results?operationId=' + encodeURIComponent(row.operationId)}>{row.resultCount}</Link>
+                      ) : row.resultCount}
+                    </td>
                     <td data-label={t.updated}>{stamp(lang, row.lastActivityAt)}</td>
                     <td className="qx-table-action"><Link className="button secondary qx-small" href={'/' + lang + '/missions/' + encodeURIComponent(row.operationId)}>{t.openMission}</Link></td>
                   </tr>
@@ -232,7 +236,11 @@ export async function Workspace({ lang, listOnly = false }: { lang: Locale; list
           </div>
 
           <Card>
-            <SectionHeading title={t.latestResults} note={t.latestResultsNote} />
+            <SectionHeading
+              title={t.latestResults}
+              note={t.latestResultsNote}
+              action={<Link className="button secondary qx-small" href={'/' + lang + '/results'}>{t.openResultsLibrary} →</Link>}
+            />
             {withResults.length === 0 ? <EmptyState title={t.noResults} mark="◫" /> : (
               <ul className="mission-list">
                 {withResults.slice(0, 8).map(row => (
@@ -242,6 +250,7 @@ export async function Workspace({ lang, listOnly = false }: { lang: Locale; list
                       <p className="muted">{row.resultCount + ' ' + t.resultsCount.toLowerCase()} · {t.updated} {stamp(lang, row.lastActivityAt)}</p>
                     </div>
                     <StatusBadge status={row.status} lang={lang} />
+                    <Link href={'/' + lang + '/results?operationId=' + encodeURIComponent(row.operationId)}>{t.inspectResults} →</Link>
                     <Link href={'/' + lang + '/missions/' + encodeURIComponent(row.operationId)}>{t.openMission} →</Link>
                   </li>
                 ))}

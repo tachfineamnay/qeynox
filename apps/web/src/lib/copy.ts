@@ -5,7 +5,7 @@ export { SUPPORTED_LOCALES, isSupportedLocale };
 /** Normalise an arbitrary route segment to a supported locale. Unknown segments get the default. */
 export function locale(value: string): Locale { return value === 'fr' ? 'fr' : 'en'; }
 const en = {
-  home: 'Overview', dash: 'MyDash', missions: 'Missions', soul: 'Soul', support: 'Support', capabilities: 'Capabilities', services: 'Services', connections: 'Connections', documents: 'Documents', notifications: 'Notifications', account: 'Account', menu: 'Navigation', skip: 'Skip to content',
+  home: 'Overview', dash: 'MyDash', missions: 'Missions', results: 'Results', soul: 'Soul', support: 'Support', capabilities: 'Capabilities', services: 'Services', connections: 'Connections', documents: 'Documents', notifications: 'Notifications', account: 'Account', menu: 'Navigation', skip: 'Skip to content',
   eyebrow: 'RESULTS AS A SERVICE', headline: 'Your next business objective. A result you can use.', intro: 'Define the outcome. Review the plan and cost. Stay in control of the work, and inspect the evidence behind your deliverable.', enter: 'Open MyDash',
   steps: ['Describe your objective', 'Review and approve', 'Receive an evidenced result'], stepCopy: ['Start with what you need to understand or achieve.', 'Clarify scope, access and cost before execution.', 'Inspect sources, limitations and the next useful action.'],
   dashTitle: 'What result do you need next?', dashIntro: 'Start with an objective, or return to your recorded work.', goal: 'Describe the result you need', goalHint: 'Include the decision, market or question that matters. 5–5,000 characters.', placeholder: 'What do you need to understand or deliver?',
@@ -13,7 +13,7 @@ const en = {
   recent: 'Recent missions', recentNote: 'Up to 30 recorded operations in this workspace. Refresh to retrieve current status.', refresh: 'Refresh', empty: 'Your first mission starts here', emptyCopy: 'No recorded operations were returned for this workspace.', view: 'Open mission', updated: 'Updated', status: 'Status',
   inProgress: 'Missions in progress', inProgressNote: 'Recorded operations that are not finished yet.', noInProgress: 'No mission is in progress.',
   decisions: 'Next decisions', decisionsNote: 'Missions that need your review, a plan or a retry.', noDecisions: 'No decision is waiting.',
-  latestResults: 'Latest results', latestResultsNote: 'Results recorded by the API for this workspace.', noResults: 'No result has been recorded yet.', resultsCount: 'Results',
+  latestResults: 'Latest results', latestResultsNote: 'Results recorded by the API for this workspace.', noResults: 'No result has been recorded yet.', resultsCount: 'Results', openResultsLibrary: 'Open Atlas library', inspectResults: 'Inspect results',
   stepsLabel: 'Steps', openMission: 'Open mission', viewer: 'Mission workspace',
   soulSpace: 'Soul', soulSpaceCopy: 'Your objective, consented context and first mission.', soulStatusLabel: 'Guided start', openSoul: 'Open Soul',
   pilotSpace: 'Pilot', pilotSpaceCopy: 'Recorded next action for your missions.', pilotNoAction: 'No mission is available for Pilot guidance.', pilotUnavailable: 'Guidance is temporarily unavailable.',
@@ -66,7 +66,7 @@ const en = {
     ACTIVE: 'Active', UNCONFIGURED: 'Not configured', DISABLED: 'Disabled' }
 };
 const fr: typeof en = {
-  home: 'Présentation', dash: 'MyDash', missions: 'Missions', soul: 'Soul', support: 'Support', capabilities: 'Capacités', services: 'Services', connections: 'Connexions', documents: 'Documents', notifications: 'Notifications', account: 'Compte', menu: 'Navigation', skip: 'Aller au contenu',
+  home: 'Présentation', dash: 'MyDash', missions: 'Missions', results: 'Résultats', soul: 'Soul', support: 'Support', capabilities: 'Capacités', services: 'Services', connections: 'Connexions', documents: 'Documents', notifications: 'Notifications', account: 'Compte', menu: 'Navigation', skip: 'Aller au contenu',
   eyebrow: 'RESULTS AS A SERVICE', headline: 'Votre prochain objectif. Un résultat utile.', intro: 'Définissez le résultat attendu. Examinez le plan et le coût. Gardez le contrôle et consultez les preuves qui étayent votre livrable.', enter: 'Ouvrir MyDash',
   steps: ['Décrivez votre objectif', 'Examinez et approuvez', 'Recevez un résultat étayé'], stepCopy: ['Partez de ce que vous souhaitez comprendre ou accomplir.', 'Précisez le périmètre, les accès et le coût avant toute exécution.', 'Consultez les sources, les limites et les prochaines actions utiles.'],
   dashTitle: 'Quel résultat souhaitez-vous obtenir ?', dashIntro: 'Partez d’un objectif ou reprenez vos missions enregistrées.', goal: 'Décrivez le résultat attendu', goalHint: 'Précisez la décision, le marché ou la question. De 5 à 5 000 caractères.', placeholder: 'Que souhaitez-vous comprendre ou produire ?',
@@ -74,7 +74,7 @@ const fr: typeof en = {
   recent: 'Missions récentes', recentNote: 'Jusqu’à 30 opérations enregistrées dans cet espace. Actualisez pour obtenir leur état actuel.', refresh: 'Actualiser', empty: 'Votre première mission commence ici', emptyCopy: 'Aucune opération enregistrée n’a été renvoyée pour cet espace.', view: 'Ouvrir la mission', updated: 'Mise à jour', status: 'État',
   inProgress: 'Missions en cours', inProgressNote: 'Opérations enregistrées qui ne sont pas terminées.', noInProgress: 'Aucune mission en cours.',
   decisions: 'Prochaines décisions', decisionsNote: 'Missions qui attendent votre examen, un plan ou une reprise.', noDecisions: 'Aucune décision en attente.',
-  latestResults: 'Derniers résultats', latestResultsNote: 'Résultats enregistrés par l’API pour cet espace.', noResults: 'Aucun résultat enregistré pour l’instant.', resultsCount: 'Résultats',
+  latestResults: 'Derniers résultats', latestResultsNote: 'Résultats enregistrés par l’API pour cet espace.', noResults: 'Aucun résultat enregistré pour l’instant.', resultsCount: 'Résultats', openResultsLibrary: 'Ouvrir la bibliothèque Atlas', inspectResults: 'Voir les résultats',
   stepsLabel: 'Étapes', openMission: 'Ouvrir la mission', viewer: 'Espace mission',
   soulSpace: 'Soul', soulSpaceCopy: 'Votre objectif, votre contexte consenti et la première mission.', soulStatusLabel: 'Démarrage guidé', openSoul: 'Ouvrir Soul',
   pilotSpace: 'Pilot', pilotSpaceCopy: 'Prochaine action enregistrée pour vos missions.', pilotNoAction: 'Aucune mission disponible pour le conseil Pilot.', pilotUnavailable: 'Le conseil est temporairement indisponible.',

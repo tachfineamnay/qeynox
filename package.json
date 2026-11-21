@@ -49,7 +49,8 @@
     "qa:workspace-management": "pnpm --filter @qeynox/worker qa:workspace-management",
     "qa:documents": "pnpm --filter @qeynox/worker qa:documents",
     "qa:notifications": "pnpm --filter @qeynox/api qa:notifications",
-    "qa:business-packs": "pnpm --filter @qeynox/api qa:business-packs"
+    "qa:business-packs": "pnpm --filter @qeynox/api qa:business-packs",
+    "qa:atlas-library": "pnpm --filter @qeynox/api qa:atlas-library"
   },
   "devDependencies": {
     "typescript": "5.9.3",
