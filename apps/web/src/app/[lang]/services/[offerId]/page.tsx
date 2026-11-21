@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AppShell, Card, EmptyState, Feedback, PageHeader } from '../../../../components/ui';
+import { AppShell, Card, Feedback, PageHeader } from '../../../../components/ui';
 import { api, ApiError, session } from '../../../../lib/api';
 import { copy, locale } from '../../../../lib/copy';
 import { serviceCopy } from '../../../../lib/service-copy';
@@ -33,12 +33,15 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
   const blockerLabel = (code: string) => code.startsWith('PROVIDER:') ? code.slice('PROVIDER:'.length) + ' — ' + s.blockers.PROVIDER_NOT_CONFIGURED : (s.blockers[code] ?? code);
   const free = detail && detail.isExplicitlyFree && detail.amountMinor === 0;
   const priceInvalid = detail && detail.amountMinor === 0 && !detail.isExplicitlyFree;
+  const domainLabel = detail?.packDomain ? (s.packDomains[detail.packDomain] ?? detail.packDomain) : null;
+  const usesBrave = detail?.deployment?.requiredProvider === 'brave-search';
+  const blockedConnectors = detail?.deployment?.unavailableExternalConnectors ?? [];
 
   return (
     <AppShell lang={lang} active="services">
       <PageHeader
-        eyebrow={s.title}
-        title={detail?.label ?? s.viewDetails}
+        eyebrow={domainLabel ? `${s.title} · ${domainLabel}` : s.title}
+        title={detail?.displayName ?? detail?.label ?? s.viewDetails}
         description={detail ? s.offeredBy + ' · v' + detail.version + ' · ' + detail.deliverableSchemaVersion + ' ' + s.deliverable : s.intro}
         aside={<Link className="button secondary" href={'/' + lang + '/services'}>← {s.title}</Link>}
       />
@@ -53,6 +56,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
         <>
           <Card>
             <div className="qx-service-head">
+              {domainLabel ? <span className="badge">{domainLabel}</span> : null}
               {free
                 ? <span className="badge success">{s.priceFree}</span>
                 : priceInvalid
@@ -65,10 +69,22 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
             </div>
             <p className="muted qx-service-terms">{s.terms}: {detail.termsVersion || '—'} · {s.regions}: {detail.regions.join(', ') || '—'} · {s.locales}: {detail.locales.join(', ') || '—'}</p>
 
+            {detail.specialization ? (
+              <p><strong>{s.specializationTitle}:</strong> {detail.specialization}</p>
+            ) : null}
+
             <div className="qx-service-columns">
               <section>
                 <h2>{s.scope}</h2>
                 <ul className="qx-chip-list">{detail.scope.map((item, index) => <li key={index}>{item}</li>)}</ul>
+                {detail.contractMeta?.deliverableSections.length ? (
+                  <>
+                    <h2>{s.deliverableSectionsTitle}</h2>
+                    <ul className="qx-chip-list">
+                      {detail.contractMeta.deliverableSections.map((section, index) => <li key={index}>{section}</li>)}
+                    </ul>
+                  </>
+                ) : null}
                 {detail.exclusions.length ? (
                   <>
                     <h2>{s.exclusions}</h2>
@@ -96,10 +112,32 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
                 <h2>{s.deploymentTitle}</h2>
                 {detail.deployment ? (
                   <ul className="qx-service-blockers">
-                    <li>{detail.deployment.worldBankEnabled ? s.deploymentProviderOn : s.deploymentProviderOff}</li>
+                    {usesBrave ? (
+                      <>
+                        <li>{detail.deployment.braveSearchEnabled ? s.deploymentBraveOn : s.deploymentBraveOff}</li>
+                        <li>{detail.deployment.braveSearchKeyConfigured ? s.deploymentBraveKeyOn : s.deploymentBraveKeyOff}</li>
+                        <li>{s.deploymentConsentWebSearch}</li>
+                      </>
+                    ) : (
+                      <li>{detail.deployment.worldBankEnabled ? s.deploymentProviderOn : s.deploymentProviderOff}</li>
+                    )}
                     <li>{detail.deployment.egressAttested ? s.deploymentEgressAttested : s.deploymentEgressUnattested}</li>
                   </ul>
                 ) : <Feedback title={lang === 'fr' ? 'Aucune sonde de déploiement pour ce contrat.' : 'No deployment probe for this contract.'} />}
+
+                {blockedConnectors.length > 0 ? (
+                  <>
+                    <h2>{s.blockedConnectorsTitle}</h2>
+                    <p className="muted">{s.blockedConnectorsIntro}</p>
+                    <ul className="qx-service-blockers">
+                      {blockedConnectors.map(conn => (
+                        <li key={conn.connectorId}>
+                          <strong>{conn.connectorId} [{conn.state}]</strong> — {conn.purpose} ({conn.blocker})
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
               </section>
             </div>
           </Card>
@@ -112,12 +150,24 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
                 {!detail.availability.isExecutable ? (
                   <Feedback title={s.availabilityNotReady}>{detail.availability.blockers.map(blockerLabel).join(' · ')}</Feedback>
                 ) : null}
-                <ServiceRequestForm lang={lang} offerId={detail.offerId} disabled={!current} />
+                <ServiceRequestForm
+                  lang={lang}
+                  offerId={detail.offerId}
+                  contractKey={detail.contractKey}
+                  contractMeta={detail.contractMeta}
+                  disabled={!current}
+                />
               </>
             ) : (
               <>
                 <Feedback error title={detail.unavailableReason === 'CAPABILITY_NOT_CONFIGURED' ? s.capabilityMissing : detail.unavailableReason === 'SERVICE_NOT_CONFIGURED' ? s.notConfigured : s.availabilityBlocked} />
-                <ServiceRequestForm lang={lang} offerId={detail.offerId} disabled />
+                <ServiceRequestForm
+                  lang={lang}
+                  offerId={detail.offerId}
+                  contractKey={detail.contractKey}
+                  contractMeta={detail.contractMeta}
+                  disabled
+                />
               </>
             )}
             <p className="muted">{s.manual} <Link href={'/' + lang + '/mydash'}>→</Link></p>

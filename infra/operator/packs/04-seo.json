@@ -1,0 +1,131 @@
+{
+  "_readme": [
+    "OPERATOR CONFIGURATION — CAPABILITY PACK 04: SEO (Slot 4).",
+    "Domain: Technical SEO & search-intent visibility audit over live Brave Search SERP observations.",
+    "Operator customization: edit 'service.displayName', 'service.specialization', 'service.allowedCountries',",
+    "'service.allowedSearchLocales', 'service.maxTargetQueries', 'service.maxAuditedUrls', and capability/profile names.",
+    "Runtime gates: QEYNOX_BRAVE_SEARCH_ENABLED=true, QEYNOX_BRAVE_SEARCH_API_KEY set, api.search.brave.com in",
+    "EgressPolicy. Connectors 'search-console' and 'ga4' are BLOCKED and never simulated."
+  ],
+  "service": {
+    "pack": "seo",
+    "capabilityId": "capability-slot-4-v1",
+    "offerId": "offer-seo-pack-v1",
+    "budgetPolicyId": "budget-seo-pack-v1",
+    "displayName": "Search Intent & Technical SEO Audit",
+    "specialization": "Live SERP intent gap analysis, domain-scoped URL architecture diagnosis, and P1-P3 SEO remediation roadmap",
+    "allowedCountries": ["US", "GB", "FR", "DE", "MA", "ES", "IT", "NL", "BE", "CA", "CH", "AE"],
+    "allowedSearchLocales": ["en", "fr", "en-US", "en-GB", "fr-FR", "fr-MA", "de", "es"],
+    "maxTargetQueries": 5,
+    "maxAuditedUrls": 6
+  },
+  "idempotencyKey": "operator-pack-04-seo-v1",
+  "entries": [
+    {
+      "domain": "TOOL",
+      "connectorId": "brave-search",
+      "version": "1",
+      "status": "ACTIVE",
+      "manifest": {
+        "description": "Read-only public web search through the Brave Search REST API v1.",
+        "provider": "Brave Search API v1",
+        "regions": ["GLOBAL"],
+        "operations": ["web.search"],
+        "mode": "READ_ONLY",
+        "licenseNotes": "Commercial Brave Search Data for AI / Search API terms apply; cite returned page URLs.",
+        "termsUrl": "https://brave.com/search/api/",
+        "credentialRef": "env:QEYNOX_BRAVE_SEARCH_API_KEY",
+        "freshness": { "ttlSeconds": 3600, "publishedAtSource": "UNKNOWN" },
+        "rateLimit": { "maxPerMinute": 15 },
+        "tools": [{ "name": "web", "version": "1" }]
+      }
+    },
+    {
+      "domain": "BUSINESS_CAPABILITY",
+      "slot": 4,
+      "version": 1,
+      "status": "ACTIVE",
+      "name": "Technical SEO & Search Visibility Audit",
+      "purpose": "Inspect live public search results for target queries via Brave Search, compare against audited domain URLs, and deliver a prioritized technical and search-intent roadmap.",
+      "scope": [
+        "live-serp-intent-inspection",
+        "domain-url-architecture-audit",
+        "evidence-tagged-seo-findings",
+        "telemetry-boundary-disclosure"
+      ],
+      "allowedTools": ["brave-search:web@1"],
+      "privacyScopes": ["web:search"],
+      "inputSchemaVersion": 1,
+      "outputSchemaVersion": 1,
+      "maximumSteps": 4,
+      "maximumToolCalls": 6
+    },
+    {
+      "domain": "AGENT_PROFILE",
+      "slot": 4,
+      "version": 1,
+      "status": "ACTIVE",
+      "title": "Technical SEO & Search Visibility Auditor",
+      "systemInstructions": "You are the QeyNox Technical SEO & Search Visibility Auditor (Slot 4). Inspect live SERP results strictly via brave-search:web@1 using the caller's country and searchLang. Every urlFindings entry must reference an HTTPS URL on the audited domain and tag evidenceBasis as SERP_OBSERVED or CALLER_REPORTED. Never fabricate Search Console impressions, CTR, Core Web Vitals field telemetry, or backlink domain-authority scores; explicitly disclose in telemetryLimitations that search-console and ga4 connectors are BLOCKED. Never promise guaranteed #1 or first-page rankings. Emit valid seo@1 JSON.",
+      "skillRefs": ["seo:serp-intent-analysis", "seo:url-remediation-roadmap"],
+      "allowedTools": ["brave-search:web@1"],
+      "permittedContextKeys": ["goal:statement", "step:input", "prior:summaries"],
+      "maxOutputTokens": 3200,
+      "maxIterations": 5
+    },
+    {
+      "domain": "VERIFICATION_POLICY",
+      "capabilityId": "capability-slot-4-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "minimumSources": 1,
+      "maxAgeDays": 90,
+      "approvedProviders": ["brave-search"],
+      "humanReviewRequired": true,
+      "validFrom": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "domain": "RAAS_OFFER",
+      "offerId": "offer-seo-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "label": "Search Intent & Technical SEO Audit (Pack 04)",
+      "capabilityIds": ["capability-slot-4-v1"],
+      "deliverableSchemaVersion": 1,
+      "scope": [
+        "Live Brave Search SERP intent and competitor visibility check for up to 5 target queries",
+        "URL-level findings across up to 6 HTTPS pages on the target domain",
+        "Strict tagging between SERP-observed evidence and caller-reported issues",
+        "P1/P2/P3 prioritized remediation roadmap"
+      ],
+      "exclusions": [
+        "No Google Search Console or GA4 first-party telemetry (connectors BLOCKED)",
+        "No automated CMS edits or live meta-tag deployment",
+        "No guaranteed ranking positions or organic traffic projections"
+      ],
+      "regions": ["GLOBAL"],
+      "locales": ["en", "fr"],
+      "termsVersion": "2026-11-a16",
+      "currency": "EUR",
+      "amountMinor": 19000,
+      "taxPolicy": "CONFIGURED",
+      "isExplicitlyFree": false
+    },
+    {
+      "domain": "BUDGET_POLICY",
+      "policyId": "budget-seo-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "currency": "EUR",
+      "maxMoneyMinor": 2200,
+      "maxAgentCalls": 20,
+      "maxToolCalls": 8,
+      "maxDurationSeconds": 180,
+      "maxConcurrent": 2,
+      "unitMaxMinor": {
+        "hermes": 50,
+        "brave-search:web@1": 5
+      }
+    }
+  ]
+}

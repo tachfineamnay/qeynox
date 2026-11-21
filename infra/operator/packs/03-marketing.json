@@ -1,0 +1,138 @@
+{
+  "_readme": [
+    "OPERATOR CONFIGURATION — CAPABILITY PACK 03: MARKETING (Slot 3).",
+    "Domain: Go-to-market & campaign architecture over public category positioning evidence.",
+    "Operator customization: edit 'service.displayName', 'service.specialization', 'service.allowedChannels',",
+    "'service.allowedStages', 'service.maxChannels', BUSINESS_CAPABILITY 'name', and AGENT_PROFILE 'title'.",
+    "Runtime gates: QEYNOX_BRAVE_SEARCH_ENABLED=true, QEYNOX_BRAVE_SEARCH_API_KEY set, api.search.brave.com in",
+    "EgressPolicy. External ad/analytics connectors ('meta', 'ga4', 'linkedin') are BLOCKED; no live ad spend."
+  ],
+  "service": {
+    "pack": "marketing",
+    "capabilityId": "capability-slot-3-v1",
+    "offerId": "offer-marketing-pack-v1",
+    "budgetPolicyId": "budget-marketing-pack-v1",
+    "displayName": "Go-To-Market Campaign & Channel Plan",
+    "specialization": "Full-funnel B2B campaign messaging pillars, channel budget allocation, experiment hypotheses, and kill criteria",
+    "allowedChannels": [
+      "ORGANIC_SEARCH",
+      "PAID_SEARCH",
+      "LINKEDIN_ORGANIC",
+      "PAID_SOCIAL",
+      "EMAIL_NURTURE",
+      "PARTNER_CO_MARKETING",
+      "WEBINAR_EVENTS"
+    ],
+    "allowedStages": ["PROBLEM_AWARE", "SOLUTION_AWARE", "PRODUCT_EVALUATION", "CUSTOMER_EXPANSION"],
+    "maxChannels": 4
+  },
+  "idempotencyKey": "operator-pack-03-marketing-v1",
+  "entries": [
+    {
+      "domain": "TOOL",
+      "connectorId": "brave-search",
+      "version": "1",
+      "status": "ACTIVE",
+      "manifest": {
+        "description": "Read-only public web search through the Brave Search REST API v1.",
+        "provider": "Brave Search API v1",
+        "regions": ["GLOBAL"],
+        "operations": ["web.search"],
+        "mode": "READ_ONLY",
+        "licenseNotes": "Commercial Brave Search Data for AI / Search API terms apply; cite returned page URLs.",
+        "termsUrl": "https://brave.com/search/api/",
+        "credentialRef": "env:QEYNOX_BRAVE_SEARCH_API_KEY",
+        "freshness": { "ttlSeconds": 3600, "publishedAtSource": "UNKNOWN" },
+        "rateLimit": { "maxPerMinute": 15 },
+        "tools": [{ "name": "web", "version": "1" }]
+      }
+    },
+    {
+      "domain": "BUSINESS_CAPABILITY",
+      "slot": 3,
+      "version": 1,
+      "status": "ACTIVE",
+      "name": "Go-To-Market & Campaign Architecture",
+      "purpose": "Inspect public category messaging via reviewed search and design a bounded multi-channel campaign specification with budget shares, hypotheses, and kill criteria.",
+      "scope": [
+        "messaging-pillar-architecture",
+        "channel-budget-allocation",
+        "experiment-hypothesis-and-kill-criteria",
+        "measurement-and-compliance-spec"
+      ],
+      "allowedTools": ["brave-search:web@1"],
+      "privacyScopes": ["web:search"],
+      "inputSchemaVersion": 1,
+      "outputSchemaVersion": 1,
+      "maximumSteps": 4,
+      "maximumToolCalls": 4
+    },
+    {
+      "domain": "AGENT_PROFILE",
+      "slot": 3,
+      "version": 1,
+      "status": "ACTIVE",
+      "title": "Go-To-Market & Campaign Strategist",
+      "systemInstructions": "You are the QeyNox Go-To-Market & Campaign Strategist (Slot 3). Research public category messaging via brave-search:web@1 and cite returned URLs in marketEvidenceUris. Ensure channelPlan budgetSharePercent sums to 100% (unless media budget is 0) and every channel carries an explicit experimentHypothesis and killCriterion. Never claim guaranteed ROI, CPL, or conversion rates. Explicitly state in complianceAndPlatformLimits that Meta Ads, GA4, and LinkedIn connectors are BLOCKED and human teams execute all live ad spend. Emit valid marketing@1 JSON.",
+      "skillRefs": ["marketing:messaging-architecture", "marketing:channel-experiment-design"],
+      "allowedTools": ["brave-search:web@1"],
+      "permittedContextKeys": ["goal:statement", "step:input", "prior:summaries"],
+      "maxOutputTokens": 3000,
+      "maxIterations": 4
+    },
+    {
+      "domain": "VERIFICATION_POLICY",
+      "capabilityId": "capability-slot-3-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "minimumSources": 1,
+      "maxAgeDays": 180,
+      "approvedProviders": ["brave-search"],
+      "humanReviewRequired": true,
+      "validFrom": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "domain": "RAAS_OFFER",
+      "offerId": "offer-marketing-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "label": "Go-To-Market Campaign & Channel Plan (Pack 03)",
+      "capabilityIds": ["capability-slot-3-v1"],
+      "deliverableSchemaVersion": 1,
+      "scope": [
+        "Messaging pillars mapped to buyer pain points and required proof points",
+        "Multi-channel allocation across up to 4 channels with experiment hypotheses and kill criteria",
+        "Measurement plan and launch readiness checklist",
+        "Cited public category positioning evidence"
+      ],
+      "exclusions": [
+        "No live ad campaign creation, bidding, or media spend on Meta, Google, or LinkedIn",
+        "No direct GA4 or CRM attribution ingestion (connectors BLOCKED)",
+        "No guaranteed lead volume, ROAS, or conversion outcomes"
+      ],
+      "regions": ["GLOBAL"],
+      "locales": ["en", "fr"],
+      "termsVersion": "2026-11-a16",
+      "currency": "EUR",
+      "amountMinor": 24000,
+      "taxPolicy": "CONFIGURED",
+      "isExplicitlyFree": false
+    },
+    {
+      "domain": "BUDGET_POLICY",
+      "policyId": "budget-marketing-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "currency": "EUR",
+      "maxMoneyMinor": 2000,
+      "maxAgentCalls": 16,
+      "maxToolCalls": 6,
+      "maxDurationSeconds": 180,
+      "maxConcurrent": 2,
+      "unitMaxMinor": {
+        "hermes": 50,
+        "brave-search:web@1": 5
+      }
+    }
+  ]
+}

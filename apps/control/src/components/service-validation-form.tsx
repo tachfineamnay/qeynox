@@ -22,13 +22,18 @@ export function ServiceValidationForm({ lang, workspaceId }: { lang: Locale; wor
       <p className="muted">{t.configurationValidateServiceHint}</p>
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="workspaceId" value={workspaceId} />
-      <input type="hidden" name="expectedProvider" value="world-bank" />
       <div className="inline-form">
         <label className="field"><span>{t.configurationCapability}</span>
-          <input name="capabilityId" type="text" required minLength={2} maxLength={120} pattern="[A-Za-z0-9_.:\-]+" placeholder="capability-slot-8-v1" autoComplete="off" />
+          <input name="capabilityId" type="text" required minLength={2} maxLength={120} pattern="[A-Za-z0-9_.:\-]+" placeholder="capability-slot-1-v1" autoComplete="off" />
         </label>
         <label className="field"><span>{t.configurationOffer}</span>
-          <input name="offerId" type="text" required minLength={2} maxLength={120} pattern="[A-Za-z0-9_.:\-]+" placeholder="offer-world-bank-research" autoComplete="off" />
+          <input name="offerId" type="text" required minLength={2} maxLength={120} pattern="[A-Za-z0-9_.:\-]+" placeholder="offer-research-pack-v1" autoComplete="off" />
+        </label>
+        <label className="field"><span>{lang === 'fr' ? 'Fournisseur attendu' : 'Expected provider'}</span>
+          <select name="expectedProvider" defaultValue="world-bank">
+            <option value="world-bank">world-bank</option>
+            <option value="brave-search">brave-search</option>
+          </select>
         </label>
       </div>
       <div className="actions">

@@ -1,0 +1,141 @@
+{
+  "_readme": [
+    "OPERATOR CONFIGURATION — CAPABILITY PACK 01: RESEARCH (Slot 1).",
+    "Domain: Macroeconomic & market indicator research backed by official World Bank Indicators.",
+    "Operator customization: edit 'service.displayName', 'service.specialization', 'service.allowedCountries',",
+    "'service.allowedIndicators', BUSINESS_CAPABILITY 'name'/'purpose', AGENT_PROFILE 'title'/'systemInstructions',",
+    "and RAAS_OFFER 'label' without code changes (publish a higher version to supersede).",
+    "Runtime gates required for execution: QEYNOX_WORLD_BANK_ENABLED=true, api.worldbank.org in EgressPolicy,",
+    "and an attested Hermes engine."
+  ],
+  "service": {
+    "pack": "research",
+    "capabilityId": "capability-slot-1-v1",
+    "offerId": "offer-research-pack-v1",
+    "budgetPolicyId": "budget-research-pack-v1",
+    "displayName": "Macroeconomic & Market Indicator Brief",
+    "specialization": "Cross-country macroeconomic and development indicator synthesis over official World Bank series",
+    "allowedCountries": ["MA", "FR", "DE", "GB", "US", "ES", "IT", "NL", "BE", "CH", "CA", "JP", "AE", "SA", "ZA", "NG"],
+    "allowedIndicators": [
+      "NY.GDP.MKTP.CD",
+      "NY.GDP.PCAP.CD",
+      "NY.GDP.MKTP.KD.ZG",
+      "FP.CPI.TOTL.ZG",
+      "SL.UEM.TOTL.ZS",
+      "NE.EXP.GNFS.ZS",
+      "NE.IMP.GNFS.ZS",
+      "BX.KLT.DINV.WD.GD.ZS",
+      "IT.NET.USER.ZS",
+      "SP.POP.TOTL"
+    ],
+    "maximumObservations": 5
+  },
+  "idempotencyKey": "operator-pack-01-research-v1",
+  "entries": [
+    {
+      "domain": "TOOL",
+      "connectorId": "world-bank",
+      "version": "1",
+      "status": "ACTIVE",
+      "manifest": {
+        "description": "Public, read-only World Bank Indicators v2 series by country and indicator code.",
+        "provider": "World Bank Indicators API v2",
+        "regions": ["GLOBAL"],
+        "operations": ["indicator.read"],
+        "mode": "READ_ONLY",
+        "licenseNotes": "CC BY 4.0 — cite The World Bank and indicator code on every external output.",
+        "termsUrl": "https://www.worldbank.org/en/about/legal/terms-of-use-for-datasets",
+        "freshness": { "ttlSeconds": 86400, "publishedAtSource": "UNKNOWN" },
+        "rateLimit": { "maxPerMinute": 30 },
+        "tools": [{ "name": "indicator", "version": "1" }]
+      }
+    },
+    {
+      "domain": "BUSINESS_CAPABILITY",
+      "slot": 1,
+      "version": 1,
+      "status": "ACTIVE",
+      "name": "Macroeconomic & Market Indicator Research",
+      "purpose": "Retrieve official World Bank statistical series for a primary country, optional comparison indicators, and optional benchmark country, then produce a citation-backed comparative brief.",
+      "scope": [
+        "official-indicator-retrieval",
+        "cross-country-benchmarking",
+        "bounded-comparative-synthesis",
+        "publication-lag-disclosure"
+      ],
+      "allowedTools": ["world-bank:indicator@1"],
+      "privacyScopes": [],
+      "inputSchemaVersion": 1,
+      "outputSchemaVersion": 1,
+      "maximumSteps": 6,
+      "maximumToolCalls": 4
+    },
+    {
+      "domain": "AGENT_PROFILE",
+      "slot": 1,
+      "version": 1,
+      "status": "ACTIVE",
+      "title": "Macroeconomic & Market Research Analyst",
+      "systemInstructions": "You are the QeyNox Macroeconomic & Market Research Analyst (Slot 1). Retrieve requested series strictly through world-bank:indicator@1. Never invent, interpolate, or extrapolate observations; report null provider values explicitly. Separate OBSERVED values from INTERPRETATION in comparativeInsights. Always disclose provider publication lag (retrievedAt is retrieval time, not statistical freshness) and refuse forecasts. Emit valid research@1 JSON matching researchDeliverableSchema.",
+      "skillRefs": ["research:indicator-provenance", "research:comparative-synthesis"],
+      "allowedTools": ["world-bank:indicator@1"],
+      "permittedContextKeys": ["goal:statement", "step:input", "prior:summaries"],
+      "maxOutputTokens": 2400,
+      "maxIterations": 4
+    },
+    {
+      "domain": "VERIFICATION_POLICY",
+      "capabilityId": "capability-slot-1-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "minimumSources": 1,
+      "maxAgeDays": 730,
+      "approvedProviders": ["world-bank"],
+      "humanReviewRequired": true,
+      "validFrom": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "domain": "RAAS_OFFER",
+      "offerId": "offer-research-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "label": "Macroeconomic & Market Indicator Brief (Pack 01)",
+      "capabilityIds": ["capability-slot-1-v1"],
+      "deliverableSchemaVersion": 1,
+      "scope": [
+        "Up to 5 recent official World Bank observations per requested series",
+        "Optional comparison across up to 2 secondary indicators and 1 benchmark country",
+        "Structured research@1 deliverable with exact source URIs, timestamps, and response digests",
+        "Explicit publication-lag and missing-observation disclosures"
+      ],
+      "exclusions": [
+        "No macroeconomic forecasting or econometric projection",
+        "No unverified third-party blog or private vendor datasets",
+        "Not investment, legal, or sovereign credit advice"
+      ],
+      "regions": ["GLOBAL"],
+      "locales": ["en", "fr"],
+      "termsVersion": "2026-11-a16",
+      "currency": "EUR",
+      "amountMinor": 0,
+      "taxPolicy": "CONFIGURED",
+      "isExplicitlyFree": true
+    },
+    {
+      "domain": "BUDGET_POLICY",
+      "policyId": "budget-research-pack-v1",
+      "version": 1,
+      "status": "ACTIVE",
+      "currency": "EUR",
+      "maxMoneyMinor": 1500,
+      "maxAgentCalls": 16,
+      "maxToolCalls": 6,
+      "maxDurationSeconds": 180,
+      "maxConcurrent": 2,
+      "unitMaxMinor": {
+        "hermes": 50,
+        "world-bank:indicator@1": 0
+      }
+    }
+  ]
+}

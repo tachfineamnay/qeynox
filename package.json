@@ -48,7 +48,8 @@
     "qa:brave-search": "pnpm --filter @qeynox/worker qa:brave-search",
     "qa:workspace-management": "pnpm --filter @qeynox/worker qa:workspace-management",
     "qa:documents": "pnpm --filter @qeynox/worker qa:documents",
-    "qa:notifications": "pnpm --filter @qeynox/api qa:notifications"
+    "qa:notifications": "pnpm --filter @qeynox/api qa:notifications",
+    "qa:business-packs": "pnpm --filter @qeynox/api qa:business-packs"
   },
   "devDependencies": {
     "typescript": "5.9.3",

@@ -34,6 +34,8 @@ export * from './delivery';
 export * from './configuration';
 export * from './identity-lifecycle';
 export * from './economic-research';
+export * from './business-pack-deliverables';
+export * from './business-packs';
 export * from './documents';
 export * from './embeddings';
 export * from './service-contracts';

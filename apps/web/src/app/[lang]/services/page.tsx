@@ -43,17 +43,22 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
               {services.map(service => {
                 const free = service.isExplicitlyFree && service.amountMinor === 0;
                 const priceInvalid = service.amountMinor === 0 && !service.isExplicitlyFree;
+                const domainLabel = service.packDomain ? (s.packDomains[service.packDomain] ?? service.packDomain) : null;
                 return (
                   <li key={service.offerId} className="qx-service-card" data-ready={service.availability.isExecutable ? 'true' : 'false'}>
                     <div className="qx-service-card-head">
-                      <h2><Link href={'/' + lang + '/services/' + encodeURIComponent(service.offerId)}>{service.label}</Link></h2>
+                      <h2><Link href={'/' + lang + '/services/' + encodeURIComponent(service.offerId)}>{service.displayName ?? service.label}</Link></h2>
                       {free
                         ? <span className="badge success">{s.priceFree}</span>
                         : priceInvalid
                           ? <span className="badge danger">{s.priceInvalid}</span>
                           : <span className="qx-price"><strong>{formatMoney(service.amountMinor, service.currency, lang)}</strong></span>}
                     </div>
-                    <p className="muted">{s.offeredBy} · v{service.version} · {service.termsVersion}</p>
+                    <p className="muted">
+                      {domainLabel ? <><span className="badge">{domainLabel}</span> · </> : null}
+                      {s.offeredBy} · v{service.version} · {service.termsVersion}
+                    </p>
+                    {service.specialization ? <p>{service.specialization}</p> : null}
                     <div className="qx-service-availability">
                       <span className="badge" data-state={service.availability.operationalState}>{readinessLabel(service.availability.operationalState)}</span>
                       {!service.availability.isExecutable ? (

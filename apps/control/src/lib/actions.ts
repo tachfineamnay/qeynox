@@ -226,7 +226,7 @@ const validateServiceSchema = z.object({
   workspaceId: configurationWorkspaceSchema,
   capabilityId: z.string().trim().min(2).max(120).regex(/^[A-Za-z0-9_.:-]+$/),
   offerId: z.string().trim().min(2).max(120).regex(/^[A-Za-z0-9_.:-]+$/),
-  expectedProvider: z.literal('world-bank'),
+  expectedProvider: z.enum(['world-bank', 'brave-search']),
 });
 
 /**
