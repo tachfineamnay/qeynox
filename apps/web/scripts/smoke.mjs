@@ -12,6 +12,10 @@ let beta = 'active';
 // MISSION A21.05 — which registration policy the fixture API reports: open | invite | closed | malformed | error.
 let registration = 'open';
 let registrationPolicyReads = 0;
+// MISSION A21.06 — identity state of the signed-in fixture account and the resend outcome the fixture API reports.
+let identityState = 'unverified-configured';
+let resendMode = 'ACCEPTED';
+const resendCalls = [];
 const journeyAccount = {
   status: 'ACTIVE', expiresAt: '2026-12-31T23:59:00.000Z', invitationExpiresAt: null, activatedAt: '2026-11-01T09:00:00.000Z',
   missionQuota: 5, missionsUsed: 2, missionsRemaining: 3, activeMissions: 0, concurrentLimit: 2,
@@ -55,7 +59,9 @@ const backend = createServer((req, res) => {
     if (query.get('mode')) mode = query.get('mode');
     if (query.get('beta')) beta = query.get('beta');
     if (query.get('registration')) registration = query.get('registration');
-    res.end(JSON.stringify({ mode, beta, registration })); return;
+    if (query.get('identity')) identityState = query.get('identity');
+    if (query.get('resend')) resendMode = query.get('resend');
+    res.end(JSON.stringify({ mode, beta, registration, identityState, resendMode })); return;
   }
   // MISSION A21.05 — the public registration policy. Read without a session, like the real API.
   if (req.url === '/v1/auth/registration-policy') {
@@ -73,7 +79,39 @@ const backend = createServer((req, res) => {
   if (req.url === '/v1/auth/login' && req.method === 'POST') { res.end(JSON.stringify({ token, workspaceId: 'workspace_qa', expiresAt: '2099-01-01T00:00:00.000Z' })); return; }
   // MISSION A04 — public identity routes. The web layer calls these without a session, so the
   // fixture must answer them the way the real API does: no bearer header is sent.
-  if (req.url === '/v1/identity/state') { assert.equal(req.headers.authorization, undefined); res.end(JSON.stringify({ verified: false, verifiedAt: null, delivery: 'NOT_CONFIGURED', deliveryReason: 'EMAIL_PROVIDER_NOT_CONFIGURED' })); return; }
+  // MISSION A21.06 — /state describes the caller's own account, so (like the real API) it requires the session.
+  if (req.url === '/v1/identity/state') {
+    if (req.headers.authorization !== `Bearer ${token}`) { res.statusCode = 403; res.end(JSON.stringify({ error: { code: 'DENIED' } })); return; }
+    const states = {
+      'unverified-configured': { verified: false, verifiedAt: null, delivery: 'CONFIGURED', deliveryReason: null },
+      'unverified-not-configured': { verified: false, verifiedAt: null, delivery: 'NOT_CONFIGURED', deliveryReason: 'EMAIL_PROVIDER_NOT_CONFIGURED' },
+      verified: { verified: true, verifiedAt: '2026-11-20T10:00:00.000Z', delivery: 'CONFIGURED', deliveryReason: null },
+    };
+    res.end(JSON.stringify(states[identityState])); return;
+  }
+  // MISSION A21.06 — authenticated resend. Records what the web sent: the session only, never an e-mail.
+  if (req.url === '/v1/identity/verification/resend' && req.method === 'POST') {
+    let raw = '';
+    req.on('data', chunk => { raw += chunk; });
+    req.on('end', () => {
+      resendCalls.push({ authorization: req.headers.authorization, body: raw });
+      if (req.headers.authorization !== `Bearer ${token}`) { res.statusCode = 403; res.end(JSON.stringify({ error: { code: 'DENIED' } })); return; }
+      const outcome = (name, sent, issued, notSentReason) => ({ outcome: name, sent, issued, notSentReason });
+      const modes = {
+        ACCEPTED: [200, outcome('ACCEPTED', true, true, null)],
+        NOT_CONFIGURED: [200, outcome('NOT_CONFIGURED', false, false, 'EMAIL_PROVIDER_NOT_CONFIGURED')],
+        DELIVERY_FAILED: [200, outcome('DELIVERY_FAILED', false, true, 'EMAIL_DELIVERY_FAILED')],
+        ALREADY_VERIFIED: [200, outcome('ALREADY_VERIFIED', false, false, null)],
+        TOO_MANY: [429, { error: { code: 'BUDGET_EXHAUSTED' } }],
+        // Inconsistent: claims sent for a failure. The web must not render it as success.
+        MALFORMED: [200, outcome('DELIVERY_FAILED', true, true, null)],
+        SERVER_ERROR: [500, { error: { code: 'INTERNAL_ERROR' } }],
+      };
+      const [status, payload] = modes[resendMode];
+      res.statusCode = status; res.end(JSON.stringify(payload));
+    });
+    return;
+  }
   if (req.url?.startsWith('/v1/identity/recovery/inspect')) { res.end(JSON.stringify({ valid: false })); return; }
   if (req.url?.startsWith('/v1/identity/verification/inspect')) { res.end(JSON.stringify({ valid: false })); return; }
   if (req.url === '/v1/identity/recovery/request' && req.method === 'POST') { res.end(JSON.stringify({ sent: false, notSentReason: 'EMAIL_PROVIDER_NOT_CONFIGURED', issued: false })); return; }
@@ -427,6 +465,62 @@ try {
     registration = 'open';
   }
   for (const path of ['/en/account/recover','/fr/account/recover']) await page(path);
+  // MISSION A21.06 — the signed-in account card and the authenticated resend server action.
+  {
+    const texts = {
+      en: { resend: 'Send a confirmation link', pending: 'E-mail not confirmed', confirmed: 'E-mail confirmed', notConfigured: 'No e-mail provider is configured' },
+      fr: { resend: 'Envoyer un lien de confirmation', pending: 'E-mail non confirmé', confirmed: 'E-mail confirmé', notConfigured: 'Aucun fournisseur d’e-mail n’est configuré' },
+    };
+    for (const lang of ['en', 'fr']) {
+      const t = texts[lang];
+      identityState = 'unverified-configured';
+      const pendingPage = await page('/' + lang + '/account', true);
+      assert.ok(pendingPage.includes(t.pending) && pendingPage.includes(t.resend), lang + ' unverified + transport configured: the resend button is offered'); assertions++;
+      identityState = 'unverified-not-configured';
+      const noTransport = await page('/' + lang + '/account', true);
+      assert.ok(noTransport.includes(t.notConfigured) && !noTransport.includes(t.resend), lang + ' unverified + no transport: the state is stated up front and no button is offered'); assertions++;
+      identityState = 'verified';
+      const verifiedPage = await page('/' + lang + '/account', true);
+      assert.ok(verifiedPage.includes(t.confirmed) && !verifiedPage.includes(t.resend), lang + ' verified: confirmed, no resend button'); assertions++;
+    }
+    identityState = 'unverified-configured';
+    // The server action, invoked over HTTP exactly as the browser does (Next-Action header). Its id is
+    // read from the production client bundle, where Next records the exported action name.
+    const { readdirSync, readFileSync, statSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const chunkFiles = dir => readdirSync(dir).flatMap(name => { const path = join(dir, name); return statSync(path).isDirectory() ? chunkFiles(path) : path.endsWith('.js') ? [path] : []; });
+    let actionId;
+    for (const file of chunkFiles('.next/static/chunks')) {
+      const match = /createServerReference\)\("([0-9a-f]{40,44})",[^)]{0,80}"requestVerificationAction"\)/.exec(readFileSync(file, 'utf8'));
+      if (match) { actionId = match[1]; break; }
+    }
+    assert.ok(actionId, 'the resend server action is present in the client bundle'); assertions++;
+    const invoke = async withSession => {
+      const response = await fetch(`http://127.0.0.1:${port}/en/account`, {
+        method: 'POST', body: '[]',
+        headers: { 'next-action': actionId, accept: 'text/x-component', 'content-type': 'text/plain;charset=UTF-8', ...(withSession ? { cookie } : {}) },
+      });
+      assert.equal(response.status, 200); assertions++;
+      const text = await response.text();
+      assert.ok(!text.includes(token), 'bearer token must never enter the action response'); assertions++;
+      return text;
+    };
+    for (const [mode, view] of [
+      ['ACCEPTED', 'ACCEPTED'], ['NOT_CONFIGURED', 'NOT_CONFIGURED'], ['DELIVERY_FAILED', 'DELIVERY_FAILED'],
+      ['ALREADY_VERIFIED', 'ALREADY_VERIFIED'], ['TOO_MANY', 'TOO_MANY_REQUESTS'], ['MALFORMED', 'UNKNOWN'], ['SERVER_ERROR', 'UNKNOWN'],
+    ]) {
+      resendMode = mode;
+      const before = resendCalls.length;
+      const result = await invoke(true);
+      assert.ok(result.includes('"kind":"VERIFICATION_RESEND"') && result.includes('"view":"' + view + '"'), 'resend ' + mode + ' → UI state ' + view); assertions++;
+      const call = resendCalls[before];
+      assert.ok(resendCalls.length === before + 1 && call.authorization === `Bearer ${token}` && call.body === '', 'resend ' + mode + ': one authenticated call with NO body (the browser never supplies an e-mail)'); assertions++;
+    }
+    const before = resendCalls.length;
+    const anonymous = await invoke(false);
+    assert.ok(anonymous.includes('"kind":"ERROR"') && anonymous.includes('"code":"SESSION_REQUIRED"') && resendCalls.length === before, 'without a session the action refuses and calls nothing'); assertions++;
+    resendMode = 'ACCEPTED';
+  }
   const deadReset = await page('/en/account/reset?token=' + 'x'.repeat(64));
   assert.match(deadReset, /no longer valid/); assertions++;
   const deadVerify = await page('/en/account/verify?token=' + 'x'.repeat(64));

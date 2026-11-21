@@ -5,6 +5,7 @@ import { createOperationSchema } from '@qeynox/contracts';
 import { z } from 'zod';
 import { api, ApiError, operationSchema, sessionSchema, tokenRequestSchema } from './api';
 import { locale, type Locale } from './copy';
+import { resendViewFromBody, resendViewFromError, type VerificationResendView } from './verification-resend';
 
 /**
  * Where a freshly issued session should land.
@@ -67,6 +68,8 @@ export type IdentityState =
   | { readonly kind: 'IDLE' }
   | { readonly kind: 'ERROR'; readonly code: string }
   | { readonly kind: 'CODE_SENT'; readonly delivered: boolean }
+  // A21.06: the authenticated resend reports the server's exact outcome (never a bare "sent").
+  | { readonly kind: 'VERIFICATION_RESEND'; readonly view: VerificationResendView }
   | { readonly kind: 'DONE'; readonly message: string };
 
 const workspaceName = (form: FormData) => String(form.get('workspaceName') ?? '').trim();
@@ -96,11 +99,14 @@ export async function registerAction(previous: IdentityState, form: FormData): P
 
 /** Request a verification link for the signed-in account. */
 export async function requestVerificationAction(): Promise<IdentityState> {
+  // MISSION A21.06 — the session identifies the account; no e-mail is sent from the browser. The API
+  // derives the recipient from the authenticated user (POST /v1/identity/verification/resend).
   try {
-    const result = tokenRequestSchema.parse(await api('/v1/identity/verification/request', 'POST', {}));
-    return { kind: 'CODE_SENT', delivered: result.sent };
+    return { kind: 'VERIFICATION_RESEND', view: resendViewFromBody(await api('/v1/identity/verification/resend', 'POST')) };
   } catch (error) {
-    return { kind: 'ERROR', code: error instanceof ApiError ? error.code : 'UNAVAILABLE' };
+    const code = error instanceof ApiError ? error.code : 'UNKNOWN_OUTCOME';
+    if (code === 'SESSION_REQUIRED' || code === 'DENIED') return { kind: 'ERROR', code };
+    return { kind: 'VERIFICATION_RESEND', view: resendViewFromError(code) };
   }
 }
 

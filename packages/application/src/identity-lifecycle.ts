@@ -43,6 +43,29 @@ export interface TokenRequestOutcome {
   readonly issued: boolean;
 }
 
+/**
+ * MISSION A21.06 — outcome of an AUTHENTICATED verification resend. The caller is the account owner,
+ * so (unlike the public request route) the result may say exactly what happened to their own e-mail:
+ *
+ * - `ACCEPTED`:         the configured provider accepted the message (HTTP 2xx from Resend).
+ * - `NOT_CONFIGURED`:   no e-mail transport is configured; NO token was issued (a live link already
+ *                       delivered earlier is not superseded by one that could never arrive).
+ * - `DELIVERY_FAILED`:  a token was issued but the provider refused it or could not be reached.
+ * - `ALREADY_VERIFIED`: the address is already confirmed; nothing was issued or sent.
+ * Throttling is not an outcome: it is the BUDGET_EXHAUSTED refusal (HTTP 429).
+ */
+export type VerificationResendOutcome = 'ACCEPTED' | 'NOT_CONFIGURED' | 'DELIVERY_FAILED' | 'ALREADY_VERIFIED';
+
+export interface VerificationResendResult {
+  readonly outcome: VerificationResendOutcome;
+  /** True only for ACCEPTED: derived from the transport, never asserted by policy. */
+  readonly sent: boolean;
+  /** True when a token was stored (ACCEPTED or DELIVERY_FAILED). */
+  readonly issued: boolean;
+  /** The transport's reason when nothing was accepted; null for ACCEPTED and ALREADY_VERIFIED. */
+  readonly notSentReason: string | null;
+}
+
 export interface TokenConsumption {
   readonly userId: ID;
   /** Purpose the consumed token was issued for; a verification token never resets a password. */
@@ -160,6 +183,28 @@ export class IdentityLifecycleService {
     if (!user) return { sent: false, notSentReason: null, issued: false };
     if (user.verifiedAt) return { sent: false, notSentReason: null, issued: false };
     return this.issue(user.id as ID, 'EMAIL_VERIFICATION', this.verificationTtl, user.email, '/account/verify', user.locale);
+  }
+
+  /**
+   * MISSION A21.06 — resend the verification link to the AUTHENTICATED account's own address.
+   *
+   * The recipient is read from identity_users by the session's user id; no caller-supplied address is
+   * ever consulted, so a session can only cause a link to be sent to its own account. Token issuance,
+   * supersession, single-use consumption, the Resend send and the delivery ledger are the same code
+   * path as the public request (`issue`). Throttling is applied by the caller BEFORE this method.
+   */
+  async resendVerificationForUser(userId: ID): Promise<VerificationResendResult> {
+    const [user] = await this.store.db.select({
+      id: identityUsers.id, email: identityUsers.email, locale: identityUsers.locale, verifiedAt: identityUsers.verifiedAt, disabledAt: identityUsers.disabledAt,
+    }).from(identityUsers).where(eq(identityUsers.id, userId)).limit(1);
+    if (!user || user.disabledAt) throw new DomainError('DENIED', 'Account unavailable');
+    if (user.verifiedAt) return { outcome: 'ALREADY_VERIFIED', sent: false, issued: false, notSentReason: null };
+    if (this.email.status !== 'CONFIGURED') {
+      return { outcome: 'NOT_CONFIGURED', sent: false, issued: false, notSentReason: this.email.reason ?? 'EMAIL_PROVIDER_NOT_CONFIGURED' };
+    }
+    const result = await this.issue(user.id as ID, 'EMAIL_VERIFICATION', this.verificationTtl, user.email, '/account/verify', user.locale);
+    if (result.sent) return { outcome: 'ACCEPTED', sent: true, issued: result.issued, notSentReason: null };
+    return { outcome: 'DELIVERY_FAILED', sent: false, issued: result.issued, notSentReason: result.notSentReason ?? 'EMAIL_DELIVERY_FAILED' };
   }
 
   /**
