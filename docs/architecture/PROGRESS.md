@@ -1,5 +1,26 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION P08: QA runtime bypass restricted to isolated QA runs (PR, branch `arena/6c9e84ad-qeynox`, off `45b9241`)
+
+**The gap.** `QEYNOX_QA_ALLOW_UNVERIFIED=true` skipped the A21.07 runtime gate whenever `NODE_ENV` was
+not `production`. A staging or preproduction worker, or one with no `NODE_ENV`, could therefore execute
+on an unverified runtime.
+
+**Fix.** `evaluateQaRuntimeBypass` (`apps/worker/src/qa-runtime-bypass.ts`) now requires all of the
+following:
+- the explicit marker `QEYNOX_QA_ENVIRONMENT=isolated`;
+- a non-deployed environment;
+- a loopback `qeynox_qa_*` disposable database, judged on the URL the worker actually connected with;
+- a loopback QA admin URL;
+- a loopback Hermes double, if Hermes is configured;
+- no Hatchet token.
+
+Otherwise the bypass is refused and the gate applies. The three fixture suites set the marker.
+
+**Verified:** typecheck passes; `qa:agent-runtime` 65 and `qa:mission-lifecycle` 88 are unchanged.
+`qa:connectors` is still blocked by World Bank TLS in the sandbox, as before. No new suite was added.
+Not deployed.
+
 ## 2026-11-21 — MISSION A21.07: truthful runtime readiness; bounded live probes per component (draft PR, branch `arena/6b29158c-qeynox`, off `72521d7`)
 
 **The defect.** "Verified" runtime meant `QEYNOX_RUNTIME_VERIFIED_LIVE=true` plus a free evidence string,

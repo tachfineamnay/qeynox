@@ -236,6 +236,9 @@ async function main(): Promise<void> {
     // This isolated QA fixture runs against a deterministic local Hermes double, so it opts out
     // explicitly. Production never sets this flag; there the worker uses selectOperational().
     process.env.QEYNOX_QA_ALLOW_UNVERIFIED = 'true';
+    // P08: the bypass is honoured only with the explicit isolated-QA marker (plus loopback qeynox_qa_* DB,
+    // loopback Hermes double and no Hatchet token, all already true in this suite).
+    process.env.QEYNOX_QA_ENVIRONMENT = 'isolated';
 
     const planning = new PlanningService(store);
     const capabilityId = 'capability-slot-1-v1' as ID;

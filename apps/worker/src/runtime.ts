@@ -7,9 +7,12 @@ import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,Eng
 import { NotificationStore } from '@qeynox/persistence';
 import { createConfiguredToolRegistry } from '@qeynox/tools';
 import { PgOutboxDispatcher,type ExecutionRequest,type OrchestratorPort } from '@qeynox/orchestration';
+import { evaluateQaRuntimeBypass } from './qa-runtime-bypass';
 
 export async function createWorkerDependencies(){
- const conn=connectDatabase(process.env.DATABASE_URL),store=new QeyNoxStore(conn.db);
+ // P08: the URLs this worker is actually wired to; the QA bypass is judged against these, not later env.
+ const connectedDatabaseUrl=process.env.DATABASE_URL,connectedHermesBaseUrl=process.env.HERMES_API_BASE_URL;
+ const conn=connectDatabase(connectedDatabaseUrl),store=new QeyNoxStore(conn.db);
  const profiles=new AgentProfileStore(conn.db),progression=new StepProgression(store);
  const hermesProvider=process.env.HERMES_PROVIDER;
  const engine=new HermesAdapter({baseUrl:process.env.HERMES_API_BASE_URL,privateOrigin:process.env.HERMES_PRIVATE_ORIGIN,apiKey:process.env.HERMES_API_KEY,model:process.env.HERMES_MODEL??'hermes-agent',provider:hermesProvider==='vertex'||hermesProvider==='gemini'||hermesProvider==='custom'?hermesProvider:undefined,timeoutMs:Number(process.env.HERMES_REQUEST_TIMEOUT_MS??60000),nativeToolsIsolated:process.env.HERMES_NATIVE_TOOLS_ISOLATED==='true',egressAttested:process.env.QEYNOX_NETWORK_POLICY_ATTESTED==='true'});
@@ -45,11 +48,12 @@ export async function createWorkerDependencies(){
     const prior=await progression.priorOutputs(request.operationId,request.planRevisionId,step.id);
     const owner={userId:row.payload.createdBy,workspaceId:row.payload.workspaceId,roles:['system:worker']};
     // MISSION A01 / A21.07: tenant execution requires an OPERATIONAL runtime proven by this worker's own
-    // fresh probes (selectOperational). Isolated QA suites that drive a deterministic Hermes double may
-    // opt out with QEYNOX_QA_ALLOW_UNVERIFIED=true; the opt-out is ignored when NODE_ENV=production (set
-    // by infra/Dockerfile.worker), so it can never bypass the gate in a deployed worker.
-    const allowUnverifiedQa = process.env.QEYNOX_QA_ALLOW_UNVERIFIED === 'true' && process.env.NODE_ENV !== 'production';
-    if (allowUnverifiedQa) {
+    // fresh probes (selectOperational). P08: QEYNOX_QA_ALLOW_UNVERIFIED=true is honoured ONLY in an
+    // explicitly isolated QA run (marker + non-deployed env + loopback qeynox_qa_* database + loopback
+    // Hermes double + no Hatchet token); otherwise it is refused and the gate below applies.
+    const qaBypass = evaluateQaRuntimeBypass(process.env,{databaseUrl:connectedDatabaseUrl,hermesBaseUrl:connectedHermesBaseUrl});
+    if (qaBypass.requested && !qaBypass.allowed) warnRefusedQaBypass(qaBypass.refusedBecause);
+    if (qaBypass.allowed) {
       await selections.select(owner,request.operationId,request.planRevisionId,attempt.id,profile,'hermes');
     } else {
       // A21.07: BOTH components must be verified by fresh probe evidence; anything not VERIFIED is
@@ -139,4 +143,12 @@ export async function createWorkerDependencies(){
   toolRegistry:tools, // startup snapshot retained for existing QA callers
   loadToolRegistry:()=>createConfiguredToolRegistry(conn.db),
  };
+}
+
+let refusedQaBypassWarned=false;
+/** P08: a requested-but-refused QA bypass is reported once per process, by condition NAME only. */
+function warnRefusedQaBypass(reasons:readonly string[]):void{
+ if(refusedQaBypassWarned)return;
+ refusedQaBypassWarned=true;
+ console.warn('QEYNOX_QA_ALLOW_UNVERIFIED refused (runtime gate enforced): '+reasons.join('; '));
 }

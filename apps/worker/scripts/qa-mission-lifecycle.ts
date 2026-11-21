@@ -179,6 +179,9 @@ async function main(): Promise<void> {
     process.env.HERMES_NATIVE_TOOLS_ISOLATED = 'true';
     process.env.QEYNOX_NETWORK_POLICY_ATTESTED = 'true';
     process.env.QEYNOX_QA_ALLOW_UNVERIFIED = 'true';
+    // P08: the bypass is honoured only with the explicit isolated-QA marker (plus loopback qeynox_qa_* DB,
+    // loopback Hermes double and no Hatchet token, all already true in this suite).
+    process.env.QEYNOX_QA_ENVIRONMENT = 'isolated';
     workerDeps = await createWorkerDependencies();
     // The worker captures provider configuration at construction, so switching provider behaviour
     // means rebuilding it. This mirrors a real worker restart, not a configuration hot-swap.
