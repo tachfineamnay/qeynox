@@ -82,6 +82,14 @@ function sectionHtml(title: string, entries: readonly ClassifiedFinding[], empty
   return `<section><h2>${escapeHtml(title)}</h2><ol>${entries.map(findingHtml).join('')}</ol></section>`;
 }
 
+/** P09: business-pack synthesis is labelled AI interpretation; otherwise the classified section is used. */
+function interpretationsHtml(doc: ResultDocument, classified: readonly ClassifiedFinding[]): string {
+  if (!doc.interpretations?.length) return sectionHtml('AI interpretation', classified, 'No AI interpretation is recorded.');
+  return `<section><h2>AI interpretation</h2><p class="muted">The agent’s own synthesis. Never evidence on its own.</p><ul>${
+    doc.interpretations.map(text => `<li>${escapeHtml(text)}</li>`).join('')
+  }</ul></section>`;
+}
+
 function reviewHtml(doc: ResultDocument): string {
   const reviewed = doc.reviewedAt
     ? `<p>Reviewed ${escapeHtml(doc.reviewedAt)}${doc.reviewedBy ? ` by ${escapeHtml(doc.reviewedBy)}` : ''}.</p>`
@@ -119,7 +127,7 @@ export function exportHtml(doc: ResultDocument): Uint8Array {
     sectionHtml('Evidence-supported findings', classification.verified, 'No finding is evidence-supported.'),
     sectionHtml('Unresolved findings', classification.unresolved, 'No unresolved findings.'),
     sectionHtml('Awaiting assessment', classification.awaitingAssessment, 'No findings are awaiting assessment.'),
-    sectionHtml('AI interpretation', classification.interpretations, 'No AI interpretation is recorded.'),
+    interpretationsHtml(doc, classification.interpretations),
     `<section><h2>Limitations</h2>${doc.limitations.length ? `<ul>${doc.limitations.map(l => `<li>${escapeHtml(l)}</li>`).join('')}</ul>` : '<p class="muted">No limitation was recorded.</p>'}</section>`,
     `<section><h2>Unresolved claim identifiers</h2>${doc.unresolved.length ? `<ul>${doc.unresolved.map(u => `<li><code>${escapeHtml(u)}</code></li>`).join('')}</ul>` : '<p class="muted">None.</p>'}</section>`,
     reviewHtml(doc),
@@ -254,7 +262,15 @@ export async function exportPdf(doc: ResultDocument): Promise<Uint8Array> {
   section('Evidence-supported findings', classification.verified, 'No finding is evidence-supported.');
   section('Unresolved findings', classification.unresolved, 'No unresolved findings.');
   section('Awaiting assessment', classification.awaitingAssessment, 'No findings are awaiting assessment.');
-  section('AI interpretation', classification.interpretations, 'No AI interpretation is recorded.');
+  if (doc.interpretations?.length) {
+    // P09: business-pack synthesis is labelled as AI interpretation, never presented as a finding.
+    write('AI interpretation', { size: 12, bold: true, gapAfter: 2 });
+    write('The agent’s own synthesis. Never evidence on its own.', { size: 8.5, color: muted, indent: 10 });
+    for (const text of doc.interpretations) write('• ' + text, { size: 10, indent: 10 });
+    space(8);
+  } else {
+    section('AI interpretation', classification.interpretations, 'No AI interpretation is recorded.');
+  }
 
   write('Limitations', { size: 12, bold: true, gapAfter: 2 });
   if (doc.limitations.length) for (const limitation of doc.limitations) write('• ' + limitation, { indent: 10 });

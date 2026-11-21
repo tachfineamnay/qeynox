@@ -65,6 +65,9 @@ export class ResultsController {
    unresolved:c.unresolved.map(f=>({claimId:f.finding.claimId,statement:f.finding.statement,blockers:f.blockers})),
    awaitingAssessment:c.awaitingAssessment.map(f=>({claimId:f.finding.claimId,statement:f.finding.statement,blockers:f.blockers})),
    interpretations:c.interpretations.map(f=>({claimId:f.finding.claimId,statement:f.finding.statement})),
+   // P09: business-pack AI synthesis; statements only, no claim identity because they are not claims.
+   packInterpretations:[...(doc.interpretations??[])],
+   ...(doc.businessPack?{businessPack:{pack:doc.businessPack.pack,contractKey:doc.businessPack.contractKey}}:{}),
   };
  }
  @Post(':documentId/deliver')

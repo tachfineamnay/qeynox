@@ -55,6 +55,8 @@ export default async function SharedAtlasResultPage({
         createdAt: outcome.data.document.createdAt,
         reviewedAt: outcome.data.document.reviewedAt ?? undefined,
         priorId: outcome.data.document.hasPriorVersion ? 'prior' : undefined,
+        interpretations: outcome.data.document.interpretations,
+        businessPack: outcome.data.document.businessPack,
       }
     : null;
 

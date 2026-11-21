@@ -27,7 +27,15 @@ export type OperationStatus = 'DRAFT' | 'READY' | 'RUNNING' | 'WAITING_APPROVAL'
 export type WorkStepStatus = 'PENDING' | 'RUNNING' | 'WAITING_APPROVAL' | 'COMPLETED' | 'FAILED' | 'SKIPPED' | 'INVALIDATED';
 export type AttemptStatus = 'PENDING' | 'RUNNING' | 'WAITING_APPROVAL' | 'FAILED' | 'COMPLETED' | 'CANCELLED' | 'UNKNOWN';
 
-export type Goal = Readonly<{ id: ID; operationId: ID; statement: string; constraints: readonly string[]; createdAt: ISODate }>;
+/**
+ * P09: the validated request of a typed business-pack service, recorded once when the operation is
+ * created. `normalizedRequestJson` is the exact canonical JSON whose digest is `fingerprint` (the value
+ * the customer approved); it is kept as a string because JSONB does not preserve key order.
+ */
+export type GoalServiceRequest = Readonly<{
+  contractKey: string; pack: string; capabilityId: ID; fingerprint: string; normalizedRequestJson: string;
+}>;
+export type Goal = Readonly<{ id: ID; operationId: ID; statement: string; constraints: readonly string[]; createdAt: ISODate; serviceRequest?: GoalServiceRequest }>;
 export type Operation = Readonly<{
   id: ID; workspaceId: ID; createdBy: ID; goalId: ID; title: string;
   status: OperationStatus; version: number; currentRevisionId?: ID; createdAt: ISODate;

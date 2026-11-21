@@ -168,6 +168,14 @@ export const atlasFindingPayloadSchema = z.object({
   citations: z.array(atlasCitationPayloadSchema),
 });
 
+export const atlasBusinessPackSchema = z.object({
+  pack: z.string(),
+  contractKey: z.string(),
+  requestFingerprint: z.string().optional(),
+  attemptId: z.string().optional(),
+});
+export type AtlasBusinessPack = z.infer<typeof atlasBusinessPackSchema>;
+
 export const atlasDocumentPayloadSchema = z.object({
   id: entityIdSchema,
   workspaceId: entityIdSchema.optional(),
@@ -187,6 +195,10 @@ export const atlasDocumentPayloadSchema = z.object({
   priorId: z.string().optional(),
   reviewedBy: z.string().optional(),
   reviewedAt: z.string().optional(),
+  /** P09: AI synthesis from a validated business-pack deliverable. Never a finding, never evidence. */
+  interpretations: z.array(z.string()).optional(),
+  /** P09: identity of the validated business-pack deliverable the document was assembled from. */
+  businessPack: atlasBusinessPackSchema.optional(),
 });
 export type AtlasDocumentPayload = z.infer<typeof atlasDocumentPayloadSchema>;
 
@@ -334,6 +346,9 @@ export const sharedAtlasDocumentSchema = z.object({
   createdAt: z.string(),
   reviewedAt: z.string().nullable(),
   hasPriorVersion: z.boolean(),
+  interpretations: z.array(z.string()).optional(),
+  /** Shared views carry the pack identity only, never internal attempt identifiers. */
+  businessPack: atlasBusinessPackSchema.pick({ pack: true, contractKey: true }).optional(),
 });
 export type SharedAtlasDocument = z.infer<typeof sharedAtlasDocumentSchema>;
 

@@ -549,6 +549,8 @@
 .atlas-finding-verified{border-left:4px solid var(--qx-success)}
 .atlas-finding-unresolved{border-left:4px solid var(--qx-warning)}
 .atlas-finding-awaiting_assessment{border-left:4px solid var(--qx-border)}
+/* P09: AI interpretation is visually distinct (dashed) and always carries its text label. */
+.atlas-finding-ai_interpretation{border-left:4px dashed var(--qx-blue-600)}
 .atlas-provenance{display:grid;gap:4px;margin:12px 0 0}
 .atlas-provenance-item{display:grid;grid-template-columns:max-content 1fr;gap:2px 12px;padding:8px 0;border-top:1px solid var(--qx-border);font-size:14px}
 .atlas-provenance dt{font-weight:700;color:var(--qx-text-secondary)}

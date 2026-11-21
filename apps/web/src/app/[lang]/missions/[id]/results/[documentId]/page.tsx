@@ -47,6 +47,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
     id: doc.id, operationId: doc.operationId, version: doc.version, title: doc.title, objective: doc.objective,
     status: doc.status, scope: doc.scope, findings: doc.findings, nextActions: doc.nextActions,
     limitations: doc.limitations, unresolved: doc.unresolved, citations: doc.citations, createdAt: doc.createdAt,
+    interpretations: doc.interpretations, businessPack: doc.businessPack,
   };
 
   const delivery = (

@@ -151,7 +151,15 @@ export const UNAVAILABLE_CONNECTORS_BY_PACK: Readonly<
 };
 
 function digestObject(payload: unknown): string {
-  return createHash('sha256').update(JSON.stringify(payload)).digest('hex').slice(0, 32);
+  return packRequestFingerprint(JSON.stringify(payload));
+}
+
+/**
+ * The pack request fingerprint of one canonical JSON text. P09: the worker recomputes it over the
+ * recorded `normalizedRequestJson` to prove it recovered exactly the request the customer approved.
+ */
+export function packRequestFingerprint(canonicalJson: string): string {
+  return createHash('sha256').update(canonicalJson).digest('hex').slice(0, 32);
 }
 
 function rejectSchemaIssues(pack: BusinessPackDomain, issues: readonly { path: PropertyKey[]; message: string }[]): never {
@@ -1206,7 +1214,15 @@ export class BusinessPackService {
       `specialization:${this.config.specialization}`,
       `fingerprint:${proposal.fingerprint}`,
     ];
-    const operation = await this.store.createOperation(actor, title, proposal.goalSummary, constraints);
+    // P09: record the validated, normalized request with the operation so the worker can recover it
+    // (and prove it via the fingerprint) when it executes the pack's business steps.
+    const operation = await this.store.createOperation(actor, title, proposal.goalSummary, constraints, {
+      contractKey: proposal.contractKey,
+      pack: proposal.pack,
+      capabilityId: this.config.capabilityId as ID,
+      fingerprint: proposal.fingerprint,
+      normalizedRequestJson: JSON.stringify(proposal.normalizedConstraints),
+    });
     const created = await planning.create(actor, operation.id, operation.version, proposal.steps);
     return { operationId: operation.id, revisionId: created.revision.id, proposal };
   }
