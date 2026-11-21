@@ -82,7 +82,7 @@ export class PlatformUsersController {
     return this.users.capabilities(principal(request));
   }
 
-  /** Blocked: no invitation is created and no e-mail is sent without a configured transport. */
+  /** Blocked by design in all cases: operator-triggered lifecycle sends are not implemented; no invitation is created and no e-mail is sent either way. */
   @PlatformAccess('ADMINISTRATION')
   @Post('invitations')
   async requestInvitation(@Req() request: PlatformRequest, @Body() body: unknown): Promise<never> {

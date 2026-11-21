@@ -3,7 +3,8 @@ import { DomainError,newId,transitionOperation,type ID,type Evidence,type StepAt
 import { connectDatabase,QeyNoxStore,attempts,operations,events } from '@qeynox/persistence';
 import { HermesAdapter,hermesCapabilities } from '@qeynox/engine';
 import { AgentProfileStore,CapabilityRegistry } from '@qeynox/roles';
-import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection } from '@qeynox/application';
+import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv } from '@qeynox/application';
+import { NotificationStore } from '@qeynox/persistence';
 import { createConfiguredToolRegistry } from '@qeynox/tools';
 import { PgOutboxDispatcher,type ExecutionRequest,type OrchestratorPort } from '@qeynox/orchestration';
 
@@ -119,7 +120,14 @@ export async function createWorkerDependencies(){
   },
   startDispatcher:async(orchestrator:OrchestratorPort)=>{
     const dispatcher=new PgOutboxDispatcher(conn.pool,orchestrator);
-    const deliver=async()=>{try{await dispatcher.dispatchOnce();}catch(error:unknown){console.error('Outbox dispatch error:',error instanceof Error?error.message:'unknown');}};
+    // MISSION A19: the same loop that drains the execution outbox also materializes notification
+    // events (approval required / execution failed / result delivered) and sends what is due.
+    // Idempotent by deduplication key; a failure here never blocks step execution.
+    const notifications=new NotificationService(new NotificationStore(conn.db),createEmailTransportFromEnv(),{publicBaseUrl:process.env.QEYNOX_PUBLIC_URL??null});
+    const deliver=async()=>{
+      try{await dispatcher.dispatchOnce();}catch(error:unknown){console.error('Outbox dispatch error:',error instanceof Error?error.message:'unknown');}
+      try{await notifications.drain(25);}catch(error:unknown){console.error('Notification drain error:',error instanceof Error?error.message:'unknown');}
+    };
     await deliver();setInterval(()=>{void deliver();},5000);
   },
   close:async()=>{await conn.close();},

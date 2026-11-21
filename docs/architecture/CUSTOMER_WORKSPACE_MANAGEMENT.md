@@ -30,7 +30,8 @@ the switch-workspace session contract — **no second identity system, no second
 - `WorkspaceTeamService` — workspace list/create; acting-workspace resolution **only** from the
   verified session principal; organization overview (stats OWNER/ADMIN-only); member directory with
   keyset pagination and role/status filters; invitation of **existing, non-disabled identity
-  accounts** (e-mail delivery is honestly `BLOCKED`; single-use token returned once); role change
+  accounts** (delivery is attempted through the configured transport and reported honestly
+  `SENT`/`BLOCKED`/`FAILED`; single-use token returned once); role change
   with OWNER-fence (`ADMIN` cannot grant `OWNER` or target an `OWNER`); revoke/cancel-invitation;
   last-owner refusal inside the store's per-workspace advisory lock (never reimplemented in the
   service); every refusal and success audited (`SELF_SERVICE_*` platform
@@ -69,7 +70,7 @@ return `404`; member-only mutation attempts return `403`; last-owner demotion/re
 - `/[lang]/workspaces` — switcher (switch = revoke presented session + fresh one via the existing
   `/v1/auth/switch-workspace` contract, then refresh), create-workspace form, organization detail,
   member directory with role editor and revoke (last-owner note), invitation inbox
-  (accept/decline own invitations), invite form (token shown once), honest e-mail-BLOCKED copy.
+  (accept/decline own invitations), invite form (token shown once), honest delivery-status copy.
 - `/[lang]/account/settings` — profile (verified badge, active workspace count), locale switch,
   security (password change, active sessions with revoke/revoke-others), privacy summary with a
   pointer to `/soul`, account-deletion request/cancel flow with `window.confirm` gate.
@@ -99,7 +100,7 @@ password path via the real `AccountStore`, deletion request idempotency/cancel, 
 
 ## BLOCKED / honest limits
 
-- **E-mail delivery**: no transport exists; invitation tokens are returned once via the API response
+- **E-mail delivery**: when the operator configures the Resend transport in deployment secrets the invitation is delivered for real and `delivery.email` reports `SENT`/`FAILED` honestly (inline post-commit send, ledger row recorded, attempts truthful); otherwise it reports `BLOCKED` and no message is claimed. Either way, invitation tokens are returned once via the API response
   and must be delivered out of band. The UI says so. Verification/recovery mail likewise unchanged.
 - **Deletion is a request, not an erasure**: no data is deleted by the request flow; the operator
   runs erasure through platform procedures. The table stores intent only.

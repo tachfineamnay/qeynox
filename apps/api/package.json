@@ -23,7 +23,8 @@
     "qa:support-isolation": "tsx scripts/qa-support-isolation.ts",
     "qa:support-private": "tsx scripts/qa-support-private.ts",
     "qa:support-concurrency": "tsx scripts/qa-support-concurrency.ts",
-    "qa:support-reconciliation": "tsx scripts/qa-support-reconciliation.ts"
+    "qa:support-reconciliation": "tsx scripts/qa-support-reconciliation.ts",
+    "qa:notifications": "tsx scripts/qa-notifications.ts"
   },
   "dependencies": {
     "@qeynox/application": "workspace:*",

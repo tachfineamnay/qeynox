@@ -21,9 +21,10 @@ function providers(transportProvider: Provider): Provider[] {
 /**
  * Workspace authentication and the customer identity lifecycle.
  *
- * The e-mail transport is `createEmailTransport()`, which is NOT_CONFIGURED: no provider adapter
- * exists, so verification and recovery links are issued and stored but never claimed to be
- * delivered. A deployment cannot select a pretend provider through configuration.
+ * The e-mail transport is `createEmailTransport()`, driven by QEYNOX_EMAIL_PROVIDER. A real
+ * adapter exists ('resend'); any missing, incomplete or unrecognized configuration fails closed to
+ * NOT_CONFIGURED, so verification and recovery links are never claimed to be delivered unless the
+ * provider actually accepted them. Delivery outcomes are recorded in the email_deliveries ledger.
  */
 @Module({
   providers: providers({ provide: EMAIL_TRANSPORT, useFactory: () => createEmailTransport(), inject: [] }),

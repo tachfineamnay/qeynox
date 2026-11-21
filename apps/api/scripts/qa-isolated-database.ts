@@ -35,6 +35,17 @@ export async function createIsolatedQaDatabase(): Promise<IsolatedQaDatabase> {
   if (!value) throw new DomainError('NOT_CONFIGURED', 'QEYNOX_QA_DATABASE_URL is required for isolated QA runs');
   const source = new URL(value);
   if (!localHosts.has(source.hostname)) throw new DomainError('DENIED', 'QA runs refuse non-local database hosts: ' + source.hostname);
+  // Externally managed disposable database (e.g. an ephemeral PGlite wire-protocol socket in
+  // sandboxes where no server postgres is available). The caller guarantees the database is
+  // throwaway; this mode still enforces local-only hosts and the qeynox_qa_ name pattern, and
+  // performs NO create/terminate/drop — managing lifecycle externally is the caller's contract.
+  if (process.env.QEYNOX_QA_EXTERNALLY_MANAGED === '1') {
+    const externalName = source.pathname.replace(/^\/+/, '');
+    if (!qaDatabasePattern.test(externalName)) {
+      throw new DomainError('DENIED', 'Externally managed QA databases must be named qeynox_qa_*; got: ' + (externalName || '(empty)'));
+    }
+    return { url: value, name: externalName, drop: async () => { /* external lifecycle: nothing to drop */ } };
+  }
   const name = 'qeynox_qa_' + randomUUID().replace(/-/g, '').slice(0, 16);
   if (!qaDatabasePattern.test(name)) throw new Error('Generated QA database name is not safe');
   const admin = new Pool({ connectionString: value, max: 1 });

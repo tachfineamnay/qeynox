@@ -1,0 +1,1 @@
+export const NOTIFICATIONS = Symbol('QEYNOX_NOTIFICATIONS');

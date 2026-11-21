@@ -12,6 +12,7 @@ const ICONS: Record<string, ReactNode> = {
   bag: <><path d="M5 8h14l1.4 11.2a1.6 1.6 0 0 1-1.6 1.8H5.2a1.6 1.6 0 0 1-1.6-1.8z" /><path d="M9 11V6.5a3 3 0 0 1 6 0V11" /></>,
   link: <><path d="M10 14a5 5 0 0 0 7.07.07l3.54-3.54a5 5 0 0 0-7.07-7.07L12 5" /><path d="M14 10a5 5 0 0 0-7.07-.07L3.4 13.46a5 5 0 0 0 7.07 7.07L12 19" /></>,
   file: <><path d="M6 2.8h7.2L18 7.6v13.6a1.6 1.6 0 0 1-1.6 1.6H6a1.6 1.6 0 0 1-1.6-1.6V4.4A1.6 1.6 0 0 1 6 2.8z" /><path d="M13.2 2.8v5h5" /></>,
+  bell: <><path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6" /><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0" /></>,
 };
 
 export function Icon({ name }: { name: string }) {
@@ -91,6 +92,7 @@ function navItems(t: (typeof copy)['en']): readonly (readonly [string, string, s
     ['services', t.services, 'bag'],
     ['connections', t.connections, 'link'],
     ['documents', t.documents, 'file'],
+    ['notifications', t.notifications, 'bell'],
     ['account', t.account, 'sliders'],
   ];
 }

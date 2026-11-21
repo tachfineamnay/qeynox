@@ -62,7 +62,8 @@ async function parseOrAudit<T>(
 /**
  * Platform administration of workspaces/organisations. Reads are available to ADMINISTRATION and
  * SUPPORT; every mutation requires ADMINISTRATION, a written justification and is audited.
- * Invitations target existing identity accounts: no e-mail is sent (delivery is reported BLOCKED).
+ * Invitations target existing identity accounts. When a transport is configured an invitation
+ * e-mail is sent; otherwise delivery is reported BLOCKED.
  */
 @PlatformRoute()
 @Controller('v1/platform/organizations')

@@ -11,3 +11,5 @@ export * from './connection-schema';
 export * from './document-schema';
 export * from './account-schema';
 export * from './account-store';
+export * from './notification-schema';
+export * from './notification-store';

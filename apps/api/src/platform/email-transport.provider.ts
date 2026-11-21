@@ -1,12 +1,11 @@
-import { NotConfiguredEmailTransport, type EmailTransport } from '@qeynox/application';
+import { createEmailTransportFromEnv, type EmailTransport } from '@qeynox/application';
 
 /**
- * The only e-mail transport in this repository. It is deliberately not configured: no provider
- * adapter exists, so invitation, verification and recovery flows must fail closed instead of
- * claiming a message was sent. When QEYNOX_EMAIL_PROVIDER is set the reason distinguishes "named
- * but not implemented" from "no provider configured"; both keep the feature blocked.
+ * The e-mail transport for this deployment. MISSION A19: a real adapter exists behind
+ * QEYNOX_EMAIL_PROVIDER — 'resend' wires ResendEmailTransport; anything missing, incomplete or
+ * unrecognized fails closed to a transport that refuses to send (no message is ever claimed to
+ * be delivered). Credentials are deployment secrets (see .env.example); they are never committed.
  */
 export function createEmailTransport(env: NodeJS.ProcessEnv = process.env): EmailTransport {
-  const provider = (env.QEYNOX_EMAIL_PROVIDER ?? '').trim();
-  return new NotConfiguredEmailTransport(provider.length ? 'EMAIL_TRANSPORT_NOT_IMPLEMENTED' : 'EMAIL_PROVIDER_NOT_CONFIGURED');
+  return createEmailTransportFromEnv(env);
 }

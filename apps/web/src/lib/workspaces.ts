@@ -38,7 +38,7 @@ export const membersPageSchema = z.object({ items: z.array(memberViewSchema), ne
 export const invitationViewSchema = z.object({
   membershipId: z.string(), userId: z.string(), email: z.string(), role: z.enum(['OWNER', 'ADMIN', 'MEMBER']),
   invitationToken: z.string(), invitationExpiresAt: z.string(),
-  delivery: z.object({ email: z.literal('BLOCKED'), reason: z.literal('EMAIL_PROVIDER_NOT_CONFIGURED') }),
+  delivery: z.object({ email: z.enum(['SENT', 'BLOCKED', 'FAILED']), reason: z.string().nullable() }),
 });
 export type InvitationView = z.infer<typeof invitationViewSchema>;
 

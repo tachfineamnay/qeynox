@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { PlatformAdminService, PlatformCatalogueService, PlatformConfigurationService, PlatformOperationsService, PlatformOrganizationsService, PlatformSupportService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
-import { PlatformAdminStore, PlatformOperationsStore, PlatformUserStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection, type QeyNoxStore } from '@qeynox/persistence';
+import { NotificationStore, PlatformAdminStore, PlatformOperationsStore, PlatformUserStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection, type QeyNoxStore } from '@qeynox/persistence';
 import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';
 import { hashSessionToken } from '../auth/password';
@@ -65,7 +65,7 @@ import {
     },
     {
       provide: EMAIL_TRANSPORT,
-      // The only transport is not configured: account-lifecycle features stay blocked.
+      // Fails closed unless QEYNOX_EMAIL_PROVIDER=resend plus its secrets are set (A19).
       useFactory: () => createEmailTransport(),
     },
     {
@@ -80,8 +80,12 @@ import {
     },
     {
       provide: PLATFORM_ORGANIZATIONS_SERVICE,
-      useFactory: (store: WorkspaceStore, platform: PlatformAdminService) => new PlatformOrganizationsService(store, platform),
-      inject: [PLATFORM_ORGANIZATION_STORE, PLATFORM_ADMIN_SERVICE],
+      useFactory: (store: WorkspaceStore, platform: PlatformAdminService, connection: DatabaseConnection) => new PlatformOrganizationsService(store, platform, {
+        email: createEmailTransport(),
+        deliveryLedger: new NotificationStore(connection.db),
+        publicBaseUrl: process.env.QEYNOX_PUBLIC_URL ?? null,
+      }),
+      inject: [PLATFORM_ORGANIZATION_STORE, PLATFORM_ADMIN_SERVICE, DB_CONNECTION],
     },
     { provide: CHATWOOT_PORT, useFactory: () => new ChatwootClient() },
     {

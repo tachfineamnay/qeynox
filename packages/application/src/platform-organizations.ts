@@ -22,6 +22,9 @@ import type {
 } from '@qeynox/persistence';
 import { PlatformAdminService } from './platform-admin';
 import { decodeMemberCursor, decodePageCursor, encodeMemberCursor, encodePageCursor } from './pagination';
+import { deliverInvitationEmail, type InvitationDelivery } from './invitation-delivery';
+import type { EmailTransport } from './platform-users';
+import type { DeliveryLedger } from './notifications';
 
 const readPermissions: readonly PlatformPermission[] = ['ADMINISTRATION', 'SUPPORT'];
 const defaultLimit = 25;
@@ -102,11 +105,11 @@ export interface InvitationResultView {
   readonly role: WorkspaceRole;
   readonly status: string;
   readonly invitedAt: string | null;
-  /** Single-use acceptance token, returned once to the authenticated administrator (never e-mailed). */
+  /** Single-use acceptance token, returned once to the authenticated administrator. The link in the
+   * invitation e-mail lands on the workspace area; manual delivery stays possible. */
   readonly invitationToken: string;
   readonly invitationExpiresAt: string;
-  /** No e-mail is sent: delivery is manual until a reviewed transport is configured. */
-  readonly delivery: { readonly email: 'BLOCKED'; readonly reason: string };
+  readonly delivery: InvitationDelivery;
 }
 export interface RoleChangeView {
   readonly membershipId: string;
@@ -126,7 +129,13 @@ export interface RevocationView {
   readonly updatedAt: string | null;
 }
 
-export interface PlatformOrganizationsServiceOptions { readonly now?: () => Date }
+export interface PlatformOrganizationsServiceOptions {
+  readonly now?: () => Date;
+  /** Optional: when absent, invitation e-mail reports BLOCKED exactly as before. */
+  readonly email?: EmailTransport | undefined;
+  readonly deliveryLedger?: DeliveryLedger | undefined;
+  readonly publicBaseUrl?: string | null | undefined;
+}
 
 function requiredReason(value: string): string {
   const reason = typeof value === 'string' ? value.trim() : '';
@@ -181,12 +190,18 @@ function roleView(row: WorkspaceMemberRow, changed: boolean, previousRole: strin
  */
 export class PlatformOrganizationsService {
   private readonly now: () => Date;
+  private readonly email: EmailTransport | null;
+  private readonly deliveryLedger: DeliveryLedger | null;
+  private readonly publicBaseUrl: string | null;
   constructor(
     private readonly repository: PlatformOrganizationRepository,
     private readonly platform: PlatformAdminService,
     options: PlatformOrganizationsServiceOptions = {},
   ) {
     this.now = options.now ?? (() => new Date());
+    this.email = options.email ?? null;
+    this.deliveryLedger = options.deliveryLedger ?? null;
+    this.publicBaseUrl = options.publicBaseUrl?.replace(/\/+$/, '') ?? null;
   }
 
   async list(principal: PlatformPrincipal, input: { query?: string | undefined; limit?: number | undefined; cursor?: string | undefined }): Promise<WorkspacePage> {
@@ -285,7 +300,7 @@ export class PlatformOrganizationsService {
     const user = await this.repository.findUserByEmail(email);
     if (!user) {
       await this.denied(principal, 'INVITE_WORKSPACE_MEMBER', workspaceId, 'IDENTITY_ACCOUNT_REQUIRED', { email });
-      throw new DomainError('NOT_FOUND', 'An existing identity account is required: e-mail onboarding is blocked (no transport configured)');
+      throw new DomainError('NOT_FOUND', 'An existing identity account is required to invite a member');
     }
     if (user.disabledAt) {
       await this.denied(principal, 'INVITE_WORKSPACE_MEMBER', workspaceId, 'ACCOUNT_DISABLED', { email });
@@ -301,7 +316,7 @@ export class PlatformOrganizationsService {
       buildAudit: membershipId => this.platform.buildAuditRecord({
         actor: principal, targetType: 'IDENTITY_ACCOUNT', targetId: user.userId, action: 'INVITE_WORKSPACE_MEMBER',
         permission: 'ADMINISTRATION', outcome: 'SUCCESS', reason,
-        detail: { workspaceId, membershipId, role: input.role, justification: reason, emailDelivery: 'BLOCKED' },
+        detail: { workspaceId, membershipId, role: input.role, justification: reason, emailDelivery: this.email?.status === 'CONFIGURED' ? 'PENDING' : 'BLOCKED' },
       }),
     });
     if (invitation.outcome === 'ALREADY_MEMBER') {
@@ -312,13 +327,22 @@ export class PlatformOrganizationsService {
       await this.denied(principal, 'INVITE_WORKSPACE_MEMBER', workspaceId, 'ALREADY_INVITED', { userId: user.userId });
       throw new DomainError('CONFLICT', 'An invitation is already pending for this account');
     }
+    const delivery = await deliverInvitationEmail(
+      { email: this.email, deliveryLedger: this.deliveryLedger, publicBaseUrl: this.publicBaseUrl, now: this.now },
+      {
+        membershipId: invitation.membershipId, userId: user.userId, workspaceId,
+        workspaceName: workspace.name,
+        recipientEmail: email, recipientLocale: user.locale,
+        role: input.role, expiresAt: tokenExpiresAt,
+      },
+    );
     return {
       membershipId: invitation.membershipId,
       workspaceId, userId: user.userId, role: input.role, status: 'INVITED',
       invitedAt: at.toISOString(),
       invitationToken,
       invitationExpiresAt: tokenExpiresAt.toISOString(),
-      delivery: { email: 'BLOCKED', reason: 'EMAIL_PROVIDER_NOT_CONFIGURED' },
+      delivery,
     };
   }
 

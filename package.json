@@ -47,7 +47,8 @@
     "qa:stripe-payments": "pnpm --filter @qeynox/worker qa:stripe-payments",
     "qa:brave-search": "pnpm --filter @qeynox/worker qa:brave-search",
     "qa:workspace-management": "pnpm --filter @qeynox/worker qa:workspace-management",
-    "qa:documents": "pnpm --filter @qeynox/worker qa:documents"
+    "qa:documents": "pnpm --filter @qeynox/worker qa:documents",
+    "qa:notifications": "pnpm --filter @qeynox/api qa:notifications"
   },
   "devDependencies": {
     "typescript": "5.9.3",

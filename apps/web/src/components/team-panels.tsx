@@ -68,6 +68,9 @@ export function InvitePanel({ lang }: { lang: Locale }) {
         <Feedback title={t.invitedOnce}>
           <p><code style={{ overflowWrap: 'anywhere' }}>{invitation.invitationToken}</code></p>
           <p><small>{invitation.email} · {invitation.role} · {t.invited} {fmtDate(lang, invitation.invitationExpiresAt)}</small></p>
+          {invitation.delivery.email === 'SENT' && <p className="muted">{t.inviteSent} {invitation.email}.</p>}
+          {invitation.delivery.email === 'FAILED' && <p className="muted">{t.inviteFailed.replace('{reason}', invitation.delivery.reason ?? 'EMAIL_DELIVERY_FAILED')}</p>}
+          {invitation.delivery.email === 'BLOCKED' && <p className="muted">{t.inviteBlocked}</p>}
         </Feedback>
       ) : null}
       <form onSubmit={event => {

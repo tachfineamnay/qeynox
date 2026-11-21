@@ -325,8 +325,9 @@ class FakeUserRepository implements PlatformUserRepository {
 class FakeEmailTransport implements EmailTransport {
   readonly status = 'NOT_CONFIGURED' as const;
   readonly reason = 'EMAIL_PROVIDER_NOT_CONFIGURED';
+  readonly provider = 'none';
   sendCount = 0;
-  async send(): Promise<void> {
+  async send(): Promise<{ providerMessageId: string | null }> {
     this.sendCount++;
     throw new DomainError('NOT_CONFIGURED', 'Email transport is not configured; no message was sent');
   }

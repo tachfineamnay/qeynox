@@ -37,9 +37,9 @@ rejected. "Any-of" policies grant access when the principal holds at least one l
 | POST | `/v1/platform/users/:userId/suspend` | ADMINISTRATION | reversible suspension; requires justification; revokes the target's workspace sessions |
 | POST | `/v1/platform/users/:userId/reactivate` | ADMINISTRATION | clears `disabled_at`; requires justification |
 | POST | `/v1/platform/users/:userId/sessions/revoke` | ADMINISTRATION | revokes all live sessions of exactly this user; requires justification |
-| POST | `/v1/platform/users/invitations` | ADMINISTRATION | **blocked** — 503 NOT_CONFIGURED, no e-mail sent, no state written |
-| POST | `/v1/platform/users/:userId/email-verification` | ADMINISTRATION | **blocked** — 503 NOT_CONFIGURED, no e-mail sent |
-| POST | `/v1/platform/users/:userId/account-recovery` | ADMINISTRATION | **blocked** — 503 NOT_CONFIGURED, no e-mail sent |
+| POST | `/v1/platform/users/invitations` | ADMINISTRATION | **blocked by design** — 503 NOT_CONFIGURED, no e-mail sent, no state written (operator-triggered sends are not implemented; `ACCOUNT_LIFECYCLE_FLOW_NOT_IMPLEMENTED` when a transport *is* configured) |
+| POST | `/v1/platform/users/:userId/email-verification` | ADMINISTRATION | **blocked by design** — same as above; no e-mail sent |
+| POST | `/v1/platform/users/:userId/account-recovery` | ADMINISTRATION | **blocked by design** — same as above; no e-mail sent |
 
 ### Pagination contract
 
@@ -94,14 +94,15 @@ the API.
 ## Prepared but explicitly blocked account lifecycle
 
 No e-mail provider is configured and no provider adapter exists. The application layer defines an
-`EmailTransport` port and a `NotConfiguredEmailTransport` implementation; the API module wires the
+`EmailTransport` port with a real `ResendEmailTransport` (env-selected, deployment secrets) and a
+`NotConfiguredEmailTransport` default; the API module wires the
 not-configured transport by default (`QEYNOX_EMAIL_PROVIDER` unset → reason
 `EMAIL_PROVIDER_NOT_CONFIGURED`; a name set without an implementation → reason
 `EMAIL_TRANSPORT_NOT_IMPLEMENTED`). Consequences:
 
 - invitation, e-mail verification and account recovery endpoints return **503 NOT_CONFIGURED**;
 - each attempt is audited as `DENIED` with the blocking reason;
-- **no e-mail is ever claimed or sent**, and **no account state is written** by these endpoints;
+- **no e-mail is ever claimed or sent** by the operator-triggered endpoints, and **no account state is written** by them;
 - `GET /capabilities` exposes the feature matrix as `BLOCKED` with the reason, so a future UI cannot
   pretend the flow exists;
 - an invitation table is deliberately **not** created: persisting invitations with no transport and
@@ -148,8 +149,10 @@ The suite reports **BLOCKED**, never PASS, when the QA database is absent. It ad
 ## Known limits
 
 - No admin UI (out of scope); JSON API only.
-- E-mail lifecycle flows are blocked by design until a transport and acceptance/verification/recovery
-  design are reviewed; no e-mail is sent.
+- Operator-triggered lifecycle flows stay blocked by design; customer self-service flows
+  (verification, recovery, invitations, approvals/failure/delivery notifications) deliver for real
+  once an operator configures the Resend transport in deployment secrets — recorded in the
+  `email_deliveries` ledger, SENT only on provider acceptance. See [A19_NOTIFICATIONS.md](../design/A19_NOTIFICATIONS.md).
 - User search is a bounded `ILIKE` substring on the unique e-mail column (no trigram extension); at
   very large scale a search index decision is required.
 - The session list is capped at 200 rows per user (the response carries `truncated` when

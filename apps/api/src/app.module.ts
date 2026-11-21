@@ -19,5 +19,6 @@ import { ServicesModule } from './services/services.module';
 import { ConnectionsModule } from './connections/connections.module';
 import { AccountModule } from './account/account.module';
 import { DocumentsModule } from './documents/documents.module';
-@Module({controllers:[HealthController],imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule,OperatorModule,ConfigurationModule,SoulModule,PilotModule,PlatformModule,WorkspacesModule,SupportModule,CapabilitiesModule,ServicesModule,ConnectionsModule,DocumentsModule, AccountModule]})
+import { NotificationsModule } from './notifications/notifications.module';
+@Module({controllers:[HealthController],imports:[DatabaseModule,AuthModule,OperationsModule,ClaimsModule,ResultsModule,CommerceModule,ActivityModule,OperatorModule,ConfigurationModule,SoulModule,PilotModule,PlatformModule,WorkspacesModule,SupportModule,CapabilitiesModule,ServicesModule,ConnectionsModule,DocumentsModule, AccountModule, NotificationsModule]})
 export class AppModule {}
