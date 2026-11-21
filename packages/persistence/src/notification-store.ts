@@ -231,46 +231,129 @@ export class NotificationStore {
    * concurrent drainers never claim the same row, and attempt_count is incremented at claim time:
    * a worker that crashes mid-send still leaves an honest audit trail (an attempt was initiated).
    */
-  async claimDue(now: Date, limit: number) {
-    return this.db.transaction(async tx => {
-      const claimed = await tx.select().from(emailDeliveries)
-        .where(and(eq(emailDeliveries.status, 'PENDING'), eq(emailDeliveries.retryable, true), sql`${emailDeliveries.nextRetryAt} <= ${now.toISOString()}`))
-        .orderBy(asc(emailDeliveries.nextRetryAt), asc(emailDeliveries.id))
-        .limit(limit)
-        .for('update', { skipLocked: true });
-      const claimedRows = [];
-      for (const row of claimed) {
-        const [updated] = await tx.update(emailDeliveries)
-          .set({ attemptCount: row.attemptCount + 1, updatedAt: now })
-          .where(eq(emailDeliveries.id, row.id))
-          .returning();
-        if (updated) claimedRows.push(updated);
-      }
-      return claimedRows.map(row => ({
-        id: row.id, userId: row.userId, workspaceId: row.workspaceId, category: row.category,
-        recipient: row.recipient, subject: row.subject, provider: row.provider, locale: row.locale,
-        attemptCount: row.attemptCount, maxAttempts: row.maxAttempts,
-        templateId: row.templateId, templateVars: row.templateVars,
-        deduplicationKey: row.deduplicationKey, notificationId: row.notificationId,
-      }));
-    });
+  /**
+   * P14 — atomically claims due deliveries under a fenced lease. One statement selects due, unleased
+   * (or lease-expired) rows with FOR UPDATE SKIP LOCKED and stamps them with this claim's token, so
+   * once it commits no other worker can claim them until the lease expires. Each claim is an attempt.
+   * A row recovered from an expired lease is marked outcome-uncertain (its worker may have sent).
+   * Uncertain rows are only claimed while their first attempt is inside the provider idempotency window.
+   */
+  async claimDue(now: Date, limit: number, options: { owner: string; leaseMs: number; idempotencyWindowStart: Date }) {
+    const token = randomUUID();
+    const nowIso = now.toISOString();
+    const executed = await this.db.execute(sql`
+      UPDATE email_deliveries AS d
+      SET attempt_count = d.attempt_count + 1,
+          outcome_uncertain = d.outcome_uncertain OR d.lease_token IS NOT NULL,
+          first_attempt_at = COALESCE(d.first_attempt_at, ${nowIso}::timestamptz),
+          lease_owner = ${options.owner.slice(0, 200)},
+          lease_token = ${token} || ':' || d.id,
+          lease_expires_at = ${new Date(now.getTime() + options.leaseMs).toISOString()}::timestamptz,
+          updated_at = ${nowIso}::timestamptz
+      WHERE d.id IN (
+        SELECT c.id FROM email_deliveries c
+        WHERE c.status = 'PENDING' AND c.retryable = true
+          AND c.next_retry_at <= ${nowIso}::timestamptz
+          AND (c.lease_expires_at IS NULL OR c.lease_expires_at < ${nowIso}::timestamptz)
+          AND c.attempt_count < c.max_attempts
+          AND NOT ((c.outcome_uncertain OR c.lease_token IS NOT NULL)
+                   AND c.first_attempt_at IS NOT NULL
+                   AND c.first_attempt_at < ${options.idempotencyWindowStart.toISOString()}::timestamptz)
+        ORDER BY c.next_retry_at, c.id
+        LIMIT ${limit}
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING d.id, d.user_id, d.workspace_id, d.category, d.recipient, d.subject, d.provider, d.locale,
+                d.attempt_count, d.max_attempts, d.template_id, d.template_vars, d.deduplication_key,
+                d.notification_id, d.lease_token, d.first_attempt_at, d.outcome_uncertain
+    `);
+    type Row = { id: string; user_id: string | null; workspace_id: string | null; category: string; recipient: string; subject: string; provider: string; locale: string | null; attempt_count: number; max_attempts: number; template_id: string | null; template_vars: Record<string, string> | null; deduplication_key: string; notification_id: string | null; lease_token: string; first_attempt_at: string | Date; outcome_uncertain: boolean };
+    const rows = ((executed as unknown as { rows?: unknown[] }).rows ?? (executed as unknown as unknown[])) as Row[];
+    return rows.map(row => ({
+      id: row.id, userId: row.user_id, workspaceId: row.workspace_id, category: row.category,
+      recipient: row.recipient, subject: row.subject, provider: row.provider, locale: row.locale,
+      attemptCount: Number(row.attempt_count), maxAttempts: Number(row.max_attempts),
+      templateId: row.template_id, templateVars: row.template_vars,
+      deduplicationKey: row.deduplication_key, notificationId: row.notification_id,
+      leaseToken: row.lease_token, firstAttemptAt: new Date(row.first_attempt_at).toISOString(), outcomeUncertain: row.outcome_uncertain === true,
+    }));
   }
 
-  async markSent(id: string, providerMessageId: string | null, at: Date): Promise<void> {
-    await this.db.update(emailDeliveries)
-      .set({ status: 'SENT', providerMessageId, lastErrorCode: null, sentAt: at, updatedAt: at })
-      .where(and(eq(emailDeliveries.id, id), eq(emailDeliveries.status, 'PENDING')));
+  /**
+   * P14 — crash recovery for rows that can no longer be safely attempted: an unleased (or lease-expired)
+   * PENDING row whose attempts are exhausted, or whose outcome is uncertain beyond the idempotency
+   * window, becomes FAILED. Uncertain ones get EMAIL_OUTCOME_UNCERTAIN: never SENT, never re-sent.
+   */
+  async failAbandonedDeliveries(now: Date, idempotencyWindowStart: Date): Promise<number> {
+    const nowIso = now.toISOString();
+    const executed = await this.db.execute(sql`
+      UPDATE email_deliveries AS d
+      SET status = 'FAILED',
+          outcome_uncertain = d.outcome_uncertain OR d.lease_token IS NOT NULL,
+          last_error_code = CASE WHEN d.outcome_uncertain OR d.lease_token IS NOT NULL THEN 'EMAIL_OUTCOME_UNCERTAIN'
+                                 ELSE COALESCE(d.last_error_code, 'EMAIL_DELIVERY_ATTEMPTS_EXHAUSTED') END,
+          lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, updated_at = ${nowIso}::timestamptz
+      WHERE d.id IN (
+        SELECT c.id FROM email_deliveries c
+        WHERE c.status = 'PENDING' AND c.retryable = true
+          AND (c.lease_expires_at IS NULL OR c.lease_expires_at < ${nowIso}::timestamptz)
+          AND (c.attempt_count >= c.max_attempts
+               OR ((c.outcome_uncertain OR c.lease_token IS NOT NULL)
+                   AND c.first_attempt_at IS NOT NULL
+                   AND c.first_attempt_at < ${idempotencyWindowStart.toISOString()}::timestamptz))
+        LIMIT 100
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING d.id
+    `);
+    return (((executed as unknown as { rows?: unknown[] }).rows ?? (executed as unknown as unknown[])) as unknown[]).length;
   }
 
-  async markRetryableFailure(id: string, errorCode: string, nextRetryAt: Date, at: Date): Promise<void> {
-    await this.db.update(emailDeliveries)
-      .set({ status: 'PENDING', lastErrorCode: errorCode, nextRetryAt, updatedAt: at })
-      .where(and(eq(emailDeliveries.id, id), eq(emailDeliveries.status, 'PENDING')));
+  /** P14 — extends this claim's lease right before the provider call; false when no longer the owner. */
+  async renewDeliveryLease(id: string, leaseToken: string, now: Date, leaseMs: number): Promise<boolean> {
+    const renewed = await this.db.update(emailDeliveries)
+      .set({ leaseExpiresAt: new Date(now.getTime() + leaseMs), updatedAt: now })
+      .where(and(eq(emailDeliveries.id, id), eq(emailDeliveries.status, 'PENDING'), eq(emailDeliveries.leaseToken, leaseToken)))
+      .returning({ id: emailDeliveries.id });
+    return renewed.length > 0;
   }
 
-  async markTerminalFailure(id: string, errorCode: string, at: Date): Promise<void> {
-    await this.db.update(emailDeliveries)
-      .set({ status: 'FAILED', lastErrorCode: errorCode, updatedAt: at })
-      .where(and(eq(emailDeliveries.id, id), eq(emailDeliveries.status, 'PENDING')));
+  /**
+   * P14 — the provider ACCEPTED the message: owner-checked SENT. Returns false when this worker no longer
+   * owns the row; it then changes nothing — the current (or next) owner re-sends with the same
+   * idempotency key, which the provider answers with the original acceptance, and records SENT itself.
+   */
+  async markSent(id: string, leaseToken: string, providerMessageId: string | null, at: Date): Promise<boolean> {
+    const owned = await this.db.update(emailDeliveries)
+      .set({ status: 'SENT', providerMessageId, lastErrorCode: null, sentAt: at, updatedAt: at, leaseOwner: null, leaseToken: null, leaseExpiresAt: null })
+      .where(and(eq(emailDeliveries.id, id), eq(emailDeliveries.status, 'PENDING'), eq(emailDeliveries.leaseToken, leaseToken)))
+      .returning({ id: emailDeliveries.id });
+    return owned.length > 0;
+  }
+
+  /** P14 — owner-checked: back to PENDING with backoff; the lease is released. False when not the owner. */
+  async markRetryableFailure(id: string, leaseToken: string, errorCode: string, nextRetryAt: Date, uncertain: boolean, at: Date): Promise<boolean> {
+    const updated = await this.db.update(emailDeliveries)
+      .set({
+        status: 'PENDING', lastErrorCode: errorCode, nextRetryAt, updatedAt: at,
+        outcomeUncertain: uncertain ? true : sql`${emailDeliveries.outcomeUncertain}`,
+        leaseOwner: null, leaseToken: null, leaseExpiresAt: null,
+      })
+      .where(and(eq(emailDeliveries.id, id), eq(emailDeliveries.status, 'PENDING'), eq(emailDeliveries.leaseToken, leaseToken)))
+      .returning({ id: emailDeliveries.id });
+    return updated.length > 0;
+  }
+
+  /** P14 — owner-checked terminal FAILED; the lease is released. False when not the owner. */
+  async markTerminalFailure(id: string, leaseToken: string, errorCode: string, at: Date, uncertain = false): Promise<boolean> {
+    const updated = await this.db.update(emailDeliveries)
+      .set({
+        status: 'FAILED', lastErrorCode: errorCode, updatedAt: at,
+        outcomeUncertain: uncertain ? true : sql`${emailDeliveries.outcomeUncertain}`,
+        leaseOwner: null, leaseToken: null, leaseExpiresAt: null,
+      })
+      .where(and(eq(emailDeliveries.id, id), eq(emailDeliveries.status, 'PENDING'), eq(emailDeliveries.leaseToken, leaseToken)))
+      .returning({ id: emailDeliveries.id });
+    return updated.length > 0;
   }
 }

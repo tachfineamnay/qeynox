@@ -14,11 +14,17 @@ export class EmailDeliveryError extends Error {
   readonly code: string;
   /** True when the failure is plausibly transient (network, timeout, 429, 5xx) and worth retrying. */
   readonly retryable: boolean;
-  constructor(code: string, message: string, retryable: boolean) {
+  /**
+   * P14: true when the provider may have accepted the message despite the error (timeout, network
+   * failure mid-request, 5xx). Defaults to `retryable`; a definitive refusal (4xx, 429) is not uncertain.
+   */
+  readonly uncertain: boolean;
+  constructor(code: string, message: string, retryable: boolean, uncertain: boolean = retryable) {
     super(message);
     this.name = 'EmailDeliveryError';
     this.code = code;
     this.retryable = retryable;
+    this.uncertain = uncertain;
   }
 }
 
@@ -114,6 +120,8 @@ export class ResendEmailTransport implements EmailTransport {
       retryable ? 'EMAIL_PROVIDER_RETRYABLE' : 'EMAIL_PROVIDER_REJECTED',
       'The e-mail provider refused the message (' + providerCode + ')',
       retryable,
+      // 429 is a definitive "not accepted"; a 5xx may have been processed before failing.
+      response.status >= 500,
     );
   }
 }

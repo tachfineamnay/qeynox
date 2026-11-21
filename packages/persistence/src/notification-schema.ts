@@ -58,8 +58,15 @@ export const emailDeliveries = pgTable('email_deliveries', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   sentAt: timestamp('sent_at', { withTimezone: true }),
+  // P14 (migration 0032): exclusive delivery ownership (fenced lease) and uncertain-outcome tracking.
+  leaseOwner: text('lease_owner'),
+  leaseToken: text('lease_token'),
+  leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+  firstAttemptAt: timestamp('first_attempt_at', { withTimezone: true }),
+  outcomeUncertain: boolean('outcome_uncertain').notNull().default(false),
 }, t => [
   uniqueIndex('email_deliveries_dedup_unique').on(t.deduplicationKey),
+  index('email_deliveries_lease_idx').on(t.leaseExpiresAt).where(sql`${t.status} = 'PENDING' AND ${t.leaseToken} IS NOT NULL`),
   index('email_deliveries_due_idx').on(t.status, t.nextRetryAt),
   index('email_deliveries_user_idx').on(t.userId, t.createdAt.desc()),
   check('email_deliveries_status_check', sql`${t.status} IN ('PENDING', 'SENT', 'FAILED', 'SKIPPED')`),

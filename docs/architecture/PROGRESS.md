@@ -1,5 +1,36 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION P14: exclusive e-mail delivery ownership (PR, branch `arena/0fb9bb4d-qeynox`, off `b21cff2`)
+
+**Defect.** `claimDue()` incremented `attempt_count` but left the row a due PENDING row after commit, so
+concurrent workers could send the same job.
+
+**Fix.**
+- **Migration `0032` (additive).** Adds `lease_owner`, `lease_token`, `lease_expires_at`,
+  `first_attempt_at` and `outcome_uncertain` to `email_deliveries`. The status vocabulary is unchanged.
+- **Claim.** One `UPDATE … (SELECT … FOR UPDATE SKIP LOCKED)` takes due rows that are unleased or whose
+  lease has expired, with attempts left. It stamps a per-claim fencing token and a 5-minute lease, and
+  counts an attempt. The lease is renewed right before the provider call; a worker that lost it does
+  not send.
+- **Owner-checked transitions.** SENT, retry and FAILED all require the claim token and release the lease.
+  A non-owner changes nothing.
+- **Crash recovery.** An expired lease is re-claimable as a new attempt, marked outcome-uncertain.
+  `failAbandonedDeliveries` fails a row whose attempts are exhausted, or whose uncertain outcome falls
+  outside the window below, with `EMAIL_OUTCOME_UNCERTAIN`.
+- **Uncertain outcomes.** Timeouts, network errors, 5xx and unknown errors are uncertain; 4xx and 429
+  are definitive. Uncertain rows are retried only with the same Resend idempotency key (the unchanged
+  deduplication key) and only within 23 h of the first attempt (Resend keeps keys for 24 h). After that
+  the row is FAILED, never SENT and never re-sent.
+- **Unchanged.** Templates, preferences and delivery history.
+
+**Verified.**
+- `pnpm typecheck` passes (4/4).
+- The existing `qa:notifications` suite passes 98/98.
+- A throwaway sanity check of the claim, fencing and recovery SQL passed. The full concurrency suite is
+  deferred to final QA.
+
+**Not verified.** Live Resend; production (migration 0032 is not applied).
+
 ## 2026-11-21 — MISSION P13: notification event loss fixed (PR, branch `arena/1a108289-qeynox`, off `e48ab02`)
 
 **Defect.** `materialize()` re-scanned only the newest 25 events with no progress record, so bursts and

@@ -93,6 +93,12 @@ export interface DueDelivery {
   readonly templateVars: Record<string, string> | null;
   readonly deduplicationKey: string;
   readonly notificationId: string | null;
+  /** P14: fencing token of THIS claim; every transition must present it. */
+  readonly leaseToken: string;
+  /** P14: when the first provider attempt was claimed (start of the idempotency window). */
+  readonly firstAttemptAt: string;
+  /** P14: an earlier attempt may have reached the provider without a definitive answer. */
+  readonly outcomeUncertain: boolean;
 }
 export interface InlineDeliveryRecord {
   readonly deduplicationKey: string;
@@ -156,11 +162,16 @@ export interface NotificationRepository {
   markAllRead(userId: string, workspaceId: string, at: Date): Promise<number>;
   getPreferenceRows(userId: string): Promise<ReadonlyMap<NotificationCategory, boolean>>;
   setPreference(userId: string, category: NotificationCategory, emailEnabled: boolean, at: Date): Promise<void>;
-  /** Claims PENDING, retryable, due deliveries (increments attempt_count inside a lock). */
-  claimDue(now: Date, limit: number): Promise<readonly DueDelivery[]>;
-  markSent(id: string, providerMessageId: string | null, at: Date): Promise<void>;
-  markRetryableFailure(id: string, errorCode: string, nextRetryAt: Date, at: Date): Promise<void>;
-  markTerminalFailure(id: string, errorCode: string, at: Date): Promise<void>;
+  /** P14: atomically claims due, unleased deliveries under a fenced lease (each claim is an attempt). */
+  claimDue(now: Date, limit: number, options: { owner: string; leaseMs: number; idempotencyWindowStart: Date }): Promise<readonly DueDelivery[]>;
+  /** P14: FAILED for abandoned rows that cannot be safely attempted again (exhausted / uncertain past the window). */
+  failAbandonedDeliveries(now: Date, idempotencyWindowStart: Date): Promise<number>;
+  /** P14: extends the claim's lease; false when this worker no longer owns the row. */
+  renewDeliveryLease(id: string, leaseToken: string, now: Date, leaseMs: number): Promise<boolean>;
+  /** Owner-checked; false when the lease was lost (nothing is changed). */
+  markSent(id: string, leaseToken: string, providerMessageId: string | null, at: Date): Promise<boolean>;
+  markRetryableFailure(id: string, leaseToken: string, errorCode: string, nextRetryAt: Date, uncertain: boolean, at: Date): Promise<boolean>;
+  markTerminalFailure(id: string, leaseToken: string, errorCode: string, at: Date, uncertain?: boolean): Promise<boolean>;
 }
 
 /** Narrow port for services that record inline delivery outcomes (identity, invitations). */
@@ -183,6 +194,16 @@ const KIND_MAP: Record<NotificationEventKind, { kind: NotificationCategory; temp
 
 const backoffSeconds = [60, 300, 900] as const;
 const defaultMaxAttempts = 3;
+/**
+ * P14 — delivery lease. Renewed immediately before each provider call, so it only has to outlast one
+ * call (the Resend transport aborts after 10 s by default); expiry means the worker crashed or stalled.
+ */
+export const EMAIL_DELIVERY_LEASE_MS = 5 * 60 * 1000;
+/**
+ * P14 — Resend keeps an idempotency key for 24 hours. A delivery with an uncertain earlier attempt is
+ * re-sent (with the same key) only within this margin-adjusted window; later it is FAILED instead.
+ */
+export const EMAIL_IDEMPOTENCY_WINDOW_MS = 23 * 60 * 60 * 1000;
 
 /** Localized inbox strings (title, body with {operationTitle}). Same locale set as the e-mail catalog. */
 const inboxCopy: Record<NotificationCategory, Record<'en' | 'fr' | 'es' | 'de', { title: string; body: string }>> = {
@@ -361,20 +382,30 @@ export class NotificationService {
   }
 
   /**
-   * Claims due deliveries and (re)attempts the send. Each attempt is recorded: success → SENT with
-   * the provider message id; failure → PENDING with backoff, or FAILED when the provider rejected
-   * permanently or attempts are exhausted.
+   * Claims due deliveries and (re)attempts the send under exclusive ownership (MISSION P14).
+   *
+   * - A claim is a fenced lease: until it is released or expires, no other worker can claim the row.
+   *   The lease is renewed right before the provider call; a worker that lost it does not send.
+   * - Success → SENT with the provider message id. Failure → PENDING with backoff (lease released), or
+   *   FAILED when the provider rejected permanently or attempts are exhausted. All owner-checked.
+   * - Uncertain outcomes (timeout, network error, 5xx, crashed worker) are retried only with the same
+   *   Resend idempotency key (the deduplication key) and only inside the key's window; afterwards the
+   *   row is FAILED with EMAIL_OUTCOME_UNCERTAIN — never reported SENT, never re-sent blindly.
    */
   async processDueDeliveries(limit = 10): Promise<{ claimed: number; sent: number; retrying: number; failed: number }> {
-    const due = await this.repository.claimDue(this.now(), Math.min(Math.max(1, limit), 50));
-    let sent = 0, retrying = 0, failed = 0;
+    const now = this.now();
+    const windowStart = new Date(now.getTime() - EMAIL_IDEMPOTENCY_WINDOW_MS);
+    let failed = await this.repository.failAbandonedDeliveries(now, windowStart);
+    const due = await this.repository.claimDue(now, Math.min(Math.max(1, limit), 50), { owner: this.deliveryOwner, leaseMs: EMAIL_DELIVERY_LEASE_MS, idempotencyWindowStart: windowStart });
+    let sent = 0, retrying = 0;
     for (const delivery of due) {
       if (!delivery.templateId) {
-        await this.repository.markTerminalFailure(delivery.id, 'EMAIL_DELIVERY_NOT_RETRYABLE', this.now());
-        failed++;
+        if (await this.repository.markTerminalFailure(delivery.id, delivery.leaseToken, 'EMAIL_DELIVERY_NOT_RETRYABLE', this.now())) failed++;
         continue;
       }
       const rendered = renderEmail(delivery.templateId as EmailTemplateId, delivery.locale, delivery.templateVars ?? {});
+      // Ownership is re-proven (and the lease extended) immediately before the provider call.
+      if (!(await this.repository.renewDeliveryLease(delivery.id, delivery.leaseToken, this.now(), EMAIL_DELIVERY_LEASE_MS))) continue;
       try {
         const receipt = await this.email.send({
           to: delivery.recipient,
@@ -382,24 +413,34 @@ export class NotificationService {
           text: rendered.text,
           html: rendered.html,
           category: delivery.category,
+          // Resend idempotency key: unchanged across every attempt of this delivery.
           deduplicationKey: delivery.deduplicationKey,
         });
-        await this.repository.markSent(delivery.id, receipt.providerMessageId, this.now());
-        sent++;
+        if (await this.repository.markSent(delivery.id, delivery.leaseToken, receipt.providerMessageId, this.now())) {
+          sent++;
+        } else {
+          // Lease lost during the call (should not happen: renewed just before a bounded call). Nothing is
+          // written; the owner re-sends with the same idempotency key and records the provider's answer.
+          console.warn('[notifications] delivery ' + delivery.id + ' accepted after its lease was lost; left to the current owner');
+        }
       } catch (error: unknown) {
         const classified = classifyDeliveryError(error);
-        if (!classified.retryable || delivery.attemptCount >= delivery.maxAttempts) {
-          await this.repository.markTerminalFailure(delivery.id, classified.code, this.now());
-          failed++;
-        } else {
-          const delay = backoffSeconds[Math.min(Math.max(delivery.attemptCount, 1), backoffSeconds.length) - 1] ?? 3600;
-          await this.repository.markRetryableFailure(delivery.id, classified.code, new Date(this.now().getTime() + delay * 1000), this.now());
+        const nextRetryAt = new Date(this.now().getTime() + (backoffSeconds[Math.min(Math.max(delivery.attemptCount, 1), backoffSeconds.length) - 1] ?? 3600) * 1000);
+        const outsideWindow = (classified.uncertain || delivery.outcomeUncertain)
+          && nextRetryAt.getTime() - Date.parse(delivery.firstAttemptAt) > EMAIL_IDEMPOTENCY_WINDOW_MS;
+        if (!classified.retryable || delivery.attemptCount >= delivery.maxAttempts || outsideWindow) {
+          const code = outsideWindow && classified.retryable ? 'EMAIL_OUTCOME_UNCERTAIN' : classified.code;
+          if (await this.repository.markTerminalFailure(delivery.id, delivery.leaseToken, code, this.now(), classified.uncertain)) failed++;
+        } else if (await this.repository.markRetryableFailure(delivery.id, delivery.leaseToken, classified.code, nextRetryAt, classified.uncertain, this.now())) {
           retrying++;
         }
       }
     }
     return { claimed: due.length, sent, retrying, failed };
   }
+
+  /** P14 — per-instance lease owner identity (diagnostic; ownership is proven by the lease token). */
+  private readonly deliveryOwner = 'notifications:' + randomUUID();
 
   /** One drain pass: materialize new events, then send what is due. Safe to run on an interval. */
   async drain(limit = 25): Promise<{ materialized: { scanned: number; notifications: number; deliveries: number; skipped: number; failed: number }; deliveries: { claimed: number; sent: number; retrying: number; failed: number } }> {
@@ -413,10 +454,12 @@ export class NotificationService {
   }
 }
 
-function classifyDeliveryError(error: unknown): { code: string; retryable: boolean } {
-  if (error instanceof EmailDeliveryError) return { code: error.code, retryable: error.retryable };
-  if (error instanceof DomainError) return { code: error.code, retryable: false };
-  return { code: 'EMAIL_DELIVERY_FAILED', retryable: true };
+/** P14: `uncertain` = the provider may have accepted the message (no definitive answer). */
+function classifyDeliveryError(error: unknown): { code: string; retryable: boolean; uncertain: boolean } {
+  if (error instanceof EmailDeliveryError) return { code: error.code, retryable: error.retryable, uncertain: error.uncertain };
+  if (error instanceof DomainError) return { code: error.code, retryable: false, uncertain: false };
+  // Unknown failure during the call: conservatively assume the message may have gone out.
+  return { code: 'EMAIL_DELIVERY_FAILED', retryable: true, uncertain: true };
 }
 
 const encodeCursor = (createdAt: string, id: string): string => Buffer.from(createdAt + '|' + id, 'utf8').toString('base64url');
