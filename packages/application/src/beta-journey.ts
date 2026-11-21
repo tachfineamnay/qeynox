@@ -1,7 +1,7 @@
 import type { Principal } from '@qeynox/domain';
 import type { CommercePolicy, CommerceMode } from './commerce-mode';
 import type { WorkspaceBetaAccessService, WorkspaceBetaStatusView } from './beta-access';
-import type { OperationalState, RuntimeReadinessSource } from './runtime-readiness';
+import { summarizeRuntimeComponent, type OperationalState, type RuntimeComponentSummary, type RuntimeReadinessSource } from './runtime-readiness';
 
 /**
  * MISSION A21.04 — the customer's free-beta journey, as one server-authoritative read model.
@@ -73,6 +73,9 @@ export interface BetaJourneyView {
   readonly runtime: {
     readonly canExecute: boolean;
     readonly state: OperationalState;
+    /** A21.07: each component's own live verification (customer-safe: no endpoint or evidence ref). */
+    readonly engine: RuntimeComponentSummary;
+    readonly orchestrator: RuntimeComponentSummary;
   };
 }
 
@@ -147,7 +150,7 @@ export class BetaJourneyService {
         // Mirrors WorkspaceBetaAccessService.activate exactly: a single OWNER or ADMIN role.
         canActivate: account === 'INVITED' && principal.roles.length === 1 && (principal.roles[0] === 'OWNER' || principal.roles[0] === 'ADMIN'),
       },
-      runtime: { canExecute: runtime.canExecute, state: runtime.overallState },
+      runtime: { canExecute: runtime.canExecute, state: runtime.overallState, engine: summarizeRuntimeComponent(runtime.engine), orchestrator: summarizeRuntimeComponent(runtime.orchestrator) },
     };
   }
 }

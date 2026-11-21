@@ -2,7 +2,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import type { CapabilityDefinition, ID, OperationStatus, Principal, WorkStep } from '@qeynox/domain';
 import { QeyNoxStore, BetaAccessStore, approvals, attempts, budgetPolicies, commercialOrders, offers, operationBudgets } from '@qeynox/persistence';
 import { capabilityAvailability, type CapabilityAvailability } from './capability-availability';
-import { failClosedRuntime, type OperationalState, type RuntimeReadinessSource } from './runtime-readiness';
+import { failClosedRuntime, summarizeRuntimeComponent, type OperationalState, type RuntimeComponent, type RuntimeComponentSummary, type RuntimeReadinessSource } from './runtime-readiness';
 import { commercePolicyFromEnvironment, type CommercePolicy } from './commerce-mode';
 import { BetaExecutionAuthorizer, type BetaAuthorizationDenial } from './beta-execution';
 
@@ -65,8 +65,12 @@ export interface OperationReadinessView {
     order: { ok: boolean; state: string | null; amountMinor: number | null; currency: string | null };
     budget: { ok: boolean; source: 'OPERATION' | 'POLICY' | 'NONE'; currency: string | null; ceiling: number | null; spent: number | null; reserved: number | null };
     permission: { ok: boolean; role: string | null };
-    engine: { ok: boolean; runtime: string; missing: readonly string[]; state: OperationalState; verifiedLive: boolean; attested: boolean };
-    orchestrator: { ok: boolean; runtime: string; missing: readonly string[]; state: OperationalState; verifiedLive: boolean; attested: boolean };
+    /**
+     * A21.07: `ok` means verified live by fresh probe evidence (not merely configured). `verification`
+     * is the customer-safe summary of the component's own probe (no endpoint, identity or evidence ref).
+     */
+    engine: { ok: boolean; runtime: string; missing: readonly string[]; state: OperationalState; verifiedLive: boolean; attested: boolean; verification: RuntimeComponentSummary };
+    orchestrator: { ok: boolean; runtime: string; missing: readonly string[]; state: OperationalState; verifiedLive: boolean; attested: boolean; verification: RuntimeComponentSummary };
     profile: { ok: boolean; missing: readonly string[] };
     provider: { ok: boolean; missing: readonly string[] };
     policy: { ok: boolean; missing: readonly string[] };
@@ -123,6 +127,31 @@ export function budgetPolicyPayload(row: { payload: Record<string, unknown> } | 
  * canStart is true only when operationalState is OPERATIONAL (all prerequisites + verifiedLive).
  * A configuration flag alone never yields OPERATIONAL.
  */
+function runtimePrerequisite(component: RuntimeComponent) {
+  return {
+    ok: component.state === 'OPERATIONAL' && component.verifiedLive,
+    runtime: component.id,
+    missing: component.missing,
+    state: component.state,
+    verifiedLive: component.verifiedLive,
+    attested: component.attested,
+    verification: summarizeRuntimeComponent(component),
+  };
+}
+
+/** A21.07: one blocker per runtime component, derived from that component's own verification. */
+function runtimeBlocker(prefix: 'ENGINE' | 'ORCHESTRATOR', component: RuntimeComponent): ReadinessBlocker | null {
+  const label = prefix === 'ENGINE' ? 'Agent runtime (Hermes)' : 'Workflow executor (Hatchet)';
+  const v = component.verification;
+  if (!component.configured) return { code: prefix + '_NOT_CONFIGURED', category: 'ENGINE', detail: 'Missing: ' + component.missing.join(', ') };
+  if (!component.attested) return { code: prefix + '_NOT_ATTESTED', category: 'ENGINE', detail: label + ' attestations missing: ' + component.missing.join(', ') };
+  if (v.status === 'FAILED') return { code: prefix + '_UNAVAILABLE', category: 'ENGINE', detail: label + ' failed its live check at ' + v.observedAt + ' (' + v.failure + ')' };
+  if (v.status === 'STALE') return { code: prefix + '_UNVERIFIED', category: 'ENGINE', detail: label + ' verification expired at ' + v.expiresAt + '; a new live check is required' };
+  if (v.status === 'TARGET_CHANGED') return { code: prefix + '_UNVERIFIED', category: 'ENGINE', detail: label + ' configuration changed since its last live check' };
+  if (!component.verifiedLive) return { code: prefix + '_UNVERIFIED', category: 'ENGINE', detail: label + ' has not passed a live check yet; configuration alone is not proof of functionality' };
+  return null;
+}
+
 export class PlanReadService {
   constructor(
     private readonly store: QeyNoxStore,
@@ -286,18 +315,12 @@ export class PlanReadService {
         blockers.push({ code: limit ? 'BETA_LIMIT_REACHED' : 'BETA_ACCESS_REQUIRED', category: 'AUTHORIZATION', detail: 'Beta access: ' + betaBlocker });
       }
 
-      if (!runtime.engine.configured) {
-        blockers.push({ code: 'ENGINE_NOT_CONFIGURED', category: 'ENGINE', detail: 'Missing: ' + runtime.engine.missing.join(', ') });
-      } else if (!runtime.engine.verifiedLive) {
-        blockers.push({ code: 'ENGINE_UNVERIFIED', category: 'ENGINE', detail: 'Engine is configured but not verified live; configuration alone is not proof of functionality' });
-      } else if (!runtime.engine.attested) {
-        blockers.push({ code: 'ENGINE_NOT_ATTESTED', category: 'ENGINE', detail: 'Engine attestations missing: ' + runtime.engine.missing.join(', ') });
-      }
-      if (!runtime.orchestrator.configured) {
-        blockers.push({ code: 'ORCHESTRATOR_NOT_CONFIGURED', category: 'ENGINE', detail: 'Missing: ' + runtime.orchestrator.missing.join(', ') });
-      } else if (!runtime.orchestrator.verifiedLive) {
-        blockers.push({ code: 'ORCHESTRATOR_UNVERIFIED', category: 'ENGINE', detail: 'Orchestrator is configured but not verified live' });
-      }
+      // A21.07: each runtime component is judged on its OWN probe evidence. A failed probe is
+      // UNAVAILABLE (hard blocker); absent, expired or re-targeted evidence is UNVERIFIED.
+      const engineBlocker = runtimeBlocker('ENGINE', runtime.engine);
+      if (engineBlocker) blockers.push(engineBlocker);
+      const orchestratorBlocker = runtimeBlocker('ORCHESTRATOR', runtime.orchestrator);
+      if (orchestratorBlocker) blockers.push(orchestratorBlocker);
       if (missingProfiles.size) {
         blockers.push({ code: 'PROFILE_NOT_CONFIGURED', category: 'ENGINE', detail: 'Missing active business profile: ' + [...missingProfiles].join(', ') });
       }
@@ -411,8 +434,8 @@ export class PlanReadService {
           reserved: operationBudget?.reservedMinor ?? null,
         },
         permission: { ok: workflowPermission(actor), role: actor.roles[0] ?? null },
-        engine: { ok: runtime.engine.configured, runtime: runtime.engine.id, missing: runtime.engine.missing, state: runtime.engine.state, verifiedLive: runtime.engine.verifiedLive, attested: runtime.engine.attested },
-        orchestrator: { ok: runtime.orchestrator.configured, runtime: runtime.orchestrator.id, missing: runtime.orchestrator.missing, state: runtime.orchestrator.state, verifiedLive: runtime.orchestrator.verifiedLive, attested: runtime.orchestrator.attested },
+        engine: runtimePrerequisite(runtime.engine),
+        orchestrator: runtimePrerequisite(runtime.orchestrator),
         profile: { ok: missingProfiles.size === 0, missing: [...missingProfiles] },
         provider: { ok: missingProviders.size === 0, missing: [...missingProviders] },
         policy: { ok: missingPolicies.size === 0, missing: [...missingPolicies] },

@@ -1,5 +1,62 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION A21.07: truthful runtime readiness; bounded live probes per component (draft PR, branch `arena/6b29158c-qeynox`, off `72521d7`)
+
+**The defect.** "Verified" runtime meant `QEYNOX_RUNTIME_VERIFIED_LIVE=true` plus a free evidence string,
+and the worker defaulted that string to `"live-probe"`. One flag covered Hermes and Hatchet together.
+Nothing probed either runtime, nothing expired, and the API admitted launches without checking the runtime.
+
+**Fix.**
+- **Probes.** Each process (API, worker) runs its own `RuntimeProbeMonitor`, with separate bounded probes
+  for Hermes (`/health` identity, key accepted, no enabled toolset, model advertised) and Hatchet (API
+  ready, version, the token's own tenant, gRPC reachable).
+- **Evidence.** Each component gets its own in-memory evidence record: reference, verified identity,
+  timestamps, expiry, failure class. No credential is stored.
+- **Invalidation.** Evidence expires (freshness limit), is invalidated by an endpoint or credential change
+  (`TARGET_CHANGED`), and does not survive a restart (`NOT_PROBED`).
+- **Old flags.** The env flags are no longer read.
+- **Launch gate.** `OperationExecutionService` requires the runtime source and refuses `start` before
+  anything is consumed: 503 when unproven, 502 when a probe failed. The worker re-checks with
+  `freshReadiness()`.
+- **Surfaces.** Readiness, the beta journey, the web (EN/FR) and the control show per-component
+  verification.
+- **QA opt-out.** `QEYNOX_QA_ALLOW_UNVERIFIED` is ignored when `NODE_ENV=production`.
+
+**Verified:**
+- `qa:runtime-verification` (new): 146 assertions. Real sockets against local Hermes/Hatchet fixtures,
+  disposable PostgreSQL, real HTTP.
+- `qa:runtime-readiness`: 70 + 27 (was 38 + 19).
+- Beta suites now obtain a verified runtime through real probes of the fixtures:
+  - beta-journey 130 (was 128);
+  - beta-access 126;
+  - beta-execution 440.
+- Unchanged suites:
+  - identity 57;
+  - registration 149;
+  - verification-resend 68;
+  - payment-freeze 369;
+  - backend 28;
+  - agent-runtime 65;
+  - mission-lifecycle 88;
+  - stripe-payments 108;
+  - business-packs 370.
+- Smoke 449 (436 at baseline) and flow2 37 (35 at baseline).
+- typecheck and build pass.
+- Screenshots in EN/FR at 390/1440 px, with no horizontal overflow.
+
+**Pre-existing, unchanged:**
+- `qa:task02` parity failure.
+- `qa:connectors`, `qa:raas` and `qa:a03-service` part 2 are blocked by World Bank TLS in this sandbox.
+
+**Not verified:**
+- Any real Hermes or Hatchet deployment.
+- A worker step run against the new gate.
+- Control page screenshots.
+
+Not deployed.
+
+Design: `docs/design/A21_RUNTIME_READINESS.md`; ADR-020 "A21.07 amendment".
+
 ## 2026-11-21 — MISSION A21.06: e-mail verification resend fixed; authenticated resend route (draft PR, branch `arena/31248bfb-qeynox`, off `291ed00`)
 
 **The bug.** The account page's resend button posted an empty body to the public

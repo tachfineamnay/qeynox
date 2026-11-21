@@ -3,6 +3,7 @@ import type { Locale } from '../lib/copy';
 import { betaCopy } from '../lib/beta-copy';
 import type { BetaJourney, BetaJourneyRead } from '../lib/beta';
 import { formatMoney } from '../lib/money';
+import { runtimeComponentLabel, runtimeComponentText } from '../lib/runtime-copy';
 import { BetaActivateForm } from './beta-activate-form';
 
 /**
@@ -211,7 +212,14 @@ export function BetaAccountCard({ lang, read }: { lang: Locale; read: BetaJourne
               : a.expiresAt ? <div><dt>{c.expires}</dt><dd>{betaDate(lang, a.expiresAt)}</dd></div> : null}
             {a.concurrentLimit !== null ? <div><dt>{c.running}</dt><dd>{c.runningValue(a.activeMissions, a.concurrentLimit)}</dd></div> : null}
             {a.providerBudgetRemainingMinor !== null && a.currency ? <div><dt>{c.providerBudget}</dt><dd>{formatMoney(Math.max(0, a.providerBudgetRemainingMinor), a.currency, lang)}</dd></div> : null}
-            <div><dt>{c.runtime}</dt><dd>{c.runtimeState[journey.runtime.state]}</dd></div>
+            <div className="qx-beta-runtime"><dt>{c.runtime}</dt><dd>
+              {c.runtimeState[journey.runtime.state]}
+              {/* A21.07: each component's own live check, so "not verified" and "unavailable" are distinguishable. */}
+              <ul className="qx-runtime-components" data-runtime-state={journey.runtime.state}>
+                <li data-runtime-component="engine" data-verification={journey.runtime.engine.status}><span>{runtimeComponentLabel(lang, 'engine')}</span> <small>{runtimeComponentText(lang, journey.runtime.engine)}</small></li>
+                <li data-runtime-component="orchestrator" data-verification={journey.runtime.orchestrator.status}><span>{runtimeComponentLabel(lang, 'orchestrator')}</span> <small>{runtimeComponentText(lang, journey.runtime.orchestrator)}</small></li>
+              </ul>
+            </dd></div>
           </dl>
           {a.status === 'INVITED' ? (a.canActivate ? <BetaActivateForm lang={lang} /> : <p className="muted">{c.activateAskAdmin}</p>) : null}
         </>

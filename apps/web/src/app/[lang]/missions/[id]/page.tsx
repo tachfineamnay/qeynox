@@ -17,6 +17,7 @@ import { missionCopy } from '../../../../lib/mission-copy';
 import { documentViewSchema } from '../../../../lib/documents';
 import { MissionDocumentControls } from '../../../../components/mission-documents';
 import { read, detailSchema, summarySchema, activitySchema, documentSchema, guidanceSchema, contextSchema } from '../../../../lib/mission';
+import { runtimeComponentText } from '../../../../lib/runtime-copy';
 import { planViewSchema, readinessSchema, commercialViewSchema, claimListSchema, paymentViewSchema, formatMoney, type PlanAttempt } from '../../../../lib/plan';
 
 const consentsSchema = z.array(z.object({ id: z.string(), scope: z.array(z.string()).optional(), scopes: z.array(z.string()).optional(), revokedAt: z.string().optional(), expiresAt: z.string().optional(), grantedAt: z.string() }));
@@ -217,12 +218,13 @@ export default async function Page({ params, searchParams }: { params: Promise<{
             </ul>
           ) : null}
           {readinessData.plan.present ? <ul className="qx-prereqs" aria-label={f.prerequisitesTitle}>
-            {prerequisiteChecks(readinessData).map(item => (
-              <li key={item.label} data-ok={item.ok ? 'true' : 'false'}>
+            {prerequisiteChecks(readinessData).map((item: { label: string; ok: boolean; missing: readonly string[]; detail?: string; component?: 'engine' | 'orchestrator'; verification?: string }) => (
+              <li key={item.label} data-ok={item.ok ? 'true' : 'false'} data-runtime-component={item.component} data-verification={item.verification}>
                 <span className="qx-prereq-state" aria-hidden="true">{item.ok ? '✓' : '!'}</span>
                 <span className="qx-prereq-label">{item.label}</span>
                 <span className="qx-sr-only">{item.ok ? f.checkOk : f.checkKo}</span>
                 {!item.ok && item.missing.length ? <small>{item.missing.join(', ')}</small> : null}
+                {item.detail ? <small>{item.detail}</small> : null}
               </li>
             ))}
           </ul> : null}
@@ -523,8 +525,9 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     { label: f.prereq.order, ok: data.prerequisites.order.ok, missing: [] },
     { label: f.prereq.budget, ok: data.prerequisites.budget.ok, missing: [] },
     { label: f.prereq.permission, ok: data.prerequisites.permission.ok, missing: [] },
-    { label: f.prereq.engine, ok: data.prerequisites.engine.ok && data.prerequisites.engine.verifiedLive !== false, missing: data.prerequisites.engine.missing },
-    { label: f.prereq.orchestrator, ok: data.prerequisites.orchestrator.ok && data.prerequisites.orchestrator.verifiedLive !== false, missing: data.prerequisites.orchestrator.missing },
+    // A21.07: each runtime component is ok only when its OWN live check verified it; the row states why not.
+    { label: f.prereq.engine, ok: data.prerequisites.engine.ok && data.prerequisites.engine.verifiedLive === true && data.prerequisites.engine.verification.status === 'VERIFIED', missing: data.prerequisites.engine.missing, detail: runtimeComponentText(lang, data.prerequisites.engine.verification), component: 'engine' as const, verification: data.prerequisites.engine.verification.status },
+    { label: f.prereq.orchestrator, ok: data.prerequisites.orchestrator.ok && data.prerequisites.orchestrator.verifiedLive === true && data.prerequisites.orchestrator.verification.status === 'VERIFIED', missing: data.prerequisites.orchestrator.missing, detail: runtimeComponentText(lang, data.prerequisites.orchestrator.verification), component: 'orchestrator' as const, verification: data.prerequisites.orchestrator.verification.status },
     { label: f.prereq.profile, ok: data.prerequisites.profile.ok, missing: data.prerequisites.profile.missing },
     { label: f.prereq.provider, ok: data.prerequisites.provider.ok, missing: data.prerequisites.provider.missing },
     { label: f.prereq.policy, ok: data.prerequisites.policy?.ok ?? true, missing: data.prerequisites.policy?.missing ?? [] },

@@ -26,6 +26,7 @@ export * from './read-models';
 export * from './lifecycle-view';
 export * from './plan-read';
 export * from './runtime-readiness';
+export * from './runtime-probes';
 export * from './capability-availability';
 export * from './capability-catalogue';
 export * from './platform-catalogue';

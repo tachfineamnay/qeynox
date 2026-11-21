@@ -46,10 +46,46 @@ otherwise                   -> OPERATIONAL
 `RuntimeReadiness` gains `overallState` and `canExecute`; `canExecute` is `true` only for
 `OPERATIONAL`. Each `RuntimeComponent` gains `state`, `verifiedLive`, `attested` and `evidence`.
 
-Verification is never inferred from a configuration flag. `apiRuntimeReadiness` requires
+Verification is never inferred from a configuration flag. ~~`apiRuntimeReadiness` requires
 `QEYNOX_RUNTIME_VERIFIED_LIVE=true` **and** evidence (`QEYNOX_RUNTIME_VERIFICATION_EVIDENCE`) before
-reporting `OPERATIONAL`; the engine additionally requires `HERMES_NATIVE_TOOLS_ISOLATED=true` and
-`QEYNOX_NETWORK_POLICY_ATTESTED=true`.
+reporting `OPERATIONAL`~~ — superseded by the A21.07 amendment below: an operator boolean plus a free
+string was itself a flag, and the worker defaulted the evidence to `"live-probe"`. The engine still
+requires `HERMES_NATIVE_TOOLS_ISOLATED=true` and `QEYNOX_NETWORK_POLICY_ATTESTED=true` as
+preconditions.
+
+## A21.07 amendment — verification by bounded live probes (2026-11-21)
+
+- **Evidence source.** Each process (API, worker) runs its own `RuntimeProbeMonitor`
+  (`packages/application/src/runtime-probes.ts`). `QEYNOX_RUNTIME_VERIFIED_LIVE` and
+  `QEYNOX_RUNTIME_VERIFICATION_EVIDENCE` are no longer read; no default evidence exists.
+- **Two components, two records.** Hermes (`probeHermes`: `/health` reports `hermes-agent` + version,
+  the key is accepted, `/v1/toolsets` exposes no enabled toolset, the model is advertised) and Hatchet
+  (`probeHatchet`: `/api/ready`, `/api/v1/version`, `/api/v1/tenants/{sub}` answers for the token's own
+  tenant, engine gRPC accepts a TCP connection) are probed, stored and evaluated independently. One
+  failing never alters the other's evidence.
+- **Evidence record** (`RuntimeProbeEvidence`): component, unique `probe:<component>:<uuid>` reference,
+  probed endpoint origin, verified identity `{endpoint, deployment, version}` (success only),
+  outcome + failure class + scrubbed detail, startedAt/observedAt/expiresAt, duration, and an internal
+  configuration fingerprint (endpoint + credential digest) that is never serialized.
+- **Verification states** per component: `NOT_CONFIGURED`, `NOT_PROBED`, `VERIFIED`, `FAILED`, `STALE`
+  (at/after `expiresAt`, or observed in the future), `TARGET_CHANGED` (endpoint or credential changed).
+  Mapping: missing config or attestation → `BLOCKED`; `FAILED` → `BLOCKED` (`*_UNAVAILABLE`);
+  `NOT_PROBED`/`STALE`/`TARGET_CHANGED` → `UNVERIFIED` (`*_UNVERIFIED`); `VERIFIED` + attested →
+  `OPERATIONAL`. `canExecute` requires **both** components `OPERATIONAL`.
+- **Bounds.** `QEYNOX_RUNTIME_PROBE_TIMEOUT_MS` (5000, 250..15000) per component, enforced by the
+  monitor even if a probe ignores its abort signal; `QEYNOX_RUNTIME_PROBE_FRESHNESS_SECONDS` (120,
+  10..900); `QEYNOX_RUNTIME_PROBE_INTERVAL_SECONDS` (30, 5..freshness/2). Concurrent probes of one
+  component share one in-flight probe. A stale pooled connection is retried once inside the deadline.
+- **Restart.** Evidence is in memory only, so a restarted process starts `NOT_PROBED` and must probe.
+- **Gates.** `OperationExecutionService` now *requires* a runtime source and refuses `start` before
+  any beta allowance, attempt or outbox row is written (`NOT_CONFIGURED` → 503 when unproven,
+  `UNAVAILABLE` → 502 when a probe failed). The worker re-checks with `freshReadiness()` before each
+  step. `QEYNOX_QA_ALLOW_UNVERIFIED` is ignored when `NODE_ENV=production`.
+- **Exposure.** Customers (`/readiness` prerequisites, beta journey) get only
+  `{status, failure, checkedAt, expiresAt}` per component; operators (`/v1/platform/capabilities`)
+  get the full verification record. No credential appears in either (tested).
+- **Verification.** `pnpm qa:runtime-verification` (real sockets, PostgreSQL and HTTP against local
+  Hermes/Hatchet fixtures) and the extended `pnpm qa:runtime-readiness`.
 
 ## Consequences
 

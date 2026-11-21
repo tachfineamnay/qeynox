@@ -71,8 +71,13 @@ import {
 import { AppModule } from '../src/app.module';
 import { DomainExceptionFilter } from '../src/transport/domain-exception.filter';
 import { createIsolatedQaDatabase } from './qa-isolated-database';
+import { startVerifiedRuntime, type VerifiedRuntime } from './qa-runtime-fixtures';
 import { seedQaBetaGrant } from './qa-beta-fixture';
 import { VALID_PACK_REQUESTS, buildValidDeliverables } from './qa-pack-fixtures';
+import { makeRuntimeReadiness as qaRuntimeFixture } from '@qeynox/application';
+// A21.07 QA fixture (test infrastructure only): this suite exercises launches, not runtime probing.
+// The launch gate itself is proven against real probes in qa:runtime-verification.
+const qaVerifiedRuntime = () => qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:qa-beta-execution', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:qa-beta-execution' });
 
 // ── Assertion helpers ────────────────────────────────────────────────────────────────────────────
 let assertions = 0;
@@ -105,11 +110,8 @@ const PUBLISHED: Readonly<Record<BusinessPackDomain, { amountMinor: number; free
   'financial-analysis': { amountMinor: 34000, free: false }, content: { amountMinor: 18000, free: false },
 };
 
-const OPERATIONAL_RUNTIME: RuntimeReadiness = {
-  engine: { id: 'hermes', configured: true, missing: [], state: 'OPERATIONAL', verifiedLive: true, attested: true, evidence: 'qa-a21-03-fixture' },
-  orchestrator: { id: 'hatchet', configured: true, missing: [], state: 'OPERATIONAL', verifiedLive: true, attested: true, evidence: 'qa-a21-03-fixture' },
-  overallState: 'OPERATIONAL', canExecute: true,
-};
+// A21.07: built through the labelled QA builder so the fixture carries a full VERIFIED record.
+const OPERATIONAL_RUNTIME: RuntimeReadiness = qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-a21-03-fixture', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-a21-03-fixture' });
 
 /**
  * QA replay for the World Bank connector: the REAL tool definitions (input/output schemas, scopes,
@@ -167,6 +169,7 @@ async function main(): Promise<void> {
   delete process.env.QEYNOX_COMMERCE_MODE;
   let connection: ReturnType<typeof connectDatabase> | undefined;
   let app: INestApplication | undefined;
+  let runtime: VerifiedRuntime | undefined;
   try {
     // ── Group 0 · additive migration ─────────────────────────────────────────────────────────────
     const report = await runMigrations(qa.url);
@@ -199,6 +202,9 @@ async function main(): Promise<void> {
 
     // Workspaces are created as real users would (HTTP registration) and get budgets and grants as an
     // operator would issue them. The API reads QEYNOX_COMMERCE_MODE at boot: BETA_FREE here.
+    // A21.07: HTTP launches pass the runtime gate only on real probe evidence. Local Hermes/Hatchet
+    // fixtures (QA infrastructure) are probed by the API's own monitor; nothing is flagged as verified.
+    runtime = await startVerifiedRuntime();
     process.env.QEYNOX_COMMERCE_MODE = 'BETA_FREE';
     app = await NestFactory.create(AppModule, { logger: false, abortOnError: false });
     app.useGlobalFilters(new DomainExceptionFilter());
@@ -262,7 +268,7 @@ async function main(): Promise<void> {
       assert((await betaRowsFor(accepted.orderId!)).length === 0, 'PAYMENTS_DISABLED: no beta authorization for ' + pack);
       if (!PUBLISHED[pack].free) {
         const legacyOp = await store.getOperation(legacy.principal, mission.operationId);
-        await expectDomainError('PAYMENT_REQUIRED', () => new OperationExecutionService(store).start(legacy.principal, mission.operationId, legacyOp.version, 'qa-a2103-legacy-start-' + pack), 'priced PAYMENT_REQUIRED order cannot start');
+        await expectDomainError('PAYMENT_REQUIRED', () => new OperationExecutionService(store, qaVerifiedRuntime).start(legacy.principal, mission.operationId, legacyOp.version, 'qa-a2103-legacy-start-' + pack), 'priced PAYMENT_REQUIRED order cannot start');
         await expectDomainError('BETA_ACCESS_REQUIRED', () => disabledCommerce.authorizeBeta(legacy.principal, mission.operationId), 'conversion refused outside BETA_FREE', 'BETA_AUTHORIZATION_BETA_MODE_DISABLED');
       }
     }
@@ -369,7 +375,7 @@ async function main(): Promise<void> {
     /** Runs a launched mission to an APPROVED RESULT_REVIEW (no delivery). */
     const runToReview = async (actor: Principal, pack: BusinessPackDomain, operationId: ID, revisionId: ID, startKey: string) => {
       const before = await store.getOperation(actor, operationId);
-      await new OperationExecutionService(store).start(actor, operationId, before.version, startKey);
+      await new OperationExecutionService(store, qaVerifiedRuntime).start(actor, operationId, before.version, startKey);
       assert((await store.getOperation(actor, operationId)).status === 'RUNNING', pack + ': launched into RUNNING');
       const [firstAttempt] = await db.select().from(attempts).where(and(eq(attempts.operationId, operationId), eq(attempts.state, 'PENDING')));
       const attemptId = firstAttempt!.id as ID;
@@ -521,7 +527,7 @@ async function main(): Promise<void> {
       await revokeGrant(grantR.grantId, grantR.operatorUserId);
       const opBefore = await store.getOperation(tenantR.principal, notStarted.operationId);
       const denialsBefore = (await db.select().from(betaGrantEvents).where(and(eq(betaGrantEvents.workspaceId, tenantR.workspaceId), eq(betaGrantEvents.kind, 'LAUNCH_DENIED')))).length;
-      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store).start(tenantR.principal, notStarted.operationId, opBefore.version, 'qa-a2103-revoked-launch'), 'start after revocation', 'BETA_AUTHORIZATION_GRANT_REVOKED');
+      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store, qaVerifiedRuntime).start(tenantR.principal, notStarted.operationId, opBefore.version, 'qa-a2103-revoked-launch'), 'start after revocation', 'BETA_AUTHORIZATION_GRANT_REVOKED');
       const denials = await db.select().from(betaGrantEvents).where(and(eq(betaGrantEvents.workspaceId, tenantR.workspaceId), eq(betaGrantEvents.kind, 'LAUNCH_DENIED')));
       assert(denials.length === denialsBefore + 1 && denials.some(e => e.reason === 'BETA_AUTHORIZATION_GRANT_REVOKED' && e.grantId === grantR.grantId), 'the refused launch is recorded in the beta ledger against the revoked grant');
       assert((await store.getOperation(tenantR.principal, notStarted.operationId)).status === 'READY', 'the refused launch changed nothing');
@@ -541,7 +547,7 @@ async function main(): Promise<void> {
       const afterRegrant = (await http(base, '/v1/operations/' + notStarted.operationId + '/commercial', { headers: tenantR.headers })).body as unknown as { betaAuthorization: { valid: boolean; denial: string } };
       assert(afterRegrant.betaAuthorization.valid === false && afterRegrant.betaAuthorization.denial === 'GRANT_REVOKED', 'a later grant does not revive an authorization bound to a revoked grant');
       const opAgain = await store.getOperation(tenantR.principal, notStarted.operationId);
-      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store).start(tenantR.principal, notStarted.operationId, opAgain.version, 'qa-a2103-regrant-launch'), 'start under a new grant with an authorization bound to the revoked grant', 'BETA_AUTHORIZATION_GRANT_REVOKED');
+      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store, qaVerifiedRuntime).start(tenantR.principal, notStarted.operationId, opAgain.version, 'qa-a2103-regrant-launch'), 'start under a new grant with an authorization bound to the revoked grant', 'BETA_AUTHORIZATION_GRANT_REVOKED');
       // Retry of a failed beta mission: the new grant passes the A21.02 launch gate, so only the A21.03
       // authorization re-check (bound to the revoked grant) can refuse it — and it must.
       const reviewedOp = await store.getOperation(tenantR.principal, reviewed.operationId);
@@ -580,7 +586,7 @@ async function main(): Promise<void> {
       const [stored] = await db.select().from(betaGrants).where(eq(betaGrants.id, grantE.grantId));
       assert(stored!.status === 'ACTIVE' && stored!.expiresAt.getTime() < Date.now(), 'grant still stored ACTIVE but past its expiry');
       const op = await store.getOperation(tenantE.principal, notStarted.operationId);
-      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store).start(tenantE.principal, notStarted.operationId, op.version, 'qa-a2103-expired-launch'), 'start after expiry', 'BETA_AUTHORIZATION_GRANT_EXPIRED');
+      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store, qaVerifiedRuntime).start(tenantE.principal, notStarted.operationId, op.version, 'qa-a2103-expired-launch'), 'start after expiry', 'BETA_AUTHORIZATION_GRANT_EXPIRED');
       await expectDomainError('BETA_ACCESS_REQUIRED', () => new ResultDeliveryService(store, resolveCommercePolicy('BETA_FREE')).deliver(tenantE.principal, reviewed.operationId, review.documentId, review.approvalId), 'delivery after expiry', 'BETA_AUTHORIZATION_GRANT_EXPIRED');
       assert((await db.select().from(resultDocuments).where(and(eq(resultDocuments.operationId, reviewed.operationId), eq(resultDocuments.state, 'DELIVERABLE')))).length === 0, 'no DELIVERABLE document after an expired grant');
       const view = (await http(base, '/v1/operations/' + notStarted.operationId + '/commercial', { headers: tenantE.headers })).body as unknown as { executionAuthorized: boolean; betaAuthorization: { valid: boolean; denial: string } };
@@ -610,7 +616,7 @@ async function main(): Promise<void> {
       })));
       const opAfter = await store.getOperation(tenantP.principal, mission.operationId);
       assert(opAfter.currentRevisionId === revised.revision.id && revised.revision.id !== mission.revisionId, 'plan revised to a new revision');
-      await expectDomainError('PAYMENT_REQUIRED', () => new OperationExecutionService(store).start(tenantP.principal, mission.operationId, opAfter.version, 'qa-a2103-revised-launch'), 'start after the plan changed (revision-1 authorization does not carry over)');
+      await expectDomainError('PAYMENT_REQUIRED', () => new OperationExecutionService(store, qaVerifiedRuntime).start(tenantP.principal, mission.operationId, opAfter.version, 'qa-a2103-revised-launch'), 'start after the plan changed (revision-1 authorization does not carry over)');
       await expectDomainError('CONFLICT', () => betaCommerce.accept(tenantP.principal, staleQuote.id, 'qa-a2103-stale-quote'), 'accepting a quote of the superseded revision');
       const view = (await http(base, '/v1/operations/' + mission.operationId + '/commercial', { headers: tenantP.headers })).body as unknown as { revisionId: string; order: unknown; executionAuthorized: boolean; betaAuthorization: unknown };
       assert(view.revisionId === revised.revision.id && view.order === null && view.executionAuthorized === false && view.betaAuthorization === null, 'GET commercial for the new revision shows no order and no authorization');
@@ -627,15 +633,15 @@ async function main(): Promise<void> {
       assert(reaccepted.state === 'BETA_AUTHORIZED' && newRow!.revisionId === revised.revision.id && newRow!.scopeHash === newQuote.scopeHash, 'a new acceptance creates a new authorization bound to the new revision and scope');
       // Tampering: a binding that no longer matches the accepted quote is refused.
       await db.update(betaExecutionAuthorizations).set({ scopeHash: 'tampered-' + newRow!.scopeHash }).where(eq(betaExecutionAuthorizations.id, newRow!.id));
-      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store).start(tenantP.principal, mission.operationId, opAfter.version, 'qa-a2103-tampered-launch'), 'start with a tampered scope hash', 'BETA_AUTHORIZATION_SCOPE_CHANGED');
+      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store, qaVerifiedRuntime).start(tenantP.principal, mission.operationId, opAfter.version, 'qa-a2103-tampered-launch'), 'start with a tampered scope hash', 'BETA_AUTHORIZATION_SCOPE_CHANGED');
       await db.update(betaExecutionAuthorizations).set({ scopeHash: newRow!.scopeHash }).where(eq(betaExecutionAuthorizations.id, newRow!.id));
       await db.update(betaExecutionAuthorizations).set({ listAmountMinor: 1 }).where(eq(betaExecutionAuthorizations.id, newRow!.id));
-      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store).start(tenantP.principal, mission.operationId, opAfter.version, 'qa-a2103-tampered-price'), 'start with a tampered list price', 'BETA_AUTHORIZATION_AUTHORIZATION_MISMATCH');
+      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store, qaVerifiedRuntime).start(tenantP.principal, mission.operationId, opAfter.version, 'qa-a2103-tampered-price'), 'start with a tampered list price', 'BETA_AUTHORIZATION_AUTHORIZATION_MISMATCH');
       await db.update(betaExecutionAuthorizations).set({ listAmountMinor: newRow!.listAmountMinor }).where(eq(betaExecutionAuthorizations.id, newRow!.id));
       let rejected = false;
       try { await db.update(betaExecutionAuthorizations).set({ amountDueNowMinor: 100 }).where(eq(betaExecutionAuthorizations.id, newRow!.id)); } catch { rejected = true; }
       assert(rejected, 'the database refuses a non-zero amount due now (CHECK raas_beta_authorizations_amount_due_zero)');
-      const launched = await new OperationExecutionService(store).start(tenantP.principal, mission.operationId, opAfter.version, 'qa-a2103-revised-ok');
+      const launched = await new OperationExecutionService(store, qaVerifiedRuntime).start(tenantP.principal, mission.operationId, opAfter.version, 'qa-a2103-revised-ok');
       assert(!launched.alreadyAccepted && (await store.getOperation(tenantP.principal, mission.operationId)).status === 'RUNNING', 'with intact bindings the new revision launches');
     }
     pass('changed plan: the old authorization does not carry over (REVISION_CHANGED), stale quotes CONFLICT, the new revision needs a new acceptance and gets a new bound authorization; tampered scope/price refused; DB refuses amount due ≠ 0');
@@ -655,7 +661,7 @@ async function main(): Promise<void> {
       const accepted = (await acceptOverHttp(tenantA, target, quote.id)).body as unknown as { orderId: string; state: string };
       assert(accepted.state === 'BETA_AUTHORIZED', 'tenant A accepts its own quote (BETA_AUTHORIZED)');
       const opA = await store.getOperation(tenantA.principal, target.operationId);
-      await expectDomainError('NOT_FOUND', () => new OperationExecutionService(store).start(tenantB.principal, target.operationId, opA.version, 'qa-a2103-cross-start'), 'tenant B cannot start tenant A beta mission');
+      await expectDomainError('NOT_FOUND', () => new OperationExecutionService(store, qaVerifiedRuntime).start(tenantB.principal, target.operationId, opA.version, 'qa-a2103-cross-start'), 'tenant B cannot start tenant A beta mission');
       await expectDomainError('NOT_FOUND', () => betaCommerce.assertExecutionAllowed(tenantB.principal, target.operationId, target.revisionId), 'tenant B cannot probe tenant A execution authorization');
       const paymentB = await http(base, '/v1/operations/' + target.operationId + '/payment', { headers: tenantB.headers });
       assert(paymentB.status === 404, 'tenant B cannot read tenant A payment view (404)');
@@ -723,13 +729,13 @@ async function main(): Promise<void> {
       assert(accepted.state === 'BETA_AUTHORIZED', 'mode fixture: BETA_AUTHORIZED under BETA_FREE');
       process.env.QEYNOX_COMMERCE_MODE = 'PAYMENTS_DISABLED';
       const op = await store.getOperation(tenantC.principal, mission.operationId);
-      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store).start(tenantC.principal, mission.operationId, op.version, 'qa-a2103-disabled-launch'), 'start of a beta order under PAYMENTS_DISABLED', 'BETA_AUTHORIZATION_BETA_MODE_DISABLED');
+      await expectDomainError('BETA_ACCESS_REQUIRED', () => new OperationExecutionService(store, qaVerifiedRuntime).start(tenantC.principal, mission.operationId, op.version, 'qa-a2103-disabled-launch'), 'start of a beta order under PAYMENTS_DISABLED', 'BETA_AUTHORIZATION_BETA_MODE_DISABLED');
       const view = await new CommerceService(store).view(tenantC.principal, mission.operationId);
       assert(view.executionAuthorized === false && view.betaAuthorization?.denial === 'BETA_MODE_DISABLED', 'commercial view under PAYMENTS_DISABLED: authorization suspended');
       const readiness = await new PlanReadService(store, () => OPERATIONAL_RUNTIME).readiness(tenantC.principal, mission.operationId);
       assert(!readiness.canStart && readiness.blockers.some(b => b.code === 'BETA_AUTHORIZATION_INVALID' && b.detail.includes('BETA_MODE_DISABLED')), 'readiness under PAYMENTS_DISABLED: BETA_AUTHORIZATION_INVALID');
       process.env.QEYNOX_COMMERCE_MODE = 'BETA_FREE';
-      const relaunch = await new OperationExecutionService(store).start(tenantC.principal, mission.operationId, op.version, 'qa-a2103-reenabled-launch');
+      const relaunch = await new OperationExecutionService(store, qaVerifiedRuntime).start(tenantC.principal, mission.operationId, op.version, 'qa-a2103-reenabled-launch');
       assert(!relaunch.alreadyAccepted, 'back in BETA_FREE the same authorization launches again');
     }
     pass('mode switched to PAYMENTS_DISABLED: existing beta authorizations stop authorizing execution (fail closed) and resume in BETA_FREE');
@@ -745,9 +751,9 @@ async function main(): Promise<void> {
         const quote = await quoteOverHttp(tenantQ, mission);
         assert(((await acceptOverHttp(tenantQ, mission, quote.id)).body as { state?: string }).state === 'BETA_AUTHORIZED', 'quota fixture: BETA_AUTHORIZED');
       }
-      await new OperationExecutionService(store).start(tenantQ.principal, first.operationId, (await store.getOperation(tenantQ.principal, first.operationId)).version, 'qa-a2103-quota-1');
+      await new OperationExecutionService(store, qaVerifiedRuntime).start(tenantQ.principal, first.operationId, (await store.getOperation(tenantQ.principal, first.operationId)).version, 'qa-a2103-quota-1');
       const secondOp = await store.getOperation(tenantQ.principal, second.operationId);
-      await expectDomainError('BETA_LIMIT_REACHED', () => new OperationExecutionService(store).start(tenantQ.principal, second.operationId, secondOp.version, 'qa-a2103-quota-2'), 'second beta mission beyond the mission quota', 'MISSION_QUOTA_REACHED');
+      await expectDomainError('BETA_LIMIT_REACHED', () => new OperationExecutionService(store, qaVerifiedRuntime).start(tenantQ.principal, second.operationId, secondOp.version, 'qa-a2103-quota-2'), 'second beta mission beyond the mission quota', 'MISSION_QUOTA_REACHED');
       // Budget: a beta-authorized order without a workspace budget policy cannot start.
       const tenantNoBudget = await register('tenant-no-budget', { budget: false });
       await seedQaBetaGrant(db, tenantNoBudget.workspaceId);
@@ -755,14 +761,14 @@ async function main(): Promise<void> {
       const quote = await quoteOverHttp(tenantNoBudget, mission);
       assert(((await acceptOverHttp(tenantNoBudget, mission, quote.id)).body as { state?: string }).state === 'BETA_AUTHORIZED', 'budget fixture: BETA_AUTHORIZED');
       const noBudgetOp = await store.getOperation(tenantNoBudget.principal, mission.operationId);
-      await expectDomainError('NOT_CONFIGURED', () => new OperationExecutionService(store).start(tenantNoBudget.principal, mission.operationId, noBudgetOp.version, 'qa-a2103-no-budget'), 'beta order without a budget policy');
+      await expectDomainError('NOT_CONFIGURED', () => new OperationExecutionService(store, qaVerifiedRuntime).start(tenantNoBudget.principal, mission.operationId, noBudgetOp.version, 'qa-a2103-no-budget'), 'beta order without a budget policy');
       const readiness = await new PlanReadService(store, () => OPERATIONAL_RUNTIME, resolveCommercePolicy('BETA_FREE')).readiness(tenantNoBudget.principal, mission.operationId);
       assert(!readiness.canStart && readiness.blockers.some(b => b.code === 'BUDGET_NOT_CONFIGURED'), 'readiness: BUDGET_NOT_CONFIGURED despite a valid beta authorization');
       // ToolBroker allowlist and consent: a launched beta mission still needs them.
       const running: { operationId: ID; revisionId: ID; offerId: string } | undefined = await requestMission(tenantA, 'seo');
       const quoteRun = await quoteOverHttp(tenantA, running!);
       await acceptOverHttp(tenantA, running!, quoteRun.id);
-      await new OperationExecutionService(store).start(tenantA.principal, running!.operationId, (await store.getOperation(tenantA.principal, running!.operationId)).version, 'qa-a2103-broker-start');
+      await new OperationExecutionService(store, qaVerifiedRuntime).start(tenantA.principal, running!.operationId, (await store.getOperation(tenantA.principal, running!.operationId)).version, 'qa-a2103-broker-start');
       const [attempt] = await db.select().from(attempts).where(and(eq(attempts.operationId, running!.operationId), eq(attempts.state, 'PENDING')));
       const attemptId = attempt!.id as ID;
       await expectDomainError('DENIED', () => broker.invoke(callFor('seo', running!.operationId, running!.revisionId, attemptId), permissionFor(tenantA.principal, 'seo', running!.operationId, running!.revisionId, attemptId, { consentScopes: [] })), 'tool call without consent on a beta mission');
@@ -795,6 +801,7 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     console.error('Beta execution QA FAILED after ' + String(assertions) + ' assertions:', error instanceof Error ? error.stack ?? error.message : error);
   } finally {
+    await runtime?.stop().catch(() => undefined);
     await app?.close().catch(() => undefined);
     await connection?.pool.end().catch(() => undefined);
     await qa.drop().then(() => console.log('QA database dropped: ' + qa.name)).catch(error => console.error('QA database drop failed:', error));

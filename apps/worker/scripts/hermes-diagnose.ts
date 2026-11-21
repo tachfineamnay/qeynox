@@ -26,7 +26,8 @@ async function main(): Promise<number> {
   console.log('  private origin        : ' + (privateOrigin ? 'set' : 'not set'));
   console.log('  isolation attestation : ' + (nativeToolsIsolated ? 'set (operator claim, not proof)' : 'NOT set'));
   console.log('  egress attestation    : ' + (egressAttested ? 'set (operator claim, not proof)' : 'NOT set'));
-  console.log('  runtime verified-live : ' + (process.env.QEYNOX_RUNTIME_VERIFIED_LIVE === 'true' ? 'set' : 'NOT set'));
+  // A21.07: live verification is decided by the API/worker probes at runtime, never by a switch.
+  console.log('  runtime verification  : decided by live probes in the API and worker (no environment switch)');
   console.log('');
 
   if (!baseUrl) {

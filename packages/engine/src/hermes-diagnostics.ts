@@ -22,6 +22,11 @@ export interface HermesEndpointConfig {
   readonly apiKey: string | undefined;
   readonly privateOrigin?: string;
   readonly timeoutMs?: number;
+  /**
+   * MISSION A21.07: an external deadline. When it aborts, every outstanding request is cancelled, so
+   * a caller can bound the whole probe (not only each request) to one time budget.
+   */
+  readonly signal?: AbortSignal;
 }
 
 export interface HermesDiagnosticReport {
@@ -31,6 +36,8 @@ export interface HermesDiagnosticReport {
   readonly runtimeVersion: string | null;
   readonly platform: string | null;
   readonly authenticated: boolean;
+  /** MISSION A21.07: true only when Hermes answered the authenticated inventory with 401/403. */
+  readonly authRejected?: boolean;
   /** Advertised model ids from `/v1/models` (no credentials, no upstream keys). */
   readonly models: readonly string[] | null;
   /** Configured model, as the deployment advertises it. */
@@ -71,7 +78,8 @@ export async function probeHermes(config: HermesEndpointConfig & { model?: strin
   }
   const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-  const health = await get(healthUrl, undefined, timeoutMs);
+  const signal = config.signal;
+  const health = await get(healthUrl, undefined, timeoutMs, signal);
   if (health.kind !== 'ok') {
     return {
       ...emptyReport([describeFailure('health', health)]),
@@ -93,9 +101,10 @@ export async function probeHermes(config: HermesEndpointConfig & { model?: strin
   }
 
   const modelsUrl = new URL('v1/models', origin + '/').href;
-  const models = await get(modelsUrl, config.apiKey, timeoutMs);
+  const models = await get(modelsUrl, config.apiKey, timeoutMs, signal);
   let modelIds: string[] | null = null;
   let authenticated = false;
+  let authRejected = false;
   if (models.kind === 'ok') {
     authenticated = true;
     const body = models.json as { data?: ReadonlyArray<{ id?: unknown }> } | null;
@@ -103,13 +112,14 @@ export async function probeHermes(config: HermesEndpointConfig & { model?: strin
       ? body.data.flatMap(entry => (typeof entry?.id === 'string' ? [entry.id] : []))
       : [];
   } else if (models.kind === 'status' && (models.status === 401 || models.status === 403)) {
+    authRejected = true;
     failures.push('Hermes rejected the API key (HTTP ' + models.status + ')');
   } else {
     failures.push(describeFailure('model inventory', models));
   }
 
   const toolsetsUrl = new URL('v1/toolsets', origin + '/').href;
-  const toolsets = await get(toolsetsUrl, config.apiKey, timeoutMs);
+  const toolsets = await get(toolsetsUrl, config.apiKey, timeoutMs, signal);
   let toolsetState: HermesToolsetState[] | null = null;
   let nativeToolsIsolated: boolean | null = null;
   if (toolsets.kind === 'ok') {
@@ -137,6 +147,7 @@ export async function probeHermes(config: HermesEndpointConfig & { model?: strin
     runtimeVersion,
     platform,
     authenticated,
+    authRejected,
     models: modelIds,
     activeModel,
     activeModelAdvertised: modelIds && activeModel ? modelIds.includes(activeModel) : null,
@@ -158,14 +169,29 @@ type ProbeResult =
   | { readonly kind: 'status'; readonly status: number; readonly json: unknown }
   | { readonly kind: 'error'; readonly detail: string };
 
-async function get(url: string, apiKey: string | undefined, timeoutMs: number): Promise<ProbeResult> {
+/**
+ * A pooled keep-alive connection to a Hermes that has since restarted fails on first use. That says
+ * nothing about the deployment, so the idempotent GET is retried once on a fresh connection, inside the
+ * same deadline. Every other failure is reported as observed.
+ */
+const STALE_CONNECTION_CODES = new Set(['UND_ERR_SOCKET', 'ECONNRESET', 'UND_ERR_CLOSED', 'EPIPE']);
+
+function causeCode(error: unknown): string | null {
+  const cause = error instanceof Error ? (error as Error & { cause?: { code?: unknown } }).cause : undefined;
+  return cause && typeof cause.code === 'string' ? cause.code : null;
+}
+
+async function get(url: string, apiKey: string | undefined, timeoutMs: number, signal?: AbortSignal): Promise<ProbeResult> {
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      redirect: 'error',
-      signal: AbortSignal.timeout(timeoutMs),
-      headers: apiKey ? { authorization: 'Bearer ' + apiKey } : {},
-    });
+    const deadline = signal ? AbortSignal.any([AbortSignal.timeout(timeoutMs), signal]) : AbortSignal.timeout(timeoutMs);
+    const init: RequestInit = { method: 'GET', redirect: 'error', signal: deadline, headers: apiKey ? { authorization: 'Bearer ' + apiKey } : {} };
+    let response: Response;
+    try {
+      response = await fetch(url, init);
+    } catch (error: unknown) {
+      if (deadline.aborted || !STALE_CONNECTION_CODES.has(causeCode(error) ?? '')) throw error;
+      response = await fetch(url, init);
+    }
     const raw = await response.text();
     let json: unknown = null;
     try { json = raw.length ? JSON.parse(raw) : null; } catch { json = null; }

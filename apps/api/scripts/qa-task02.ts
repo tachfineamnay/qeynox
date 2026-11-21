@@ -23,6 +23,10 @@ import { BudgetService, ClaimsService, CommerceService, ConfigurationService, Op
 import { DomainError, newId, type ID, type Principal } from '@qeynox/domain';
 import { createIsolatedQaDatabase } from './qa-isolated-database';
 import { seedQaBetaGrant } from './qa-beta-fixture';
+import { makeRuntimeReadiness as qaRuntimeFixture } from '@qeynox/application';
+// A21.07 QA fixture (test infrastructure only): this suite exercises launches, not runtime probing.
+// The launch gate itself is proven against real probes in qa:runtime-verification.
+const qaVerifiedRuntime = () => qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:qa-task02', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:qa-task02' });
 
 let assertions = 0;
 
@@ -336,7 +340,7 @@ async function main(): Promise<void> {
     const planning = new PlanningService(store);
     const budgets = new BudgetService(store);
     const commerce = new CommerceService(store);
-    const execution = new OperationExecutionService(store);
+    const execution = new OperationExecutionService(store, qaVerifiedRuntime);
 
     const ownerUserId = randomUUID(), memberUserId = randomUUID(), outsiderUserId = randomUUID(), workspaceId = randomUUID();
     await db.insert(identityUsers).values([

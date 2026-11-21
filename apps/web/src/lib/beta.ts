@@ -1,5 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
+import { optionalRuntimeSummary } from './runtime-copy';
 import { api, ApiError } from './api';
 
 /**
@@ -51,6 +52,9 @@ export const betaJourneySchema = z.object({
   runtime: z.object({
     canExecute: z.boolean(),
     state: z.enum(['CONFIGURED', 'OPERATIONAL', 'BLOCKED', 'UNVERIFIED']),
+    // A21.07: each component's own live verification (absent reads as NOT_PROBED, never verified).
+    engine: optionalRuntimeSummary,
+    orchestrator: optionalRuntimeSummary,
   }),
 }).superRefine((value, ctx) => {
   // Cross-field coherence: a waiver may only apply when the free beta is configured, and a launch

@@ -1,6 +1,8 @@
 import 'server-only';
 import { z } from 'zod';
 
+import { optionalRuntimeSummary } from './runtime-copy';
+
 export const operationalStateSchema = z.enum(['CONFIGURED', 'OPERATIONAL', 'BLOCKED', 'UNVERIFIED']);
 
 /** Mirrors GET /v1/operations/:id/plan. Read-only projection of persisted state. */
@@ -122,8 +124,9 @@ export const readinessSchema = z.object({
       ceiling: z.number().int().nullable(), spent: z.number().int().nullable(), reserved: z.number().int().nullable(),
     }),
     permission: z.object({ ok: z.boolean(), role: z.string().nullable() }),
-    engine: z.object({ ok: z.boolean(), runtime: z.string(), missing: z.array(z.string()), state: operationalStateSchema.optional().default('BLOCKED'), verifiedLive: z.boolean().optional().default(false), attested: z.boolean().optional().default(false) }),
-    orchestrator: z.object({ ok: z.boolean(), runtime: z.string(), missing: z.array(z.string()), state: operationalStateSchema.optional().default('BLOCKED'), verifiedLive: z.boolean().optional().default(false), attested: z.boolean().optional().default(false) }),
+    // A21.07: `verification` is the component's own live-check summary; absent reads as NOT_PROBED.
+    engine: z.object({ ok: z.boolean(), runtime: z.string(), missing: z.array(z.string()), state: operationalStateSchema.optional().default('BLOCKED'), verifiedLive: z.boolean().optional().default(false), attested: z.boolean().optional().default(false), verification: optionalRuntimeSummary }),
+    orchestrator: z.object({ ok: z.boolean(), runtime: z.string(), missing: z.array(z.string()), state: operationalStateSchema.optional().default('BLOCKED'), verifiedLive: z.boolean().optional().default(false), attested: z.boolean().optional().default(false), verification: optionalRuntimeSummary }),
     profile: z.object({ ok: z.boolean(), missing: z.array(z.string()) }),
     provider: z.object({ ok: z.boolean(), missing: z.array(z.string()) }),
     policy: z.object({ ok: z.boolean(), missing: z.array(z.string()) }).optional().default({ ok: true, missing: [] }),

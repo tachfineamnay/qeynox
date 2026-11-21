@@ -17,8 +17,9 @@
  *   6. The read is side-effect free: no beta grant/event row and no audit row is written by it.
  *
  * HONEST BOUNDARY:
- * - Runtime readiness is the real `apiRuntimeReadiness()` reading QA environment values (no Hermes or
- *   Hatchet is contacted by the readiness check; none runs). Expiry is simulated by moving stored
+ * - Runtime readiness is the real `apiRuntimeReadiness()`: since A21.07 it is OPERATIONAL only on fresh
+ *   probe evidence, so local Hermes/Hatchet QA fixtures are probed by the API's own monitor (no real
+ *   deployment is contacted). Expiry is simulated by moving stored
  *   timestamps into the past (the code under test reads the real clock), as in qa:beta-access.
  * - Missions are admitted through the real OperationExecutionService; no worker runs. Provider spend
  *   is reserved through the real BudgetService with QA amounts.
@@ -42,6 +43,12 @@ import { AppModule } from '../src/app.module';
 import { DomainExceptionFilter } from '../src/transport/domain-exception.filter';
 import { hashPassword } from '../src/auth/password';
 import { createIsolatedQaDatabase } from './qa-isolated-database';
+import { runtimeEnvironment, startVerifiedRuntime, type VerifiedRuntime } from './qa-runtime-fixtures';
+import { restartApiRuntimeMonitor } from '../src/operations/runtime-readiness';
+import { makeRuntimeReadiness as qaRuntimeFixture } from '@qeynox/application';
+// A21.07 QA fixture (test infrastructure only): this suite exercises launches, not runtime probing.
+// The launch gate itself is proven against real probes in qa:runtime-verification.
+const qaVerifiedRuntime = () => qaRuntimeFixture({ engineVerifiedLive: true, engineEvidence: 'qa-fixture:qa-beta-journey', orchestratorVerifiedLive: true, orchestratorEvidence: 'qa-fixture:qa-beta-journey' });
 
 let assertions = 0;
 let groups = 0;
@@ -63,26 +70,20 @@ async function http(base: string, path: string, init: { json?: unknown; headers?
   return { status: response.status, body: parsed as Record<string, unknown> };
 }
 
+interface RuntimeSummary { status: string; failure: string | null; checkedAt: string | null; expiresAt: string | null }
 interface Journey {
   workspaceId: string; state: string; canLaunch: boolean;
   freeBeta: { enabled: boolean; mode: string; cardRequired: boolean; paymentsAvailable: boolean; amountDueTodayMinor: number; waiverPercent: number | null; waiverApplies: boolean };
   account: { status: string; expiresAt: string | null; invitationExpiresAt: string | null; activatedAt: string | null; missionQuota: number | null; missionsUsed: number | null; missionsRemaining: number | null; activeMissions: number; concurrentLimit: number | null; providerBudgetMinor: number | null; providerBudgetRemainingMinor: number | null; currency: string | null; quotaReason: string | null; canActivate: boolean };
-  runtime: { canExecute: boolean; state: string };
+  runtime: { canExecute: boolean; state: string; engine: RuntimeSummary; orchestrator: RuntimeSummary };
 }
 
-const RUNTIME_ENV = {
-  HERMES_API_BASE_URL: 'https://hermes.qa.example.invalid',
-  HERMES_API_KEY: 'qa-a2104-not-a-real-key',
-  HERMES_NATIVE_TOOLS_ISOLATED: 'true',
-  QEYNOX_NETWORK_POLICY_ATTESTED: 'true',
-  HATCHET_CLIENT_TOKEN: 'qa-a2104-not-a-real-token',
-  QEYNOX_RUNTIME_VERIFIED_LIVE: 'true',
-  QEYNOX_RUNTIME_VERIFICATION_EVIDENCE: 'qa-a2104-fixture',
-} as const;
-const setRuntime = (operational: boolean) => {
-  for (const [key, value] of Object.entries(RUNTIME_ENV)) {
-    if (operational) process.env[key] = value; else delete process.env[key];
-  }
+// A21.07: the runtime is operational only on real probe evidence. `runtime` holds local Hermes/Hatchet
+// fixtures (QA infrastructure) that the API's own monitor probes; `setRuntime(true)` re-probes them.
+let runtime: VerifiedRuntime | undefined;
+const setRuntime = async (operational: boolean) => {
+  if (!runtime) return;
+  if (operational) await runtime.ensure(); else runtime.unset();
 };
 
 const platformPassword = 'beta-journey-qa-passphrase';
@@ -127,7 +128,8 @@ async function main(): Promise<void> {
   process.env.DATABASE_URL = qa.url;
   process.env.QEYNOX_ALLOW_REGISTRATION = 'true';
   process.env.QEYNOX_COMMERCE_MODE = 'BETA_FREE';
-  setRuntime(false);
+  runtime = await startVerifiedRuntime();
+  await setRuntime(false);
   let connection: ReturnType<typeof connectDatabase> | undefined;
   let app: INestApplication | undefined;
   let disabledApp: INestApplication | undefined;
@@ -184,7 +186,7 @@ async function main(): Promise<void> {
     for (const owner of [a, b, c, d]) await configuration.apply(owner.principal, { idempotencyKey: 'qa-a2104-config-' + owner.workspaceId.slice(0, 8), entries } as never);
     const planning = new PlanningService(store);
     const commerce = new CommerceService(store);
-    const execution = new OperationExecutionService(store);
+    const execution = new OperationExecutionService(store, qaVerifiedRuntime);
     const budgets = new BudgetService(store);
     const launch = async (owner: Principal, label: string) => {
       const operation = await store.createOperation(owner, 'QA A21.04 ' + label, 'QA A21.04 beta journey objective ' + label, []);
@@ -263,13 +265,18 @@ async function main(): Promise<void> {
     assert(runtimeDown.account.status === 'ACTIVE' && runtimeDown.freeBeta.waiverApplies === true && runtimeDown.account.activatedAt !== null, 'the account is ACTIVE and the waiver applies even while the runtime is down');
     constantFacts(runtimeDown, true);
     await sameAsGrant(runtimeDown, grantA.grant.grantId);
-    process.env.QEYNOX_RUNTIME_VERIFIED_LIVE = 'false';
-    for (const [key, value] of Object.entries(RUNTIME_ENV)) if (key !== 'QEYNOX_RUNTIME_VERIFIED_LIVE' && key !== 'QEYNOX_RUNTIME_VERIFICATION_EVIDENCE') process.env[key] = value;
+    // Configured, attested and flagged by the operator, but never probed by this process: unverified.
+    Object.assign(process.env, runtimeEnvironment(runtime!.hermes, runtime!.hatchet), { QEYNOX_RUNTIME_VERIFIED_LIVE: 'true', QEYNOX_RUNTIME_VERIFICATION_EVIDENCE: 'qa-a2104-operator-flag' });
+    restartApiRuntimeMonitor();
     const unverified = await journey(a.headers);
     assert(unverified.state === 'RUNTIME_UNAVAILABLE' && unverified.runtime.state !== 'OPERATIONAL', 'a configured but unverified runtime is still RUNTIME_UNAVAILABLE (never optimistic)');
-    setRuntime(true);
+    assert(unverified.runtime.engine.status === 'NOT_PROBED' && unverified.runtime.orchestrator.status === 'NOT_PROBED', 'A21.07: the operator flag QEYNOX_RUNTIME_VERIFIED_LIVE proves nothing (both components NOT_PROBED)');
+    delete process.env.QEYNOX_RUNTIME_VERIFIED_LIVE;
+    delete process.env.QEYNOX_RUNTIME_VERIFICATION_EVIDENCE;
+    await setRuntime(true);
     const active = await journey(a.headers);
     assert(active.state === 'ACTIVE' && active.canLaunch === true && active.runtime.state === 'OPERATIONAL', 'active grant + operational runtime is ACTIVE');
+    assert(active.runtime.engine.status === 'VERIFIED' && active.runtime.orchestrator.status === 'VERIFIED' && active.runtime.engine.expiresAt !== null, 'A21.07: ACTIVE only with both components VERIFIED by a fresh probe');
     assert(active.account.missionsRemaining === 3 && active.account.missionQuota === 3 && active.account.activeMissions === 0, 'ACTIVE reports the full allowance');
     constantFacts(active, true);
     await sameAsGrant(active, grantA.grant.grantId);
@@ -327,9 +334,9 @@ async function main(): Promise<void> {
     pass('NOT_CONFIGURED: PAYMENTS_DISABLED reports no free beta and no waiver, still no card and nothing due');
 
     console.log('Beta journey QA PASSED: ' + String(groups) + ' groups, ' + String(assertions) + ' assertions in ' + String(Math.round((Date.now() - startedAt) / 1000)) + 's');
-    console.log('BOUNDARY: real PostgreSQL, real services and HTTP API; runtime readiness from QA environment values (nothing contacted); expiry by moving stored timestamps; no worker, provider or browser ran.');
+    console.log('BOUNDARY: real PostgreSQL, real services and HTTP API; runtime readiness from real probes of local Hermes/Hatchet QA fixtures (no real deployment contacted); expiry by moving stored timestamps; no worker, provider or browser ran.');
   } finally {
-    setRuntime(false);
+    await runtime?.stop().catch(() => undefined);
     await app?.close().catch(() => undefined);
     await disabledApp?.close().catch(() => undefined);
     await connection?.close().catch(() => undefined);
