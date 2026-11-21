@@ -73,10 +73,15 @@ export const documentIngestJobs = pgTable('document_ingest_jobs', {
   state: text('state').$type<IngestJobState>().notNull().default('PENDING'),
   attempts: integer('attempts').notNull().default(0),
   lastErrorCode: text('last_error_code'),
+  // P11 (migration 0029): durable processing lease. leaseToken is a per-claim fencing token.
+  leaseOwner: text('lease_owner'),
+  leaseToken: text('lease_token'),
+  leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => [
   index('document_ingest_jobs_state_idx').on(t.state, t.updatedAt),
+  index('document_ingest_jobs_lease_idx').on(t.leaseExpiresAt).where(sql`${t.state} = 'PROCESSING'`),
   check('document_ingest_jobs_state_check', sql`${t.state} IN ('PENDING', 'PROCESSING', 'DONE', 'FAILED')`),
 ]);
 

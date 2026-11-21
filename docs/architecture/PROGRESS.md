@@ -1,5 +1,48 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION P11: stuck document ingest jobs fixed (PR, branch `arena/236acc84-qeynox`, off `3b18d58`)
+
+**Defect.** A `document_ingest_jobs` row claimed as PROCESSING stayed there forever if the worker
+crashed before completion, leaving the document PROCESSING. Chunks were also written row by row
+before the document flipped to AVAILABLE, outside any transaction.
+
+**Fix (existing lifecycle, no new engine).**
+- **Migration `0029_document_ingest_leases.sql` (additive):** `lease_owner`, `lease_token` and
+  `lease_expires_at`, plus a partial index on PROCESSING leases.
+- **Claim.** One `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` takes PENDING jobs and
+  abandoned ones. A job is abandoned when its PROCESSING lease has expired, or when a legacy lease-less
+  row is older than one lease. Each claim sets a fresh fencing token and counts as an attempt.
+- **Single owner.** Lease renewal, finalize and failure writes are all conditioned on
+  `state = PROCESSING AND lease_token = <claim token>`. A worker that lost its lease writes nothing.
+- **Lease expiry.** `QEYNOX_DOCUMENT_INGEST_LEASE_MS` (default 5 min, clamped 30 s – 30 min). The lease is
+  renewed after the read, after extraction and after each embeddings batch.
+- **Bounded retries.** A failure with attempts left returns the job to PENDING. The 3rd failed attempt
+  is terminal: job FAILED and document FAILED, with leftover chunks removed. An abandoned job with
+  attempts exhausted becomes FAILED `LEASE_EXPIRED` instead of being re-claimed forever. A vanished or
+  non-PROCESSING document is terminal at once. A legacy job whose document already reached AVAILABLE is
+  closed as DONE.
+- **Atomic, idempotent finalize.** Chunks, and any embeddings, are computed in memory. Then one
+  transaction re-verifies the lease, locks the PROCESSING document, deletes existing chunks, inserts the
+  new ones, sets AVAILABLE with `chunkCount`, and sets the job DONE with the lease cleared. A partially
+  processed document can no longer become AVAILABLE.
+- **Re-enqueue.** `completeUpload` re-enqueueing clears any lease, which fences a stale holder.
+- **Unchanged.** Storage, extraction, chunking and the optional embeddings are kept as they were.
+
+**Verified.**
+- `pnpm typecheck` passes (4/4).
+- The existing `qa:documents` suite passes 77/77 on a disposable local PostgreSQL 14.
+- A throwaway crash-recovery check (not committed) passed. It covered:
+  - the happy path;
+  - a legacy stuck job with partial chunks being recovered, with the chunks replaced;
+  - a live lease being respected and an expired lease being re-claimed;
+  - an exhausted abandoned job ending FAILED `LEASE_EXPIRED`;
+  - a lease lost mid-run writing nothing and leaving no chunks;
+  - concurrent drains taking exactly one attempt per job;
+  - bounded retries ending FAILED, which is never re-claimed.
+
+**Not verified.** Production: migration 0029 is not applied, and a real worker crash under load has not
+been tested. No new QA suite was added, by mission scope.
+
 ## 2026-11-21 — MISSION P10: A17 document knowledge in the agent context (PR, branch `arena/187ac026-qeynox`, off `4b07928`)
 
 **The gap.** A17 provided upload, ingestion, PostgreSQL FTS (optional embedding rerank) and mission

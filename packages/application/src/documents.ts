@@ -27,6 +27,7 @@
  * are hard-deleted by purgeExpired.
  */
 import { createHash, randomUUID } from 'node:crypto';
+import { hostname } from 'node:os';
 import { and, count, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { DomainError, newId, type ID, type Principal } from '@qeynox/domain';
 import {
@@ -97,6 +98,18 @@ interface ExtractedPage { readonly text: string; readonly page?: number }
 interface ExtractedDocument { readonly pages: readonly ExtractedPage[] }
 
 const sha256Of = (content: Uint8Array) => createHash('sha256').update(content).digest('hex');
+
+/** P11 — ingestion attempts per document before a terminal FAILED (claims of abandoned jobs count). */
+export const INGEST_MAX_ATTEMPTS = 3;
+/** P11 — processing lease; renewed between phases. QEYNOX_DOCUMENT_INGEST_LEASE_MS, clamped 30 s – 30 min. */
+function ingestLeaseMs(): number {
+  const configured = Number(process.env.QEYNOX_DOCUMENT_INGEST_LEASE_MS ?? 300_000);
+  return Number.isFinite(configured) ? Math.max(30_000, Math.min(1_800_000, Math.floor(configured))) : 300_000;
+}
+/** This worker's claim was taken over (lease expired and re-claimed, or reset): stop without writing. */
+class IngestLeaseLostError extends Error { constructor() { super('Ingest lease lost'); } }
+/** Not worth retrying (document gone or no longer awaiting ingestion). */
+class IngestTerminalError extends Error { constructor(readonly code: string) { super('Ingest cannot proceed: ' + code); } }
 const uuid = () => randomUUID();
 const isHex64 = (value: string) => /^[0-9a-f]{64}$/i.test(value);
 const nowIso = () => new Date().toISOString();
@@ -254,85 +267,199 @@ export class DocumentVaultService {
 
     await this.store.db.update(documents).set({ state: 'PROCESSING', updatedAt: new Date() }).where(eq(documents.id, row.id));
     await this.store.db.insert(documentIngestJobs).values({ id: uuid(), workspaceId: actor.workspaceId, documentId: row.id, state: 'PENDING' })
-      .onConflictDoUpdate({ target: documentIngestJobs.documentId, set: { state: 'PENDING', attempts: 0, lastErrorCode: null, updatedAt: new Date() } });
+      .onConflictDoUpdate({ target: documentIngestJobs.documentId, set: { state: 'PENDING', attempts: 0, lastErrorCode: null, leaseOwner: null, leaseToken: null, leaseExpiresAt: null, updatedAt: new Date() } });
     await this.audit(actor.workspaceId, row.id, actor.userId, 'UPLOAD_VALIDATE', 'SUCCESS');
     return { documentId, state: 'PROCESSING' };
   }
 
-  /** Background ingestion. Returns how many jobs were processed. Idempotent per document. */
-  async drainIngestPending(options: { workspaceId?: string; limit?: number } = {}): Promise<{ processed: number; failed: number }> {
+  /**
+   * Background ingestion with durable processing leases (MISSION P11).
+   *
+   * Lifecycle of a document_ingest_jobs row:
+   *   PENDING ──claim──▶ PROCESSING (lease_owner, fresh lease_token, lease_expires_at, attempts+1)
+   *   PROCESSING ──finalize (one transaction)──▶ DONE      + document AVAILABLE with its chunks
+   *   PROCESSING ──failure, attempts left──────▶ PENDING
+   *   PROCESSING ──failure, attempts exhausted─▶ FAILED    + document FAILED
+   *   PROCESSING with an EXPIRED lease (worker crashed / stalled) is abandoned:
+   *     attempts left ⇒ re-claimed by the next drain (a new attempt, new token);
+   *     attempts exhausted ⇒ FAILED with LEASE_EXPIRED, document FAILED.
+   *
+   * Single active owner: claims use FOR UPDATE SKIP LOCKED, and every later write is fenced by
+   * (state = PROCESSING AND lease_token = <this claim's token>). A worker that lost its lease stops
+   * without touching the job, the document or the chunks. Long phases renew the lease.
+   *
+   * No partial document: chunks (and optional embeddings) are computed in memory and written in the
+   * SAME transaction that replaces any previous chunks, marks the document AVAILABLE and the job DONE.
+   * A crash before commit leaves nothing visible; a retry replaces chunks idempotently.
+   */
+  async drainIngestPending(options: { workspaceId?: string; limit?: number; owner?: string } = {}): Promise<{ processed: number; failed: number }> {
     const objects = this.requireStorage();
     const limit = Math.max(1, Math.min(10, options.limit ?? 5));
-    const scope = options.workspaceId
-      ? and(eq(documentIngestJobs.state, 'PENDING'), eq(documentIngestJobs.workspaceId, options.workspaceId))
-      : eq(documentIngestJobs.state, 'PENDING');
-    const claimed: Array<{ jobId: string; documentId: string; workspaceId: string }> = [];
-    await this.store.db.transaction(async tx => {
-      const pending = await tx.select().from(documentIngestJobs).where(scope).orderBy(documentIngestJobs.updatedAt).limit(limit);
-      for (const job of pending) {
-        const [locked] = await tx.update(documentIngestJobs)
-          .set({ state: 'PROCESSING', attempts: job.attempts + 1, updatedAt: new Date() })
-          .where(and(eq(documentIngestJobs.id, job.id), eq(documentIngestJobs.state, 'PENDING')))
-          .returning({ id: documentIngestJobs.id });
-        if (locked) claimed.push({ jobId: job.id, documentId: job.documentId, workspaceId: job.workspaceId });
-      }
-    });
+    const owner = String(options.owner ?? this.ingestOwner).slice(0, 200);
+    const leaseMs = ingestLeaseMs();
+    let failed = await this.failExhaustedAbandonedJobs(leaseMs, options.workspaceId);
+    const claimed = await this.claimIngestJobs(owner, leaseMs, limit, options.workspaceId);
 
-    let processed = 0, failed = 0;
+    let processed = 0;
     for (const job of claimed) {
       try {
         const [row] = await this.store.db.select().from(documents).where(and(eq(documents.id, job.documentId), eq(documents.workspaceId, job.workspaceId), isNull(documents.deletedAt))).limit(1);
-        if (!row) throw new DomainError('NOT_FOUND', 'Document vanished during ingest');
+        if (!row) throw new IngestTerminalError('NOT_FOUND');
+        if (row.state === 'AVAILABLE') {
+          // A pre-lease worker committed the document but crashed before closing its job: close it as DONE.
+          await this.store.db.update(documentIngestJobs).set({ state: 'DONE', leaseOwner: null, leaseToken: null, leaseExpiresAt: null, updatedAt: new Date() })
+            .where(and(eq(documentIngestJobs.id, job.jobId), eq(documentIngestJobs.state, 'PROCESSING'), eq(documentIngestJobs.leaseToken, job.token)));
+          continue;
+        }
+        if (row.state !== 'PROCESSING') throw new IngestTerminalError('INVALID_STATE');
         const bytes = await objects.read(row.storageKey);
+        await this.renewIngestLease(job, leaseMs);
         const extracted = await extractDocument(row.contentType as DocumentContentType, bytes);
         const chunks = chunkPages(extracted.pages);
         if (!chunks.length) throw new DomainError('INVALID_STATE', 'No substantial text could be extracted');
+        await this.renewIngestLease(job, leaseMs);
 
-        // Idempotent retry: replace any chunks from an earlier attempt.
-        await this.store.db.delete(documentChunks).where(eq(documentChunks.documentId, row.id));
-        const chunkRows = chunks.map(chunk => ({
+        const chunkRows: Array<typeof documentChunks.$inferInsert> = chunks.map(chunk => ({
           id: uuid(), documentId: row.id, workspaceId: job.workspaceId,
           ordinal: chunk.ordinal, page: chunk.page, text: chunk.text,
         }));
-        for (const c of chunkRows) {
-          await this.store.db.insert(documentChunks).values(c);
-        }
-
-        // Optional embeddings; absence is honest, absence of configuration never fails ingestion.
+        // Optional embeddings, computed before the write; absence of configuration never fails ingestion.
+        let embeddingsFailed = false;
         if (this.embeddings) {
           try {
-            const texts = chunkRows.map(c => c.text);
-            for (let i = 0; i < texts.length; i += 32) {
-              const batch = texts.slice(i, i + 32);
-              const vectors = await this.embeddings.embed(batch);
-              for (let j = 0; j < batch.length; j++) {
-                await this.store.db.update(documentChunks).set({ embedding: vectors[j] }).where(eq(documentChunks.id, chunkRows[i + j]!.id));
-              }
+            for (let i = 0; i < chunkRows.length; i += 32) {
+              const batch = chunkRows.slice(i, i + 32);
+              const vectors = await this.embeddings.embed(batch.map(c => c.text));
+              batch.forEach((c, j) => { c.embedding = vectors[j]; });
+              await this.renewIngestLease(job, leaseMs);
             }
-          } catch {
+          } catch (error: unknown) {
+            if (error instanceof IngestLeaseLostError) throw error;
             // Embeddings are best-effort; the FTS index remains authoritative. Recorded on the job.
-            await this.store.db.update(documentIngestJobs).set({ lastErrorCode: 'EMBEDDINGS_FAILED', updatedAt: new Date() }).where(eq(documentIngestJobs.id, job.jobId));
+            embeddingsFailed = true;
+            for (const c of chunkRows) delete c.embedding;
           }
         }
 
-        await this.store.db.update(documents).set({ state: 'AVAILABLE', chunkCount: chunkRows.length, updatedAt: new Date() }).where(eq(documents.id, row.id));
-        await this.store.db.update(documentIngestJobs).set({ state: 'DONE', updatedAt: new Date() }).where(eq(documentIngestJobs.id, job.jobId));
+        await this.store.db.transaction(async tx => {
+          const [owned] = await tx.select({ id: documentIngestJobs.id }).from(documentIngestJobs)
+            .where(and(eq(documentIngestJobs.id, job.jobId), eq(documentIngestJobs.state, 'PROCESSING'), eq(documentIngestJobs.leaseToken, job.token)))
+            .for('update').limit(1);
+          if (!owned) throw new IngestLeaseLostError();
+          const [doc] = await tx.select({ id: documents.id }).from(documents)
+            .where(and(eq(documents.id, row.id), eq(documents.workspaceId, job.workspaceId), eq(documents.state, 'PROCESSING'), isNull(documents.deletedAt)))
+            .for('update').limit(1);
+          if (!doc) throw new IngestTerminalError('NOT_FOUND');
+          // Idempotent replacement: whatever an earlier attempt (or legacy code) left is replaced atomically.
+          await tx.delete(documentChunks).where(eq(documentChunks.documentId, row.id));
+          for (let i = 0; i < chunkRows.length; i += 100) await tx.insert(documentChunks).values(chunkRows.slice(i, i + 100));
+          await tx.update(documents).set({ state: 'AVAILABLE', chunkCount: chunkRows.length, extractionCode: null, updatedAt: new Date() }).where(eq(documents.id, row.id));
+          await tx.update(documentIngestJobs).set({
+            state: 'DONE', lastErrorCode: embeddingsFailed ? 'EMBEDDINGS_FAILED' : null,
+            leaseOwner: null, leaseToken: null, leaseExpiresAt: null, updatedAt: new Date(),
+          }).where(eq(documentIngestJobs.id, job.jobId));
+        });
         await this.audit(job.workspaceId, row.id, null, 'INGEST', 'SUCCESS');
         processed++;
       } catch (error: unknown) {
-        const code = error instanceof DomainError ? error.code : 'INGEST_FAILED';
-        const [jobRow] = await this.store.db.select().from(documentIngestJobs).where(eq(documentIngestJobs.id, job.jobId)).limit(1);
-        const attempts = jobRow?.attempts ?? 3;
-        const terminal = attempts >= 3;
-        await this.store.db.update(documentIngestJobs).set({ state: terminal ? 'FAILED' : 'PENDING', lastErrorCode: code, updatedAt: new Date() }).where(eq(documentIngestJobs.id, job.jobId));
-        if (terminal) {
-          await this.store.db.update(documents).set({ state: 'FAILED', extractionCode: code, updatedAt: new Date() }).where(eq(documents.id, job.documentId));
-        }
+        // Lost the lease: another worker owns the job now (or it was reset). Write nothing.
+        if (error instanceof IngestLeaseLostError) continue;
+        const code = error instanceof IngestTerminalError ? error.code : error instanceof DomainError ? error.code : 'INGEST_FAILED';
+        const terminal = error instanceof IngestTerminalError || job.attempts >= INGEST_MAX_ATTEMPTS;
+        const recorded = await this.store.db.transaction(async tx => {
+          const [released] = await tx.update(documentIngestJobs)
+            .set({ state: terminal ? 'FAILED' : 'PENDING', lastErrorCode: code, leaseOwner: null, leaseToken: null, leaseExpiresAt: null, updatedAt: new Date() })
+            .where(and(eq(documentIngestJobs.id, job.jobId), eq(documentIngestJobs.state, 'PROCESSING'), eq(documentIngestJobs.leaseToken, job.token)))
+            .returning({ id: documentIngestJobs.id });
+          if (!released) return false;
+          if (terminal) {
+            await tx.update(documents).set({ state: 'FAILED', extractionCode: code, chunkCount: 0, updatedAt: new Date() })
+              .where(and(eq(documents.id, job.documentId), eq(documents.state, 'PROCESSING')));
+            await tx.delete(documentChunks).where(and(eq(documentChunks.documentId, job.documentId), sql`NOT EXISTS (SELECT 1 FROM documents d WHERE d.id = ${job.documentId} AND d.state = 'AVAILABLE')`));
+          }
+          return true;
+        });
+        if (!recorded) continue;
         await this.audit(job.workspaceId, job.documentId, null, 'INGEST', 'FAILED', code);
         failed++;
       }
     }
     return { processed, failed };
+  }
+
+  /** Per-instance lease owner identity (diagnostic; ownership itself is proven by the lease token). */
+  private readonly ingestOwner = hostname().slice(0, 100) + ':' + process.pid + ':' + randomUUID().slice(0, 8);
+
+  /**
+   * Claims up to `limit` jobs that are PENDING or abandoned (PROCESSING with an expired lease, or a
+   * legacy lease-less PROCESSING row older than one lease). SKIP LOCKED: concurrent drains never claim
+   * the same row; each claim gets a fresh fencing token and counts as an attempt.
+   */
+  private async claimIngestJobs(owner: string, leaseMs: number, limit: number, workspaceId?: string): Promise<Array<{ jobId: string; documentId: string; workspaceId: string; attempts: number; token: string }>> {
+    const token = randomUUID();
+    const executed = await this.store.db.execute(sql`
+      UPDATE document_ingest_jobs AS j
+      SET state = 'PROCESSING', attempts = j.attempts + 1,
+          lease_owner = ${owner}, lease_token = ${token} || ':' || j.id,
+          lease_expires_at = now() + make_interval(secs => ${leaseMs / 1000}),
+          updated_at = now()
+      WHERE j.id IN (
+        SELECT c.id FROM document_ingest_jobs c
+        WHERE (c.state = 'PENDING'
+               OR (c.state = 'PROCESSING' AND c.attempts < ${INGEST_MAX_ATTEMPTS}
+                   AND (c.lease_expires_at < now()
+                        OR (c.lease_expires_at IS NULL AND c.updated_at < now() - make_interval(secs => ${leaseMs / 1000})))))
+          ${workspaceId ? sql`AND c.workspace_id = ${workspaceId}` : sql``}
+        ORDER BY c.updated_at
+        LIMIT ${limit}
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING j.id, j.document_id, j.workspace_id, j.attempts, j.lease_token
+    `);
+    const rows = ((executed as unknown as { rows?: unknown[] }).rows ?? (executed as unknown as unknown[])) as Array<{ id: string; document_id: string; workspace_id: string; attempts: number; lease_token: string }>;
+    return rows.map(row => ({ jobId: row.id, documentId: row.document_id, workspaceId: row.workspace_id, attempts: Number(row.attempts), token: row.lease_token }));
+  }
+
+  /**
+   * Abandoned jobs whose attempts are exhausted fail terminally (LEASE_EXPIRED) instead of being
+   * re-claimed forever: a document that crashes its worker every time ends FAILED, never stuck.
+   */
+  private async failExhaustedAbandonedJobs(leaseMs: number, workspaceId?: string): Promise<number> {
+    const failedJobs = await this.store.db.transaction(async tx => {
+      const executed = await tx.execute(sql`
+        UPDATE document_ingest_jobs AS j
+        SET state = 'FAILED', last_error_code = 'LEASE_EXPIRED',
+            lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, updated_at = now()
+        WHERE j.id IN (
+          SELECT c.id FROM document_ingest_jobs c
+          WHERE c.state = 'PROCESSING' AND c.attempts >= ${INGEST_MAX_ATTEMPTS}
+            AND (c.lease_expires_at < now()
+                 OR (c.lease_expires_at IS NULL AND c.updated_at < now() - make_interval(secs => ${leaseMs / 1000})))
+            ${workspaceId ? sql`AND c.workspace_id = ${workspaceId}` : sql``}
+          LIMIT 50
+          FOR UPDATE SKIP LOCKED
+        )
+        RETURNING j.document_id, j.workspace_id
+      `);
+      const rows = ((executed as unknown as { rows?: unknown[] }).rows ?? (executed as unknown as unknown[])) as Array<{ document_id: string; workspace_id: string }>;
+      for (const row of rows) {
+        await tx.update(documents).set({ state: 'FAILED', extractionCode: 'LEASE_EXPIRED', chunkCount: 0, updatedAt: new Date() })
+          .where(and(eq(documents.id, row.document_id), eq(documents.state, 'PROCESSING')));
+        await tx.delete(documentChunks).where(and(eq(documentChunks.documentId, row.document_id), sql`NOT EXISTS (SELECT 1 FROM documents d WHERE d.id = ${row.document_id} AND d.state = 'AVAILABLE')`));
+      }
+      return rows;
+    });
+    for (const row of failedJobs) await this.audit(row.workspace_id, row.document_id, null, 'INGEST', 'FAILED', 'LEASE_EXPIRED');
+    return failedJobs.length;
+  }
+
+  /** Extends this claim's lease; throws IngestLeaseLostError when the claim is no longer ours. */
+  private async renewIngestLease(job: { jobId: string; token: string }, leaseMs: number): Promise<void> {
+    const [renewed] = await this.store.db.update(documentIngestJobs)
+      .set({ leaseExpiresAt: sql`now() + make_interval(secs => ${leaseMs / 1000})`, updatedAt: new Date() })
+      .where(and(eq(documentIngestJobs.id, job.jobId), eq(documentIngestJobs.state, 'PROCESSING'), eq(documentIngestJobs.leaseToken, job.token)))
+      .returning({ id: documentIngestJobs.id });
+    if (!renewed) throw new IngestLeaseLostError();
   }
 
   private toView = (row: typeof documents.$inferSelect, attachments = 0): DocumentView => ({
