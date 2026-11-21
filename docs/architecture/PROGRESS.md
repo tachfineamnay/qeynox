@@ -1,5 +1,73 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION P10: A17 document knowledge in the agent context (PR, branch `arena/187ac026-qeynox`, off `4b07928`)
+
+**The gap.** A17 provided upload, ingestion, PostgreSQL FTS (optional embedding rerank) and mission
+attachments, but the worker never handed attached documents to Hermes.
+
+**What changed.** No new retrieval platform: `DocumentVaultService` gained two methods and a thin glue
+module (`packages/application/src/mission-documents.ts`) wires them into `apps/worker/src/runtime.ts`.
+- **Retrieval (`DocumentVaultService.missionPassages`).**
+  - Only documents attached to *this* operation in *this* workspace. The mission must belong to the
+    workspace, and attachments, documents and chunks are all filtered by workspace and operation.
+  - Eligible = AVAILABLE, not deleted, not expired, recorded upload purpose (the A17 consent act),
+    mission owner and attaching member both still ACTIVE in the workspace.
+  - Everything else is reported in `withheld` with a reason: `NOT_AVAILABLE`, `EXPIRED`,
+    `NO_CONSENT_RECORD`, `ACCESS_REVOKED`, `CONSENT_MISSING`, `PROFILE_NOT_PERMITTED`.
+  - Ranking reuses the existing FTS (`websearch_to_tsquery('simple')` over an operator-free OR query of
+    the mission and step text) and the existing optional 65/35 embedding rerank. Embedding failure falls
+    back to FTS. If nothing matches, the opening passages are used and labelled `LEADING`.
+  - Every retrieval writes `AGENT_RETRIEVAL` rows to `document_audit_events` (SUCCESS or DENIED + reason).
+- **Authorization at the worker.**
+  - The mission owner needs an unrevoked, unexpired consent with scope `context:read` (the scope the
+    mission opt-in already grants). Revoking it withholds every document.
+  - The reviewed agent profile must permit the `documents:excerpts` context key. Hermes forwards only
+    permitted keys, and without it no chunk text is read.
+  - The vault is built **without an object store**: this path cannot fetch, sign or list storage
+    objects. Hermes gets excerpts plus name/page/chunk metadata only, with no storage keys or URLs.
+- **Bounds.** At most 6 passages, 1,500 characters each, 8,000 in total (about 2k tokens; the estimate is
+  reported). Hard clamps inside the vault: 12 passages, 4,000 characters each, 48,000 in total.
+- **Grounding.**
+  - The agent is told to cite excerpts as `[D1]`, `[D2]`…
+  - After an **accepted** output (a rejected P09 deliverable records nothing), only markers that match
+    an excerpt handed out *and* whose document is still citable become citations. "Still citable" is
+    re-checked after the run, so deletion, detachment, expiry or revocation during the run is honoured.
+  - Each citation is an UNVERIFIED evidence row with document id, chunk id, page, ordinal, document
+    SHA-256 and excerpt SHA-256, but **no excerpt text**: deleting a document leaves no copy in evidence.
+  - The step output stores `documentGrounding`: provided, cited, uncitable and unknown markers,
+    withheld, and the character/token estimate. It holds provenance only.
+- **Result.** `ResultAssembler` adds `documentSources`: cited documents still AVAILABLE with the same
+  SHA-256. They are customer-provided material, never finding citations, and never count toward
+  `unresolved`, document state or the delivery gate (which still requires http(s) SUPPORTED citations).
+- **Unchanged.** Missions with no attached document get no extra context. ToolBroker, budgets, the P09
+  pack validation, human review and the A21.07 runtime gates are untouched.
+
+**Verified.**
+- `pnpm typecheck` passes (4/4).
+- Existing suites on a disposable local PostgreSQL 14: `qa:documents` 77/77, `qa:mission-lifecycle`
+  88/88 and `qa:agent-runtime` 65/65 pass.
+- A throwaway local smoke check (not committed) passed. It covered:
+  - the consent and profile gates;
+  - AVAILABLE-only passages, with NOT_AVAILABLE/EXPIRED withheld;
+  - no storage keys or cross-mission text in the context;
+  - the LEADING fallback, the bounds, and operation and workspace isolation;
+  - citation recording with unknown markers;
+  - post-run revocation refusing citations, and deletion;
+  - audit rows.
+- `qa:business-packs` fails identically on the unmodified base `4b07928`
+  ("Business pack deliverable is unavailable for this revision"), so it is pre-existing and not caused
+  by P10.
+
+**Not verified / deferred.**
+- Committed integration tests and screenshots (deferred by the mission).
+- A live Hermes run with documents.
+- Live embeddings.
+- Production (migration 0022 still unapplied there).
+- Atlas/API display of `documentSources`: the results controller projects fields explicitly, so they
+  are not yet exposed, including via shared links.
+- Agent output text may paraphrase excerpts and flows to later steps as prior output; deleting a
+  document does not rewrite text the agent already produced.
+
 ## 2026-11-21 — MISSION P09: A16 business outputs wired into the worker (PR, branch `arena/1004e438-qeynox`, off `779577d`)
 
 **The gap.** The eight A16 packs, their `<pack>@1` deliverable schemas, `validatePackDeliverable()` and

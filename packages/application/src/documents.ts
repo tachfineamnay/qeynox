@@ -30,7 +30,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { and, count, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { DomainError, newId, type ID, type Principal } from '@qeynox/domain';
 import {
-  QeyNoxStore, documentAuditEvents, documentChunks, documentIngestJobs, documents, operationDocuments, operations,
+  QeyNoxStore, documentAuditEvents, documentChunks, documentIngestJobs, documents, identityMemberships, operationDocuments, operations,
 } from '@qeynox/persistence';
 import { cosineSimilarity, type EmbeddingProvider } from './embeddings';
 
@@ -66,6 +66,32 @@ export interface Citation {
   readonly snippet: string; readonly score: number; readonly mode: 'FTS' | 'HYBRID';
 }
 export interface SearchResult { readonly query: string; readonly mode: 'FTS' | 'HYBRID'; readonly embedding: 'CONFIGURED' | 'NOT_CONFIGURED'; readonly citations: readonly Citation[] }
+
+/**
+ * P10 — why an attached document contributed nothing to an agent step. Reported truthfully (to the
+ * agent, the step output and the document audit log), never silently dropped.
+ */
+export type WithheldDocumentReason =
+  | 'NOT_AVAILABLE'          // still PENDING_UPLOAD / PROCESSING, or FAILED ingestion
+  | 'EXPIRED'                // retention window elapsed (purge may not have run yet)
+  | 'NO_CONSENT_RECORD'      // no recorded upload purpose (the consent act)
+  | 'ACCESS_REVOKED'         // the member who attached it no longer has ACTIVE workspace access
+  | 'CONSENT_MISSING'        // the mission owner has not granted the document-to-AI consent scope
+  | 'PROFILE_NOT_PERMITTED'; // the reviewed agent profile does not accept document excerpts
+export interface MissionPassage {
+  readonly documentId: string; readonly chunkId: string; readonly name: string; readonly documentSha256: string;
+  readonly page: number | null; readonly ordinal: number;
+  /** Bounded excerpt actually handed to the agent, and the SHA-256 of exactly that text. */
+  readonly excerpt: string; readonly excerptSha256: string; readonly truncated: boolean;
+  readonly score: number;
+}
+export interface MissionPassageBounds { readonly maxPassages: number; readonly maxPassageChars: number; readonly maxTotalChars: number }
+export interface MissionPassageRetrieval {
+  readonly mode: 'FTS' | 'HYBRID' | 'LEADING' | 'NONE';
+  readonly passages: readonly MissionPassage[];
+  readonly withheld: readonly { readonly documentId: string; readonly name: string; readonly reason: WithheldDocumentReason }[];
+  readonly attachedCount: number;
+}
 
 interface ExtractedPage { readonly text: string; readonly page?: number }
 interface ExtractedDocument { readonly pages: readonly ExtractedPage[] }
@@ -424,6 +450,171 @@ export class DocumentVaultService {
     };
   }
 
+  /**
+   * P10 — passages for an agent step, from documents ATTACHED to this mission only.
+   *
+   * Isolation: the mission must belong to the actor's workspace; attachments, documents and chunks
+   * are all filtered by that workspace and this operation. Eligibility: AVAILABLE, not deleted, not
+   * expired, a recorded purpose (consent act) and an attaching member who still has ACTIVE access.
+   * Everything else is returned in `withheld` with its reason. `withholdAll` (consent or profile not
+   * granted) withholds every attached document without reading any chunk text.
+   *
+   * Ranking reuses the existing FTS (OR-query over `websearch_to_tsquery`) and the optional embedding
+   * rerank. When nothing matches, the leading passages of each eligible document are used and the mode
+   * says so. Text is bounded per passage and in total; nothing here touches object storage.
+   */
+  async missionPassages(
+    actor: Principal,
+    operationId: string,
+    queryText: string,
+    bounds: MissionPassageBounds,
+    withholdAll?: Extract<WithheldDocumentReason, 'CONSENT_MISSING' | 'PROFILE_NOT_PERMITTED'>,
+  ): Promise<MissionPassageRetrieval> {
+    await this.assertMission(actor, operationId);
+    const attached = await this.attachedForAgent(actor, operationId);
+    if (!attached.length) return { mode: 'NONE', passages: [], withheld: [], attachedCount: 0 };
+    const withheld: Array<MissionPassageRetrieval['withheld'][number]> = [];
+    const eligible: typeof attached = [];
+    for (const entry of attached) {
+      const reason = withholdAll ?? entry.ineligible;
+      if (reason) withheld.push({ documentId: entry.id, name: entry.name, reason });
+      else eligible.push(entry);
+    }
+    for (const entry of withheld) await this.audit(actor.workspaceId, entry.documentId, null, 'AGENT_RETRIEVAL', 'DENIED', entry.reason.toLowerCase());
+    if (!eligible.length) return { mode: 'NONE', passages: [], withheld, attachedCount: attached.length };
+
+    const ids = eligible.map(entry => entry.id);
+    const maxPassages = Math.max(1, Math.min(12, Math.floor(bounds.maxPassages)));
+    const cleaned = missionOrQuery(queryText);
+    type Row = { chunk_id: string; document_id: string; ordinal: number; page: number | null; text: string; name: string; sha256: string; rank: number };
+    let rows: Row[] = [];
+    let mode: MissionPassageRetrieval['mode'] = 'FTS';
+    if (cleaned.length >= 2) {
+      const executed = await this.store.db.execute(sql`
+        SELECT c.id AS chunk_id, c.document_id, c.ordinal, c.page, c.text, d.name, d.sha256,
+               ts_rank(c.search_vector, websearch_to_tsquery('simple', ${cleaned})) AS rank
+        FROM document_chunks c
+        JOIN documents d ON d.id = c.document_id
+        JOIN operation_documents od ON od.document_id = d.id
+        WHERE c.workspace_id = ${actor.workspaceId}
+          AND d.workspace_id = ${actor.workspaceId}
+          AND od.workspace_id = ${actor.workspaceId}
+          AND od.operation_id = ${operationId}
+          AND d.id IN (${sql.join(ids.map(id => sql`${id}`), sql`, `)})
+          AND d.state = 'AVAILABLE'
+          AND d.deleted_at IS NULL
+          AND (d.expires_at IS NULL OR d.expires_at > now())
+          AND c.search_vector @@ websearch_to_tsquery('simple', ${cleaned})
+        ORDER BY rank DESC, c.document_id, c.ordinal
+        LIMIT ${maxPassages * 3}
+      `);
+      rows = ((executed as unknown as { rows?: unknown[] }).rows ?? (executed as unknown as unknown[])) as Row[];
+      if (rows.length && this.embeddings) {
+        const reranked = await this.rerank(String(queryText ?? '').trim().slice(0, 300), rows.map(row => ({ id: row.chunk_id, rank: Number(row.rank) })));
+        if (reranked) {
+          const byId = new Map(rows.map(row => [row.chunk_id, row] as const));
+          rows = reranked.map(({ id, score }) => ({ ...byId.get(id)!, rank: score }));
+          mode = 'HYBRID';
+        }
+      }
+    }
+    if (!rows.length) {
+      // No lexical match: fall back to each eligible document's leading passages, labelled as such.
+      const leading = await this.store.db.select({
+        chunk_id: documentChunks.id, document_id: documentChunks.documentId, ordinal: documentChunks.ordinal,
+        page: documentChunks.page, text: documentChunks.text,
+      }).from(documentChunks)
+        .where(and(eq(documentChunks.workspaceId, actor.workspaceId), inArray(documentChunks.documentId, ids), lt(documentChunks.ordinal, maxPassages)))
+        .orderBy(documentChunks.ordinal, documentChunks.documentId)
+        .limit(maxPassages);
+      const meta = new Map(eligible.map(entry => [entry.id, entry] as const));
+      rows = leading.map(row => ({ ...row, name: meta.get(row.document_id)!.name, sha256: meta.get(row.document_id)!.sha256, rank: 0 }));
+      mode = rows.length ? 'LEADING' : 'NONE';
+    }
+
+    const maxPassageChars = Math.max(200, Math.min(4000, Math.floor(bounds.maxPassageChars)));
+    let remaining = Math.max(maxPassageChars, Math.min(48_000, Math.floor(bounds.maxTotalChars)));
+    const passages: MissionPassage[] = [];
+    for (const row of rows) {
+      if (passages.length >= maxPassages || remaining <= 0) break;
+      const limit = Math.min(maxPassageChars, remaining);
+      const full = String(row.text);
+      const excerpt = full.length > limit ? full.slice(0, limit) : full;
+      remaining -= excerpt.length;
+      passages.push({
+        documentId: row.document_id, chunkId: row.chunk_id, name: row.name, documentSha256: row.sha256,
+        page: row.page ?? null, ordinal: Number(row.ordinal),
+        excerpt, excerptSha256: createHash('sha256').update(excerpt).digest('hex'), truncated: excerpt.length < full.length,
+        score: Number(Math.min(1, Math.max(0, Number(row.rank))).toFixed(6)),
+      });
+    }
+    for (const documentId of new Set(passages.map(passage => passage.documentId))) {
+      await this.audit(actor.workspaceId, documentId, null, 'AGENT_RETRIEVAL', 'SUCCESS', mode.toLowerCase());
+    }
+    return { mode: passages.length ? mode : 'NONE', passages, withheld, attachedCount: attached.length };
+  }
+
+  /**
+   * P10 — re-checks, after the agent ran, which handed-out chunks are STILL attached, AVAILABLE,
+   * unexpired and attached by an ACTIVE member. A document deleted, detached or revoked during the
+   * run is not cited.
+   */
+  async stillCitableChunks(actor: Principal, operationId: string, chunkIds: readonly string[]): Promise<ReadonlySet<string>> {
+    if (!chunkIds.length) return new Set();
+    const eligibleDocs = new Set((await this.attachedForAgent(actor, operationId)).filter(entry => !entry.ineligible).map(entry => entry.id));
+    if (!eligibleDocs.size) return new Set();
+    const rows = await this.store.db.select({ id: documentChunks.id, documentId: documentChunks.documentId }).from(documentChunks)
+      .where(and(eq(documentChunks.workspaceId, actor.workspaceId), inArray(documentChunks.id, [...chunkIds])));
+    return new Set(rows.filter(row => eligibleDocs.has(row.documentId)).map(row => row.id));
+  }
+
+  private async attachedForAgent(actor: Principal, operationId: string): Promise<Array<{ id: string; name: string; sha256: string; ineligible: Exclude<WithheldDocumentReason, 'CONSENT_MISSING' | 'PROFILE_NOT_PERMITTED'> | null }>> {
+    const rows = await this.store.db.select({ document: documents, attachedBy: operationDocuments.attachedBy })
+      .from(operationDocuments)
+      .innerJoin(documents, eq(documents.id, operationDocuments.documentId))
+      .where(and(
+        eq(operationDocuments.workspaceId, actor.workspaceId), eq(operationDocuments.operationId, operationId),
+        eq(documents.workspaceId, actor.workspaceId), isNull(documents.deletedAt),
+      ))
+      .orderBy(operationDocuments.createdAt);
+    if (!rows.length) return [];
+    // The mission owner (the actor the worker runs as) and every attaching member must still hold
+    // ACTIVE workspace access; a removed or suspended member's documents stop reaching agents.
+    const attachers = [...new Set([...rows.map(row => row.attachedBy), actor.userId])];
+    const active = new Set((await this.store.db.select({ userId: identityMemberships.userId }).from(identityMemberships)
+      .where(and(eq(identityMemberships.workspaceId, actor.workspaceId), inArray(identityMemberships.userId, attachers), eq(identityMemberships.status, 'ACTIVE'))))
+      .map(row => row.userId));
+    const now = Date.now();
+    return rows.map(({ document, attachedBy }) => ({
+      id: document.id, name: document.name, sha256: document.sha256,
+      ineligible: document.state !== 'AVAILABLE' ? 'NOT_AVAILABLE' as const
+        : document.expiresAt && new Date(document.expiresAt).getTime() <= now ? 'EXPIRED' as const
+        : !document.purpose?.trim() ? 'NO_CONSENT_RECORD' as const
+        : !active.has(actor.userId) || !active.has(attachedBy) ? 'ACCESS_REVOKED' as const
+        : null,
+    }));
+  }
+
+  /** Optional semantic rerank over an FTS candidate pool. Null when unconfigured or on any failure. */
+  private async rerank(query: string, candidates: readonly { id: string; rank: number }[]): Promise<Array<{ id: string; score: number }> | null> {
+    if (!this.embeddings || !candidates.length) return null;
+    try {
+      const [queryVector] = await this.embeddings.embed([query]);
+      const stored = await this.store.db.select({ id: documentChunks.id, embedding: documentChunks.embedding }).from(documentChunks).where(inArray(documentChunks.id, candidates.map(c => c.id)));
+      const vectorById = new Map(stored.map(row => [row.id, row.embedding ?? undefined]));
+      return candidates.map(candidate => {
+        const vector = vectorById.get(candidate.id);
+        const similarity = vector ? cosineSimilarity(queryVector!, vector) : 0;
+        // Same weighting as search(): 65% lexical rank + 35% semantic similarity, normalized to [0,1].
+        const lexical = Math.min(1, Math.max(0, Number(candidate.rank)));
+        return { id: candidate.id, score: 0.65 * lexical + 0.35 * ((similarity + 1) / 2) };
+      }).sort((a, b) => b.score - a.score);
+    } catch {
+      // Embedding failure degrades to honest FTS-only ranking; never to fabricated matches.
+      return null;
+    }
+  }
+
   async attach(actor: Principal, documentId: string, operationId: string): Promise<void> {
     const row = await this.getRow(actor, documentId);
     if (row.state !== 'AVAILABLE') throw new DomainError('INVALID_STATE', 'Only processed documents can be attached to a mission');
@@ -480,4 +671,24 @@ export class DocumentVaultService {
     }
     return { deleted };
   }
+}
+
+/** Terms too common to rank mission passages (the FTS configuration is 'simple', without stop words). */
+const MISSION_QUERY_STOP_WORDS = new Set([
+  'the', 'and', 'for', 'with', 'from', 'that', 'this', 'are', 'was', 'into', 'about', 'your', 'our', 'their',
+  'les', 'des', 'une', 'pour', 'dans', 'avec', 'sur', 'par', 'est', 'aux', 'qui', 'que', 'ses', 'leur', 'nos', 'vos',
+]);
+
+/**
+ * P10 — the mission/step text as an OR query for websearch_to_tsquery: letters and digits only (no
+ * operators can be injected), stop words removed, at most 24 distinct terms. Empty when nothing is left.
+ */
+export function missionOrQuery(text: string): string {
+  const terms: string[] = [];
+  for (const raw of String(text ?? '').toLowerCase().normalize('NFKC').split(/[^\p{L}\p{N}]+/u)) {
+    if (raw.length < 3 || raw.length > 40 || raw === 'or' || MISSION_QUERY_STOP_WORDS.has(raw) || terms.includes(raw)) continue;
+    terms.push(raw);
+    if (terms.length >= 24) break;
+  }
+  return terms.join(' or ');
 }

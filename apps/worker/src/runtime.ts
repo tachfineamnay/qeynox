@@ -3,7 +3,7 @@ import { DomainError,newId,transitionOperation,type ID,type Evidence,type StepAt
 import { connectDatabase,QeyNoxStore,attempts,operations,events } from '@qeynox/persistence';
 import { HermesAdapter,hermesCapabilities } from '@qeynox/engine';
 import { AgentProfileStore,CapabilityRegistry } from '@qeynox/roles';
-import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv,createRuntimeProbeMonitor,runtimeExecutionBlocker,recoverBusinessPackMission,businessPackStepRole,assertBusinessPackProfile,capturedPackSources,businessPackStepInstructions,acceptBusinessPackDeliverable,recordBusinessPackClaims,rawOutputDigest } from '@qeynox/application';
+import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv,createRuntimeProbeMonitor,runtimeExecutionBlocker,recoverBusinessPackMission,businessPackStepRole,assertBusinessPackProfile,capturedPackSources,businessPackStepInstructions,acceptBusinessPackDeliverable,recordBusinessPackClaims,rawOutputDigest,DocumentVaultService,embeddingsFromEnv,prepareMissionDocuments,recordMissionDocumentCitations,missionDocumentQuery } from '@qeynox/application';
 import { NotificationStore } from '@qeynox/persistence';
 import { createConfiguredToolRegistry } from '@qeynox/tools';
 import { PgOutboxDispatcher,type ExecutionRequest,type OrchestratorPort } from '@qeynox/orchestration';
@@ -31,6 +31,9 @@ export async function createWorkerDependencies(){
  const selections=new ExecutionEngineSelection(store,registry);
  const claims=new ClaimsService(store);
  const documents=new ResultAssembler(store);
+ // MISSION P10: attached-document retrieval for agent steps. No object store is passed: this path reads
+ // indexed chunks under workspace/mission/consent rules only and can never fetch or sign storage objects.
+ const vault=new DocumentVaultService(store,undefined,embeddingsFromEnv());
  return {
   handler:async(request:ExecutionRequest,runtime:{workflowRunId:string})=>{
    const [row]=await conn.db.select().from(operations).where(and(eq(operations.id,request.operationId),eq(operations.workspaceId,request.workspaceId))).limit(1);
@@ -79,23 +82,29 @@ export async function createWorkerDependencies(){
     const packInstructions=packMission&&packRole
       ?businessPackStepInstructions(packMission,step,packRole,packRole==='DELIVERABLE'?await capturedPackSources(store,row.workspaceId as ID,row.id as ID,request.planRevisionId):[],prior)
       :null;
+    // MISSION P10: bounded excerpts from AVAILABLE documents attached to THIS mission (workspace, consent,
+    // retention, revocation and profile rules enforced by the vault); null when nothing is attached.
+    const missionDocuments=await prepareMissionDocuments(vault,store,owner,{operationId:row.id as ID,query:missionDocumentQuery([row.payload.title,step.title,step.description]),profile});
     const run=await executor.run({
       workspaceId:row.workspaceId as ID,operationId:row.id as ID,stepAttemptId:attempt.id,
-      profile,userMessage:packInstructions?.userMessage??step.description,context:{...genericContext,...(packInstructions?.context??{})},
+      profile,userMessage:packInstructions?.userMessage??step.description,context:{...genericContext,...(packInstructions?.context??{}),...(missionDocuments?.context??{})},
       correlationId:request.idempotencyKey,
     },cap);
     const answer=run.outcome;
     if(answer.status!=='COMPLETED')throw new DomainError('INVALID_STATE','Agent did not finish business step');
+    // P10: grounded document citations (re-checked after the run) are recorded only for an ACCEPTED output.
+    const groundDocuments=async()=>missionDocuments?{documentGrounding:await recordMissionDocumentCitations(vault,store,owner,{operationId:row.id as ID,stepAttemptId:attempt.id,grounding:missionDocuments.grounding,agentOutput:answer.content})}:{};
     if(packMission&&packRole==='DELIVERABLE'){
       // Validate the ACTUAL Hermes output first (existing A16 validator, context rebuilt from the
       // recovered request and this revision's captures). A rejected deliverable throws
       // INVALID_AGENT_OUTPUT: no evidence, claim, output or document is written for it.
       const captured=await capturedPackSources(store,row.workspaceId as ID,row.id as ID,request.planRevisionId);
       const accepted=acceptBusinessPackDeliverable(packMission,answer.content,captured);
+      const documentGrounding=await groundDocuments();
       const evidence:Evidence={id:newId(),operationId:row.id as ID,stepAttemptId:attempt.id,statement:'Validated '+packMission.contractKey+' structured deliverable (agent output sha256 '+rawOutputDigest(answer.content)+')',observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['Structured deliverable passed its pack schema and integrity rules; each claim still requires evidence assessment and human review']};
       await store.recordEvidence(evidence);
       await recordBusinessPackClaims(claims,owner,{operationId:request.operationId,attemptId:attempt.id,profileId:profile.id,profileVersion:profile.version},packMission,accepted.projection,captured);
-      const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id,businessDeliverable:accepted.record},'UNVERIFIED');
+      const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id,businessDeliverable:accepted.record,...documentGrounding},'UNVERIFIED');
       // The ResultAssembler derives the pack document from the recorded deliverable; human review stays mandatory.
       if(state==='AWAITING_REVIEW')await documents.assemble(owner,request.operationId,request.planRevisionId,row.payload.title,[],[]);
       return {outcome:'COMPLETED' as const,detail:state};
@@ -105,7 +114,7 @@ export async function createWorkerDependencies(){
       // register a generic AGENT_FINDING; the domain claims come only from the validated deliverable.
       const evidence:Evidence={id:newId(),operationId:row.id as ID,stepAttemptId:attempt.id,statement:answer.content,observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['Supporting step output for a business-pack deliverable; not a finding']};
       await store.recordEvidence(evidence);
-      const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id},'UNVERIFIED');
+      const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id,...await groundDocuments()},'UNVERIFIED');
       return {outcome:'COMPLETED' as const,detail:state};
     }
     const evidence:Evidence={id:newId(),operationId:row.id as ID,stepAttemptId:attempt.id,statement:answer.content,observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['AI summary requires evidence assessment']};
@@ -123,7 +132,7 @@ export async function createWorkerDependencies(){
         if(!(error instanceof DomainError)||error.code!=='NOT_CONFIGURED')throw error;
       }
     }
-    const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id},'UNVERIFIED');
+    const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id,...await groundDocuments()},'UNVERIFIED');
     if(state==='AWAITING_REVIEW')await documents.assemble(owner,request.operationId,request.planRevisionId,row.payload.title,[],[]);
     return {outcome:'COMPLETED' as const,detail:state};
    }catch(error:unknown){

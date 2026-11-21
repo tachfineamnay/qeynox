@@ -3,6 +3,7 @@ import { DomainError,newId,type ID,type Principal } from '@qeynox/domain';
 import { QeyNoxStore,resultDocuments,claims,claimEvidenceLinks,attempts,sources,type DocumentState } from '@qeynox/persistence';
 import type { Source } from '@qeynox/domain';
 import { readBusinessPackResult,type ResultBusinessPack } from './business-pack-execution';
+import { readMissionDocumentSources,type ResultDocumentSource } from './mission-documents';
 export interface ResultCitation {
   sourceId:string;provider:string;uri?:string;retrievedAt:string;publishedAt?:string;fingerprint?:string;
 }
@@ -20,6 +21,11 @@ export interface ResultDocument {
   interpretations?:readonly string[];
   /** P09: identity of the validated business-pack deliverable this document was assembled from. */
   businessPack?:ResultBusinessPack;
+  /**
+   * P10: customer documents the agent cited (grounded, provenance only). Customer-provided material:
+   * never a finding citation, never counted toward `unresolved`, the document state or delivery.
+   */
+  documentSources?:readonly ResultDocumentSource[];
 }
 export class ResultAssembler {
  constructor(private readonly store:QeyNoxStore){}
@@ -62,12 +68,14 @@ export class ResultAssembler {
   const old=(await this.store.db.select().from(resultDocuments).where(and(eq(resultDocuments.operationId,operationId),eq(resultDocuments.workspaceId,actor.workspaceId))).orderBy(desc(resultDocuments.version)).limit(1))[0];
   const now=new Date().toISOString();
   const evidenceLimitations=unresolved.length?['Some claims are unverified or lack a verifiable citation']:[];
+  const documentSources=await readMissionDocumentSources(this.store,actor,operationId,revisionId,attemptIds);
   const result:ResultDocument={id:newId(),workspaceId:actor.workspaceId,operationId,revisionId,version:(old?.version??0)+1,
    title:pack?pack.projection.title:title,objective:op.title,scope:pack?[...pack.projection.scope]:scope,findings,
    nextActions:pack?[...pack.projection.nextActions]:nextActions,
    limitations:pack?[...pack.projection.limitations,...evidenceLimitations]:evidenceLimitations,
    unresolved,citations,createdAt:now,status:state,priorId:old?.id as ID|undefined,
-   ...(pack?{interpretations:[...pack.projection.analyticalStatements],businessPack:pack.identity}:{})};
+   ...(pack?{interpretations:[...pack.projection.analyticalStatements],businessPack:pack.identity}:{}),
+   ...(documentSources.length?{documentSources}:{})};
   await this.store.db.insert(resultDocuments).values({id:result.id,workspaceId:result.workspaceId,operationId,revisionId,version:result.version,state,document:result as unknown as Record<string,unknown>,createdAt:result.createdAt,supersedesId:result.priorId});
   return result;
  }
