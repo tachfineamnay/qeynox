@@ -6,6 +6,8 @@ import { copy, locale } from '../../../../lib/copy';
 import { serviceCopy } from '../../../../lib/service-copy';
 import { formatMoney } from '../../../../lib/money';
 import { ServiceRequestForm } from '../../../../components/service-request-form';
+import { readBetaJourney, type BetaJourneyRead } from '../../../../lib/beta';
+import { BetaOfferSummary } from '../../../../components/beta-offer';
 import { serviceDetailSchema, type ServiceDetail } from '@qeynox/contracts';
 
 export const dynamic = 'force-dynamic';
@@ -20,12 +22,16 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
   let detail: ServiceDetail | null = null;
   let failure = '';
   let missing = false;
+  let beta: BetaJourneyRead | null = null;
   if (current && configured) {
+    // MISSION A21.04 — the beta journey is read in parallel; its failure never hides the service.
+    const journey = readBetaJourney();
     try { detail = serviceDetailSchema.parse(await api('/v1/services/' + encodeURIComponent(offerId))); }
     catch (error) {
       if (error instanceof ApiError && error.code === 'NOT_FOUND') missing = true;
       else failure = error instanceof ApiError ? error.code : 'UNAVAILABLE';
     }
+    beta = await journey;
   }
   if (missing) notFound();
   const failureText = (code: string) => code === 'DENIED' ? t.denied : code === 'NOT_CONFIGURED' ? t.notConfigured : code === 'SESSION_REQUIRED' ? t.signInRequired : t.error;
@@ -61,7 +67,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
                 ? <span className="badge success">{s.priceFree}</span>
                 : priceInvalid
                   ? <span className="badge danger">{s.priceInvalid}</span>
-                  : <span className="qx-price"><strong>{formatMoney(detail.amountMinor, detail.currency, lang)}</strong></span>}
+                  : <span className="qx-price" data-list-price="true"><span className="qx-kicker">{s.listPrice}</span> <strong>{formatMoney(detail.amountMinor, detail.currency, lang)}</strong></span>}
               <span className="badge" data-state={detail.availability.operationalState}>{readinessLabel(detail.availability.operationalState)}</span>
               {detail.taxPolicy === 'CONFIG_REQUIRED'
                 ? <span className="badge danger">{s.taxRequired}</span>
@@ -145,6 +151,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
           <Card>
             <h2>{s.requestTitle}</h2>
             <p className="muted">{s.requestIntro}</p>
+            {beta && !priceInvalid ? <BetaOfferSummary lang={lang} read={beta} context="service" price={{ amountMinor: detail.amountMinor, currency: detail.currency, isExplicitlyFree: detail.isExplicitlyFree }} /> : null}
             {detail.requestable ? (
               <>
                 {!detail.availability.isExecutable ? (

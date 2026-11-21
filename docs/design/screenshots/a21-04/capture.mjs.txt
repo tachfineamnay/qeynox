@@ -1,0 +1,43 @@
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
+import { writeFileSync } from 'node:fs';
+const WEB = 'http://127.0.0.1:3137';
+const API = 'http://127.0.0.1:' + process.argv[2];
+const OUT = '/home/user/qeynox/docs/design/screenshots/a21-04/';
+const token = 'q'.repeat(64);
+const session = JSON.stringify({ token, workspaceId: 'workspace_qa', expiresAt: '2099-01-01T00:00:00.000Z' });
+const widths = [[390, 844, 'mobile'], [1024, 768, 'tablet'], [1440, 900, 'desktop']];
+const state = (mode, beta) => fetch(`${API}/__qa/state?mode=${mode}&beta=${beta}`).then(r => r.json());
+const browser = await puppeteer.launch({ executablePath: await chromium.executablePath(), args: chromium.args, headless: true });
+const report = [];
+const page = await browser.newPage();
+await page.setCookie({ name: 'qx-session', value: encodeURIComponent(session), domain: '127.0.0.1', path: '/' });
+async function shot(name, path, { mode = 'loaded', beta = 'active', element = null, sizes = widths, langs = ['en', 'fr'] } = {}) {
+  await state(mode, beta);
+  for (const lang of langs) for (const [w, h, label] of sizes) {
+    await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+    await page.goto(WEB + '/' + lang + path, { waitUntil: 'networkidle0' });
+    const overflow = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+    const file = `${name}-${lang}-${label}.${element ? 'png' : 'jpg'}`;
+    if (element) {
+      const handle = await page.$(element);
+      if (!handle) throw new Error('missing ' + element + ' on ' + path + ' ' + beta);
+      await handle.screenshot({ path: OUT + file });
+    } else await page.screenshot({ path: OUT + file, fullPage: true, type: 'jpeg', quality: 80 });
+    report.push({ file, path: '/' + lang + path, mode, beta, width: w, scrollWidth: overflow.scroll, clientWidth: overflow.client, horizontalOverflow: overflow.scroll > overflow.client });
+  }
+}
+await shot('mydash-active', '/mydash');
+await shot('services-active', '/services');
+await shot('service-detail-active', '/services/offer_strategy_qa');
+await shot('mission-quote-active', '/missions/operation_qa', { mode: 'payment-beta-quote', element: '#flow-commercial' });
+await shot('mission-launch-active', '/missions/operation_qa', { mode: 'payment-beta-quote', element: '#flow-launch' });
+await shot('mission-launch-runtime', '/missions/operation_qa', { mode: 'payment-beta-quote', beta: 'runtime', element: '#flow-launch', sizes: [widths[0], widths[2]] });
+await shot('mission-payment-replaced', '/missions/operation_qa', { mode: 'payment-beta-available', element: '#flow-commercial' });
+for (const beta of ['not-enrolled', 'expired', 'revoked', 'quota', 'runtime', 'not-configured', 'invited', 'unavailable']) {
+  await shot('state-' + beta, '/mydash', { beta, element: '#beta-access', sizes: [widths[0], widths[2]] });
+}
+await shot('state-expired-catalogue', '/services', { beta: 'expired', sizes: [widths[0]], langs: ['en'] });
+await browser.close();
+writeFileSync(OUT + 'report.json', JSON.stringify(report, null, 2) + '\n');
+console.log('shots', report.length, 'overflow', report.filter(r => r.horizontalOverflow).map(r => r.file));

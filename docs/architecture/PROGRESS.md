@@ -1,5 +1,45 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION A21.04: free beta customer UX, EN/FR (draft PR, branch `arena/846bce88-qeynox`, off `6676229`)
+
+The customer now sees the free beta truthfully on every commercial surface. A new read-only endpoint, `GET /v1/workspaces/current/beta-access/journey` (`BetaJourneyService`), composes server-side:
+- the A21.01 commerce mode;
+- the A21.02 workspace grant;
+- live runtime readiness.
+
+It returns one state: NOT_CONFIGURED, NOT_ENROLLED, INVITATION_PENDING, EXPIRED, REVOKED, QUOTA_EXHAUSTED (missions or provider budget), CONCURRENT_LIMIT_REACHED, RUNTIME_UNAVAILABLE or ACTIVE. It also returns the allowance, the expiry and constant pricing facts: no card, payments unavailable, 0 due today, a 100% waiver only in `BETA_FREE`.
+
+The web parses this with literal guards and renders a shared EN/FR beta offer summary on:
+- the catalogue;
+- service detail;
+- mission creation;
+- MyDash (with invitation activation for OWNER/ADMIN);
+- quote acceptance;
+- launch.
+
+The summary shows "Free beta — no card required", the list price (crossed out only when the waiver applies), "Beta waiver (100%)", "Amount due today €0.00", remaining missions, expiry and account status. In beta flows the payment panel, the payment-required prompt and every checkout path are replaced by the summary.
+
+Verified on a disposable **real PostgreSQL 14.1** (applied nowhere else):
+- New `qa:beta-journey`: **7 groups / 128 assertions PASS** over the real HTTP API. It covers every state from real grants, admissions, reservations, revocation and expiry; session and tenant isolation; that the read is side-effect free; and NOT_CONFIGURED via a second boot in `PAYMENTS_DISABLED`.
+- Web `test:smoke`: **329 PASS** (was 218), covering all states in EN and FR across MyDash, catalogue, detail, quote, launch and payment replacement; an unreadable journey; and a journey that asks for a card, which is rejected. `test:flow2` 35 PASS.
+- Headless-Chromium screenshots (73) at 390×844, 1024×768 and 1440×900, EN and FR, in `docs/design/screenshots/a21-04/`. No horizontal overflow (`report.json`).
+- Regressions:
+  - `qa:beta-access` 126, `qa:beta-execution` 440, `qa:payment-freeze` 369;
+  - `qa:backend` 28, `qa:agent-runtime` 65, `qa:stripe-payments` 108, `qa:business-packs` 370 and 22 other suites PASS.
+  - `pnpm typecheck` and `pnpm build` 4/4.
+
+Pre-existing or environmental failures, not caused by this mission:
+- `qa:task02` parity (no schema change here).
+- `qa:platform-authorization` and `qa:platform-users`: they fail identically on the untouched base `6676229`.
+- `qa:connectors`, `qa:raas`, `qa:egress` and `qa:a03-service` part 2: World Bank TLS BLOCKED.
+
+NOT verified:
+- Screens against a real API with real data (screenshots use the labelled smoke fixtures).
+- Assistive-technology runs.
+- Screenshot reference comparison: **BLOCKED**, because the reference PNG is absent.
+
+No production change. One draft PR; not merged. Full record: [A21_BETA_CUSTOMER_UX.md](../design/A21_BETA_CUSTOMER_UX.md).
+
 ## 2026-11-21 — MISSION A21.03: free beta execution authorization (draft PR, branch `arena/45f55f1b-qeynox`, off `74f25d5`)
 
 Eligible beta testers can now execute all eight A16 business packs without paying. They get a **distinct, non-financial beta authorization** (new table `raas_beta_authorizations`, additive migration `0027_beta_execution_authorization.sql`), never a fake payment:

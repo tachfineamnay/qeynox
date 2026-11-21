@@ -3,7 +3,8 @@ import { AppShell, Card, EmptyState, Feedback, PageHeader } from '../../../compo
 import { api, session } from '../../../lib/api';
 import { copy, locale } from '../../../lib/copy';
 import { serviceCopy } from '../../../lib/service-copy';
-import { formatMoney } from '../../../lib/money';
+import { readBetaJourney, type BetaJourneyRead } from '../../../lib/beta';
+import { BetaPriceTag, BetaStateNotice } from '../../../components/beta-offer';
 import { serviceListSchema, type ServiceSummary } from '@qeynox/contracts';
 
 export const dynamic = 'force-dynamic';
@@ -16,9 +17,20 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const configured = Boolean(process.env.QEYNOX_API_URL);
   let services: ServiceSummary[] | null = null;
   let failure = '';
+  // MISSION A21.04 — the workspace's free-beta journey, read alongside the catalogue (real API).
+  let beta: BetaJourneyRead | null = null;
   if (current && configured) {
-    try { services = serviceListSchema.parse(await api('/v1/services')); }
-    catch (error) { failure = error instanceof Error && 'code' in error ? String((error as { code: unknown }).code) : 'UNAVAILABLE'; }
+    const [list, journey] = await Promise.all([
+      api('/v1/services').then(value => ({ value }), (error: unknown) => ({ error })),
+      readBetaJourney(),
+    ]);
+    beta = journey;
+    if ('value' in list) {
+      try { services = serviceListSchema.parse(list.value); } catch { failure = 'INVALID_RESPONSE'; }
+    } else {
+      const error = list.error;
+      failure = error instanceof Error && 'code' in error ? String((error as { code: unknown }).code) : 'UNAVAILABLE';
+    }
   }
   const failureText = (code: string) => code === 'DENIED' ? t.denied : code === 'NOT_CONFIGURED' ? t.notConfigured : code === 'SESSION_REQUIRED' ? t.signInRequired : t.error;
   const readinessLabel = (state: string) => s.readiness[state] ?? state;
@@ -33,6 +45,8 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
       ) : failure ? (
         <Card><Feedback error title={failureText(failure)}>{failure}</Feedback></Card>
       ) : null}
+
+      {services && beta ? <BetaStateNotice lang={lang} read={beta} /> : null}
 
       {services ? (
         services.length === 0 ? (
@@ -52,7 +66,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                         ? <span className="badge success">{s.priceFree}</span>
                         : priceInvalid
                           ? <span className="badge danger">{s.priceInvalid}</span>
-                          : <span className="qx-price"><strong>{formatMoney(service.amountMinor, service.currency, lang)}</strong></span>}
+                          : beta ? <BetaPriceTag lang={lang} read={beta} price={{ amountMinor: service.amountMinor, currency: service.currency }} /> : null}
                     </div>
                     <p className="muted">
                       {domainLabel ? <><span className="badge">{domainLabel}</span> · </> : null}

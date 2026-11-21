@@ -1,0 +1,732 @@
+[
+  {
+    "file": "mydash-active-en-mobile.jpg",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mydash-active-en-tablet.jpg",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mydash-active-en-desktop.jpg",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mydash-active-fr-mobile.jpg",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mydash-active-fr-tablet.jpg",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mydash-active-fr-desktop.jpg",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "services-active-en-mobile.jpg",
+    "path": "/en/services",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "services-active-en-tablet.jpg",
+    "path": "/en/services",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "services-active-en-desktop.jpg",
+    "path": "/en/services",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "services-active-fr-mobile.jpg",
+    "path": "/fr/services",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "services-active-fr-tablet.jpg",
+    "path": "/fr/services",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "services-active-fr-desktop.jpg",
+    "path": "/fr/services",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "service-detail-active-en-mobile.jpg",
+    "path": "/en/services/offer_strategy_qa",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "service-detail-active-en-tablet.jpg",
+    "path": "/en/services/offer_strategy_qa",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "service-detail-active-en-desktop.jpg",
+    "path": "/en/services/offer_strategy_qa",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "service-detail-active-fr-mobile.jpg",
+    "path": "/fr/services/offer_strategy_qa",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "service-detail-active-fr-tablet.jpg",
+    "path": "/fr/services/offer_strategy_qa",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "service-detail-active-fr-desktop.jpg",
+    "path": "/fr/services/offer_strategy_qa",
+    "mode": "loaded",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-quote-active-en-mobile.png",
+    "path": "/en/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-quote-active-en-tablet.png",
+    "path": "/en/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-quote-active-en-desktop.png",
+    "path": "/en/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-quote-active-fr-mobile.png",
+    "path": "/fr/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-quote-active-fr-tablet.png",
+    "path": "/fr/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-quote-active-fr-desktop.png",
+    "path": "/fr/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-launch-active-en-mobile.png",
+    "path": "/en/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-launch-active-en-tablet.png",
+    "path": "/en/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-launch-active-en-desktop.png",
+    "path": "/en/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-launch-active-fr-mobile.png",
+    "path": "/fr/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-launch-active-fr-tablet.png",
+    "path": "/fr/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-launch-active-fr-desktop.png",
+    "path": "/fr/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-launch-runtime-en-mobile.png",
+    "path": "/en/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "runtime",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-launch-runtime-en-desktop.png",
+    "path": "/en/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "runtime",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-launch-runtime-fr-mobile.png",
+    "path": "/fr/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "runtime",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-launch-runtime-fr-desktop.png",
+    "path": "/fr/missions/operation_qa",
+    "mode": "payment-beta-quote",
+    "beta": "runtime",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-payment-replaced-en-mobile.png",
+    "path": "/en/missions/operation_qa",
+    "mode": "payment-beta-available",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-payment-replaced-en-tablet.png",
+    "path": "/en/missions/operation_qa",
+    "mode": "payment-beta-available",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-payment-replaced-en-desktop.png",
+    "path": "/en/missions/operation_qa",
+    "mode": "payment-beta-available",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-payment-replaced-fr-mobile.png",
+    "path": "/fr/missions/operation_qa",
+    "mode": "payment-beta-available",
+    "beta": "active",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-payment-replaced-fr-tablet.png",
+    "path": "/fr/missions/operation_qa",
+    "mode": "payment-beta-available",
+    "beta": "active",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "mission-payment-replaced-fr-desktop.png",
+    "path": "/fr/missions/operation_qa",
+    "mode": "payment-beta-available",
+    "beta": "active",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-not-enrolled-en-mobile.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "not-enrolled",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-not-enrolled-en-desktop.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "not-enrolled",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-not-enrolled-fr-mobile.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "not-enrolled",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-not-enrolled-fr-desktop.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "not-enrolled",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-expired-en-mobile.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "expired",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-expired-en-desktop.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "expired",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-expired-fr-mobile.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "expired",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-expired-fr-desktop.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "expired",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-revoked-en-mobile.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "revoked",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-revoked-en-desktop.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "revoked",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-revoked-fr-mobile.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "revoked",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-revoked-fr-desktop.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "revoked",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-quota-en-mobile.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "quota",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-quota-en-desktop.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "quota",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-quota-fr-mobile.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "quota",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-quota-fr-desktop.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "quota",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-runtime-en-mobile.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "runtime",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-runtime-en-desktop.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "runtime",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-runtime-fr-mobile.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "runtime",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-runtime-fr-desktop.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "runtime",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-not-configured-en-mobile.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "not-configured",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-not-configured-en-desktop.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "not-configured",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-not-configured-fr-mobile.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "not-configured",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-not-configured-fr-desktop.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "not-configured",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-invited-en-mobile.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "invited",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-invited-en-desktop.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "invited",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-invited-fr-mobile.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "invited",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-invited-fr-desktop.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "invited",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-unavailable-en-mobile.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "unavailable",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-unavailable-en-desktop.png",
+    "path": "/en/mydash",
+    "mode": "loaded",
+    "beta": "unavailable",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-unavailable-fr-mobile.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "unavailable",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-unavailable-fr-desktop.png",
+    "path": "/fr/mydash",
+    "mode": "loaded",
+    "beta": "unavailable",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false
+  },
+  {
+    "file": "state-expired-catalogue-en-mobile.jpg",
+    "path": "/en/services",
+    "mode": "loaded",
+    "beta": "expired",
+    "width": 390,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false
+  }
+]
