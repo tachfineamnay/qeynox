@@ -25,6 +25,15 @@ export class CommerceController{
   if(!req.principal)throw new DomainError('DENIED','Session required');
   return this.commerce.accept(req.principal,requireId(quoteId),accept.parse(body).idempotencyKey);
  }
+ /**
+  * MISSION A21.03 — covers the current revision's unpaid accepted order with the non-financial free beta
+  * authorization (BETA_FREE mode and an ACTIVE beta grant required; idempotent). Never a payment.
+  */
+ @Post('beta-authorization')
+ authorizeBeta(@Req()req:Authed,@Param('operationId')operationId:string){
+  if(!req.principal)throw new DomainError('DENIED','Session required');
+  return this.commerce.authorizeBeta(req.principal,requireId(operationId));
+ }
 }
 
 

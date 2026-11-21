@@ -2,9 +2,12 @@ import { and,eq,inArray } from 'drizzle-orm';
 import { DomainError,newId,transitionOperation,type ID,type Principal,type Operation } from '@qeynox/domain';
 import { QeyNoxStore,resultDocuments,commercialOrders,approvals,operations,claims,events,type DocumentState } from '@qeynox/persistence';
 import type { ResultDocument } from './result-document';
+import { commercePolicyFromEnvironment,type CommercePolicy } from './commerce-mode';
+import { BetaExecutionAuthorizer } from './beta-execution';
 
 export class ResultDeliveryService {
- constructor(private readonly store:QeyNoxStore){}
+ private readonly beta:BetaExecutionAuthorizer;
+ constructor(private readonly store:QeyNoxStore,policy:CommercePolicy=commercePolicyFromEnvironment(),private readonly now:()=>Date=()=>new Date()){this.beta=new BetaExecutionAuthorizer(policy);}
  async deliver(actor:Principal,operationId:ID,documentId:ID,approvalId:ID){
   const operation=await this.store.getOperation(actor,operationId);
   if(operation.status!=='WAITING_APPROVAL'||!operation.currentRevisionId)throw new DomainError('INVALID_STATE','Operation is not ready for result review');
@@ -23,8 +26,14 @@ export class ResultDeliveryService {
     const currentClaims=await tx.select().from(claims).where(and(eq(claims.workspaceId,actor.workspaceId),eq(claims.operationId,operationId),inArray(claims.id,claimIds)));
     if(currentClaims.length!==claimIds.length||currentClaims.some(c=>c.status!=='SUPPORTED'))throw new DomainError('INVALID_STATE','Unverified or stale claims prevent delivery');
     const [order]=await tx.select().from(commercialOrders).where(and(eq(commercialOrders.workspaceId,actor.workspaceId),eq(commercialOrders.operationId,operationId),eq(commercialOrders.revisionId,row.revisionId))).limit(1);
-    if(!order||!['AUTHORIZED','FULFILLING'].includes(order.state))throw new DomainError('DENIED','Unapproved commercial fulfillment');
-    const now=new Date().toISOString();
+    // A21.03 — a free-beta order is delivered only while its beta authorization still binds this exact
+    // scope and revision, the mode is BETA_FREE and the linked grant is ACTIVE and unexpired (held FOR SHARE
+    // until this delivery commits). It is NOT a payment and never becomes the financial DELIVERED state.
+    const betaAuthorization=order?.state==='BETA_AUTHORIZED'
+      ?await this.beta.assert(tx,{order,currentRevisionId:op.currentRevisionId??null,at:this.now(),purpose:'DELIVERY',lockGrant:true})
+      :null;
+    if(!order||(!betaAuthorization&&!['AUTHORIZED','FULFILLING'].includes(order.state)))throw new DomainError('DENIED','Unapproved commercial fulfillment');
+    const at=this.now(),now=at.toISOString();
     const previousDocumentId=row.id as ID;
     const releasedDocumentId=newId();
     const released:ResultDocument={...doc,id:releasedDocumentId,version:row.version+1,status:'DELIVERABLE',priorId:previousDocumentId,reviewedBy:actor.userId,reviewedAt:now};
@@ -32,8 +41,14 @@ export class ResultDeliveryService {
     await tx.update(operations).set({status:'COMPLETED',version:completed.version,payload:completed,lastActivityAt:now}).where(and(eq(operations.id,operationId),eq(operations.version,op.version)));
     // Revisions append documents: the reviewed version is retained and a DELIVERABLE version is appended.
     await tx.insert(resultDocuments).values({id:releasedDocumentId,workspaceId:actor.workspaceId,operationId,revisionId:row.revisionId,version:released.version,state:'DELIVERABLE',document:released as unknown as Record<string,unknown>,createdAt:now,supersedesId:previousDocumentId});
-    await tx.update(commercialOrders).set({state:'DELIVERED',updatedAt:now}).where(eq(commercialOrders.id,order.id));
-    const event={id:newId(),workspaceId:actor.workspaceId,operationId,kind:'RESULT_DELIVERED',actorId:actor.userId,data:{documentId:releasedDocumentId,previousDocumentId,approvalId},occurredAt:now,eventVersion:1};
+    if(betaAuthorization){
+      const moved=await tx.update(commercialOrders).set({state:'BETA_DELIVERED',updatedAt:now}).where(and(eq(commercialOrders.id,order.id),eq(commercialOrders.state,'BETA_AUTHORIZED'))).returning({id:commercialOrders.id});
+      if(moved.length!==1)throw new DomainError('CONFLICT','Order changed concurrently');
+      await this.beta.markDelivered(tx,betaAuthorization.id,at);
+    } else {
+      await tx.update(commercialOrders).set({state:'DELIVERED',updatedAt:now}).where(eq(commercialOrders.id,order.id));
+    }
+    const event={id:newId(),workspaceId:actor.workspaceId,operationId,kind:'RESULT_DELIVERED',actorId:actor.userId,data:{documentId:releasedDocumentId,previousDocumentId,approvalId,...(betaAuthorization?{commercialBasis:'FREE_BETA',betaAuthorizationId:betaAuthorization.id}:{})},occurredAt:now,eventVersion:1};
     await tx.insert(events).values({id:event.id,workspaceId:event.workspaceId,operationId,kind:event.kind,occurredAt:now,payload:event});
     return {documentId:releasedDocumentId,previousDocumentId,status:'DELIVERABLE' as DocumentState,operationStatus:'COMPLETED' as const};
   });

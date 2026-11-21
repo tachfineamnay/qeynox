@@ -28,7 +28,8 @@
     "qa:business-packs": "tsx scripts/qa-business-packs.ts",
     "qa:atlas-library": "tsx scripts/qa-atlas-library.ts",
     "qa:payment-freeze": "tsx scripts/qa-payment-freeze.ts",
-    "qa:beta-access": "tsx scripts/qa-beta-access.ts"
+    "qa:beta-access": "tsx scripts/qa-beta-access.ts",
+    "qa:beta-execution": "tsx scripts/qa-beta-execution.ts"
   },
   "dependencies": {
     "@qeynox/application": "workspace:*",

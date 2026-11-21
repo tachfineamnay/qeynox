@@ -3,6 +3,8 @@ import type { CapabilityDefinition, ID, OperationStatus, Principal, WorkStep } f
 import { QeyNoxStore, BetaAccessStore, approvals, attempts, budgetPolicies, commercialOrders, offers, operationBudgets } from '@qeynox/persistence';
 import { capabilityAvailability, type CapabilityAvailability } from './capability-availability';
 import { failClosedRuntime, type OperationalState, type RuntimeReadinessSource } from './runtime-readiness';
+import { commercePolicyFromEnvironment, type CommercePolicy } from './commerce-mode';
+import { BetaExecutionAuthorizer, type BetaAuthorizationDenial } from './beta-execution';
 
 /** Bounded customer-facing projection of one configured business capability. */
 export interface PlanCapabilityView {
@@ -68,7 +70,13 @@ export interface OperationReadinessView {
     profile: { ok: boolean; missing: readonly string[] };
     provider: { ok: boolean; missing: readonly string[] };
     policy: { ok: boolean; missing: readonly string[] };
-    executionAuthorization: { ok: boolean; state: string | null; authorized: boolean };
+    /**
+     * `basis` names WHY execution is authorized: a payment-authorized order, an explicitly free offer, or
+     * (A21.03) a non-financial free-beta authorization. FREE_BETA never means money moved.
+     */
+    executionAuthorization: { ok: boolean; state: string | null; authorized: boolean; basis: 'PAID_ORDER' | 'FREE_OFFER' | 'FREE_BETA' | null };
+    /** A21.03 — the free-beta authorization of the current revision's order, re-evaluated now. */
+    betaAuthorization: { present: boolean; valid: boolean; denial: BetaAuthorizationDenial | null; grantId: string | null; listAmountMinor: number | null; currency: string | null; amountDueNowMinor: 0 | null };
   };
 }
 
@@ -119,7 +127,9 @@ export class PlanReadService {
   constructor(
     private readonly store: QeyNoxStore,
     private readonly runtime: RuntimeReadinessSource = failClosedRuntime,
-  ) {}
+    policy: CommercePolicy = commercePolicyFromEnvironment(),
+  ) { this.beta = new BetaExecutionAuthorizer(policy); }
+  private readonly beta: BetaExecutionAuthorizer;
 
   async read(actor: Principal, operationId: ID): Promise<OperationPlanView> {
     const operation = await this.store.getOperation(actor, operationId);
@@ -228,6 +238,7 @@ export class PlanReadService {
     }
 
     let order: typeof commercialOrders.$inferSelect | undefined;
+    let betaEvaluation: Awaited<ReturnType<BetaExecutionAuthorizer['evaluate']>> | undefined;
     let coveringOffer: typeof offers.$inferSelect | undefined;
     if (planExists) {
       const offerRows = await this.store.db.select().from(offers).where(eq(offers.status, 'ACTIVE'));
@@ -248,6 +259,17 @@ export class PlanReadService {
         blockers.push(coveringOffer
           ? { code: 'SCOPE_NOT_ACCEPTED', category: 'OFFER', detail: 'No accepted service scope for the current plan revision' }
           : { code: 'OFFER_NOT_CONFIGURED', category: 'OFFER', detail: 'No active configured offer covers every capability in this plan' });
+      } else if (order.state === 'BETA_AUTHORIZED') {
+        // A21.03: mirrors the authorization check of OperationExecutionService.start for free-beta orders.
+        betaEvaluation = await this.beta.evaluate(this.store.db, { order, currentRevisionId: revisionId, at: new Date(), purpose: 'EXECUTION' });
+        if (!betaEvaluation.ok) {
+          blockers.push({ code: 'BETA_AUTHORIZATION_INVALID', category: 'AUTHORIZATION', detail: 'Free beta authorization no longer allows execution: ' + betaEvaluation.denial });
+        }
+      } else if (order.state === 'PAYMENT_REQUIRED' && this.beta.enabled && order.amountMinor > 0
+        && 'grantId' in await this.beta.eligibleGrant(this.store.db, actor.workspaceId, new Date(), false)) {
+        // A21.03: an order accepted before the grant was active can be covered by the free beta with an
+        // explicit customer action (POST …/commercial/beta-authorization). Until then it stays blocked.
+        blockers.push({ code: 'BETA_AUTHORIZATION_AVAILABLE', category: 'OFFER', detail: 'The accepted order is unpaid; it can be covered by the free beta authorization (nothing is charged)' });
       } else if (order.state === 'PAYMENT_REQUIRED') {
         // A21.01: every supported QEYNOX_COMMERCE_MODE freezes payments, so an unpaid paid order cannot be
         // paid in this release. Naming the freeze (not a missing provider) keeps the blocker truthful even
@@ -309,7 +331,10 @@ export class PlanReadService {
       .where(and(eq(approvals.workspaceId, actor.workspaceId), eq(approvals.operationId, operationId), eq(approvals.status, 'PENDING')));
 
     const startable = startableStatuses.includes(operation.status);
-    const orderAuthorized = Boolean(order && authorizedOrderStates.includes(order.state));
+    const betaValid = Boolean(order && order.state === 'BETA_AUTHORIZED' && betaEvaluation?.ok);
+    const orderAuthorized = Boolean(order && (authorizedOrderStates.includes(order.state) || betaValid));
+    const authorizationBasis = !order || !orderAuthorized ? null : betaValid ? 'FREE_BETA' as const : order.amountMinor === 0 ? 'FREE_OFFER' as const : 'PAID_ORDER' as const;
+    const betaRow = betaEvaluation?.authorization ?? null;
     const offerConfiguration = coveringOffer?.configuration as { label?: unknown; isExplicitlyFree?: unknown } | undefined;
     const offerLabel = typeof offerConfiguration?.label === 'string' ? offerConfiguration.label : null;
     const offerFree = offerConfiguration?.isExplicitlyFree === true;
@@ -372,7 +397,7 @@ export class PlanReadService {
           isExplicitlyFree: offerFree,
         },
         order: {
-          ok: Boolean(order && authorizedOrderStates.includes(order.state)),
+          ok: orderAuthorized,
           state: order?.state ?? null,
           amountMinor: order?.amountMinor ?? null,
           currency: order?.currency ?? null,
@@ -391,7 +416,13 @@ export class PlanReadService {
         profile: { ok: missingProfiles.size === 0, missing: [...missingProfiles] },
         provider: { ok: missingProviders.size === 0, missing: [...missingProviders] },
         policy: { ok: missingPolicies.size === 0, missing: [...missingPolicies] },
-        executionAuthorization: { ok: orderAuthorized, state: order?.state ?? null, authorized: orderAuthorized },
+        executionAuthorization: { ok: orderAuthorized, state: order?.state ?? null, authorized: orderAuthorized, basis: authorizationBasis },
+        betaAuthorization: {
+          present: Boolean(betaRow), valid: betaValid,
+          denial: betaEvaluation && !betaEvaluation.ok ? betaEvaluation.denial : null,
+          grantId: betaRow?.betaGrantId ?? null, listAmountMinor: betaRow?.listAmountMinor ?? null,
+          currency: betaRow?.currency ?? null, amountDueNowMinor: betaRow ? 0 : null,
+        },
       },
     };
   }

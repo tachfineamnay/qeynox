@@ -1,6 +1,12 @@
 import { sql } from 'drizzle-orm';
 import { pgTable,text,integer,jsonb,uniqueIndex,index,primaryKey,check } from 'drizzle-orm/pg-core';
-export type CommercialState='AWAITING_ACCEPTANCE'|'PAYMENT_REQUIRED'|'AUTHORIZED'|'FULFILLING'|'DELIVERED'|'DISPUTED'|'CANCELLED';
+/**
+ * Order lifecycle. `BETA_AUTHORIZED` / `BETA_DELIVERED` (MISSION A21.03) are NON-FINANCIAL: the scope
+ * was accepted at its published price and is executed under a free-beta authorization
+ * (`raas_beta_authorizations`) with nothing due now. No payment exists for such an order, and no code
+ * path may read either state as paid, captured or payment-authorized.
+ */
+export type CommercialState='AWAITING_ACCEPTANCE'|'PAYMENT_REQUIRED'|'AUTHORIZED'|'FULFILLING'|'DELIVERED'|'DISPUTED'|'CANCELLED'|'BETA_AUTHORIZED'|'BETA_DELIVERED';
 export const offers=pgTable('raas_offers',{
  id:text('id').notNull(),version:integer('version').notNull(),status:text('status').notNull(),
  currency:text('currency').notNull(),amountMinor:integer('amount_minor').notNull(),

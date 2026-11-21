@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { idSchema } from '@qeynox/contracts';
 import { AppShell, Card, EmptyState, Feedback, PageHeader, SectionHeading, StatusBadge } from '../../../../components/ui';
 import { ChangeForm, RefreshMission } from '../../../../components/mission-controls';
-import { AcceptQuoteForm, ApprovalDecision, ClaimReviewForm, QuoteForm, ReassembleForm, StartMission } from '../../../../components/mission-flow';
+import { AcceptQuoteForm, ApprovalDecision, BetaAuthorizeForm, ClaimReviewForm, QuoteForm, ReassembleForm, StartMission } from '../../../../components/mission-flow';
 import { FlowHeader, FlowWorkspace } from '../../../../components/flow';
 import { PlanEditor, type DraftStep } from '../../../../components/plan-editor';
 import { PaymentPanel } from '../../../../components/payment-panel';
@@ -353,9 +353,28 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           {commercialData.order ? (
             <p><span className="qx-kicker">{f.orderLabel}</span> <StatusBadge status={commercialData.order.state} lang={lang} /> {formatMoney(commercialData.order.amountMinor, commercialData.order.currency, lang)}</p>
           ) : null}
+          {/* MISSION A21.03 — a free-beta authorization is NOT a payment: the published price stays visible,
+              nothing is due now, and no payment panel or checkout is offered for it. */}
+          {commercialData.betaAuthorization ? (
+            <div className="qx-beta-authorization">
+              <p><span className="qx-kicker">{f.betaTitle}</span> <span className={'badge ' + (commercialData.betaAuthorization.valid || commercialData.betaAuthorization.status === 'DELIVERED' ? 'success' : 'warning')}>FREE_BETA</span></p>
+              <p>{f.betaListPrice}: <strong>{formatMoney(commercialData.betaAuthorization.listAmountMinor, commercialData.betaAuthorization.currency, lang)}</strong> · {f.betaDueNow}: <strong>{formatMoney(commercialData.betaAuthorization.amountDueNowMinor, commercialData.betaAuthorization.currency, lang)}</strong></p>
+              {commercialData.betaAuthorization.status === 'DELIVERED'
+                ? <p className="qx-ready">✓ {f.betaDelivered}</p>
+                : commercialData.betaAuthorization.valid
+                  ? <p className="muted">{f.betaNote}</p>
+                  : <Feedback error title={f.betaInvalid + (commercialData.betaAuthorization.denial ? ' — ' + (f.betaDenials[commercialData.betaAuthorization.denial] ?? commercialData.betaAuthorization.denial) : '')} />}
+            </div>
+          ) : null}
+          {commercialData.betaAuthorizationAvailable && commercialData.order?.state === 'PAYMENT_REQUIRED' ? (
+            <div className="qx-beta-authorization">
+              <p className="muted">{f.betaAvailable}</p>
+              <BetaAuthorizeForm lang={lang} operationId={op.id} />
+            </div>
+          ) : null}
           {/* MISSION A08 — a paid order needs an explicit payment state and a way to recover from any
               non-paid outcome. The panel never decides success; it renders what the server recorded. */}
-          {commercialData.order && commercialData.order.state !== 'AUTHORIZED' && commercialData.order.state !== 'FULFILLING' && commercialData.order.state !== 'DELIVERED' ? (
+          {commercialData.order && !['AUTHORIZED', 'FULFILLING', 'DELIVERED', 'BETA_AUTHORIZED', 'BETA_DELIVERED'].includes(commercialData.order.state) ? (
             <PaymentPanel
               lang={lang}
               operationId={op.id}
@@ -369,10 +388,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
               returned={returnMarker === 'returned'}
             />
           ) : null}
-          {!paymentData && commercialData.order ? (
+          {!paymentData && commercialData.order && !commercialData.betaAuthorization ? (
             <p className="muted">{lang === 'fr' ? 'État du paiement indisponible (' + payment.code + '). Aucun paiement n’est supposé effectué.' : 'Payment status unavailable (' + payment.code + '). No payment is assumed to have happened.'}</p>
           ) : null}
-          {commercialData.payment.required && !paymentData?.canStartCheckout && paymentData?.providerConfigured === false ? <Feedback error title={f.paymentRequired} /> : null}
+          {commercialData.payment.required && !commercialData.betaAuthorizationAvailable && !paymentData?.canStartCheckout && paymentData?.providerConfigured === false ? <Feedback error title={f.paymentRequired} /> : null}
           {commercialData.executionAuthorized ? <p className="qx-ready">✓ {f.scopeAccepted}</p> : null}
           <p className="muted qx-hint">{f.quoteNote}</p>
         </>

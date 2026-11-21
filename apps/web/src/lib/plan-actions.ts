@@ -123,6 +123,23 @@ export async function acceptQuote(previous: ActionResult, form: FormData): Promi
 }
 
 /**
+ * MISSION A21.03 — covers an already-accepted priced order with the workspace's free beta access.
+ * The API re-checks the grant, the commerce mode and the exact revision; nothing is charged and no
+ * payment, invoice or checkout session is created. The published price is kept on the order.
+ */
+export async function authorizeBeta(previous: ActionResult, form: FormData): Promise<ActionResult> {
+  try {
+    const operationId = idSchema.parse(form.get('operationId'));
+    const lang = locale(String(form.get('locale')));
+    await api(`/v1/operations/${operationId}/commercial/beta-authorization`, 'POST', {});
+    revalidatePath(`/${lang}/missions/${operationId}`);
+    return { code: 'OK' };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/**
  * MISSION A08 — starts (or safely resumes) checkout for an accepted paid order.
  *
  * The idempotency key is generated once by the form and kept across retries, so a double submit or a

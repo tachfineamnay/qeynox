@@ -63,6 +63,7 @@ const en = {
     PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected', EXPIRED: 'Expired', CANCELLED: 'Cancelled', UNKNOWN: 'Unknown',
     SKIPPED: 'Skipped', INVALIDATED: 'Invalidated', QUEUED: 'Queued',
     AUTHORIZED: 'Authorized', FULFILLING: 'Fulfilling', PAYMENT_REQUIRED: 'Payment required', AWAITING_ACCEPTANCE: 'Awaiting acceptance',
+    BETA_AUTHORIZED: 'Free beta — authorized', BETA_DELIVERED: 'Free beta — delivered',
     ACTIVE: 'Active', UNCONFIGURED: 'Not configured', DISABLED: 'Disabled' }
 };
 const fr: typeof en = {
@@ -124,6 +125,7 @@ const fr: typeof en = {
     PENDING: 'En attente', APPROVED: 'Approuvé', REJECTED: 'Refusé', EXPIRED: 'Expiré', CANCELLED: 'Annulé', UNKNOWN: 'Inconnu',
     SKIPPED: 'Ignorée', INVALIDATED: 'Invalidée', QUEUED: 'En file',
     AUTHORIZED: 'Autorisé', FULFILLING: 'En exécution', PAYMENT_REQUIRED: 'Paiement requis', AWAITING_ACCEPTANCE: 'En attente d’acceptation',
+    BETA_AUTHORIZED: 'Bêta gratuite — autorisée', BETA_DELIVERED: 'Bêta gratuite — livrée',
     ACTIVE: 'Active', UNCONFIGURED: 'Non configurée', DISABLED: 'Désactivée' }
 };
 /** The reviewed catalog shape. Any future locale catalog must implement exactly this suite. */

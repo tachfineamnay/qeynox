@@ -20,6 +20,7 @@ export * from './payments';
 export * from './stripe-payments';
 export * from './payment-service';
 export * from './commerce-mode';
+export * from './beta-execution';
 export * from './budgets';
 export * from './read-models';
 export * from './lifecycle-view';
