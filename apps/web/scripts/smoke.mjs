@@ -18,6 +18,45 @@ const backend = createServer((req, res) => {
   if (req.url?.startsWith('/v1/identity/recovery/inspect')) { res.end(JSON.stringify({ valid: false })); return; }
   if (req.url?.startsWith('/v1/identity/verification/inspect')) { res.end(JSON.stringify({ valid: false })); return; }
   if (req.url === '/v1/identity/recovery/request' && req.method === 'POST') { res.end(JSON.stringify({ sent: false, notSentReason: 'EMAIL_PROVIDER_NOT_CONFIGURED', issued: false })); return; }
+  // MISSION A20 — public shared result routes (no bearer header sent).
+  if (req.url === '/v1/public/shared-results/valid_qa_share_token_000000000000') {
+    assert.equal(req.headers.authorization, undefined);
+    res.end(JSON.stringify({
+      share: {
+        id: 'share_qa_01',
+        label: 'External Board Memo',
+        createdAt: '2026-11-18T12:00:00.000Z',
+        expiresAt: '2026-11-25T12:00:00.000Z',
+      },
+      deliverable: true,
+      verdict: 'Reviewed result. Verified findings below are supported by the cited sources at the recorded retrieval time.',
+      verificationPosture: 'VERIFIED_DELIVERABLE',
+      counts: { VERIFIED: 1, UNRESOLVED: 0, AWAITING_ASSESSMENT: 0, AI_INTERPRETATION: 0 },
+      document: {
+        id: 'document_qa_v2',
+        version: 2,
+        title: 'QA reviewed deliverable',
+        objective: 'QA objective',
+        scope: ['Morocco'],
+        status: 'DELIVERABLE',
+        createdAt: '2026-11-18T12:00:00.000Z',
+        reviewedAt: '2026-11-18T12:00:00.000Z',
+        hasPriorVersion: true,
+        nextActions: ['Execute recommendation'],
+        limitations: [],
+        unresolved: [],
+        citations: [{ sourceId: 'source_qa2', provider: 'QA provider', uri: 'https://example.org/supported', retrievedAt: '2026-11-18T11:55:00.000Z' }],
+        findings: [{ claimId: 'claim_qa2', statement: 'QA supported finding', status: 'SUPPORTED', limitations: [], citations: [{ sourceId: 'source_qa2', provider: 'QA provider', uri: 'https://example.org/supported', retrievedAt: '2026-11-18T11:55:00.000Z' }] }],
+      },
+    }));
+    return;
+  }
+  if (req.url === '/v1/public/shared-results/revoked_qa_share_token_0000000000') {
+    assert.equal(req.headers.authorization, undefined);
+    res.statusCode = 403;
+    res.end(JSON.stringify({ error: { code: 'DENIED', message: 'Shared result link has been revoked' } }));
+    return;
+  }
   assert.equal(req.headers.authorization, `Bearer ${token}`);
   assert.equal(req.headers['x-qeynox-workspace'], 'workspace_qa');
   const operation = { id: 'operation_qa', title: 'QA mission workspace', status: 'RUNNING', version: 3, lastActivityAt: '2026-01-01T12:00:00.000Z' };
@@ -55,6 +94,7 @@ const backend = createServer((req, res) => {
   // to crash the page, and must not silently masquerade as a valid consent either.
   if (req.url === '/v1/soul/consents') payload = [{ id: 'consent_qa', purpose: 'Soul onboarding — consented context', scopes: ['context:read', 'context:write'], grantedAt: operation.lastActivityAt }];
   if (req.url === '/v1/operations/operation_qa/claims') payload = [];
+  if (req.url === '/v1/operations/operation_qa/vault-documents' || req.url === '/v1/documents') payload = [];
   // MISSION A08 — a commercial state with an accepted paid order, so the payment panel has something
   // real to render. Without it the panel would be untestable in this fixture.
   if (req.url === '/v1/operations/operation_qa/commercial' && mode.startsWith('payment-')) {
@@ -96,6 +136,92 @@ const backend = createServer((req, res) => {
     return;
   }
   if (req.url?.endsWith('/artifacts/artifact_qa')) { res.end(JSON.stringify({ url: 'https://example.org/qa-only-artifact' })); return; }
+  // MISSION A20 — Global Atlas Library routes.
+  if (req.url === '/v1/results/document_qa/shares') {
+    payload = [];
+  } else if (req.url?.startsWith('/v1/results/document_qa')) {
+    payload = {
+      document: { ...doc, workspaceId: 'workspace_qa', version: 2, priorId: 'document_qa_v1' },
+      operation: { id: operation.id, title: operation.title, status: operation.status, lastActivityAt: operation.lastActivityAt, lastErrorCode: null, currentRevisionId: 'revision_qa' },
+      deliverable: false,
+      verdict: 'Partial: at least one finding is unresolved.',
+      verificationPosture: 'PARTIALLY_VERIFIED',
+      counts: { VERIFIED: 1, UNRESOLVED: 2, AWAITING_ASSESSMENT: 0, AI_INTERPRETATION: 0 },
+      isLatestVersion: true,
+      latestDocumentId: 'document_qa',
+      previousVersionDocumentId: 'document_qa_v1',
+      nextVersionDocumentId: null,
+      versions: [
+        { id: 'document_qa', version: 2, status: 'PARTIAL', title: doc.title, createdAt: operation.lastActivityAt, reviewedAt: null, isLatestVersion: true, verificationPosture: 'PARTIALLY_VERIFIED', counts: { VERIFIED: 1, UNRESOLVED: 2, AWAITING_ASSESSMENT: 0, AI_INTERPRETATION: 0 }, citationCount: 3 },
+        { id: 'document_qa_v1', version: 1, status: 'DRAFT', title: 'QA evidence document v1', createdAt: '2026-01-01T10:00:00.000Z', reviewedAt: null, isLatestVersion: false, verificationPosture: 'UNVERIFIED', counts: { VERIFIED: 0, UNRESOLVED: 0, AWAITING_ASSESSMENT: 0, AI_INTERPRETATION: 0 }, citationCount: 0 },
+      ],
+      comparison: {
+        baseDocumentId: 'document_qa_v1',
+        baseVersion: 1,
+        baseStatus: 'DRAFT',
+        baseCreatedAt: '2026-01-01T10:00:00.000Z',
+        targetDocumentId: 'document_qa',
+        targetVersion: 2,
+        targetStatus: 'PARTIAL',
+        targetCreatedAt: operation.lastActivityAt,
+        statusChanged: true,
+        verifiedDelta: 1,
+        unresolvedDelta: 2,
+        awaitingDelta: 0,
+        citationDelta: 3,
+        scopeAdded: [],
+        scopeRemoved: [],
+        addedFindings: [{ claimId: 'claim_qa2', statement: 'QA supported finding', status: 'SUPPORTED', findingClass: 'VERIFIED' }],
+        removedFindings: [],
+        changedFindings: [],
+      },
+      artifacts: [{ id: 'artifact_qa', format: 'pdf', contentType: 'application/pdf', sha256: 'a'.repeat(64), size: 2048, state: 'AVAILABLE', createdAt: operation.lastActivityAt }],
+      artifactStoreConfigured: true,
+      canExportNew: true,
+      canManageShares: true,
+      activeShareCount: 0,
+    };
+  } else if (req.url?.startsWith('/v1/results')) {
+    payload = mode === 'empty'
+      ? { items: [], nextCursor: null, limit: 20, totalCount: 0, workspaceDocumentCount: 0, missions: [], failedOperations: [], artifactStoreConfigured: false, canManageShares: true }
+      : {
+          items: [{
+            id: 'document_qa',
+            operationId: operation.id,
+            operationTitle: operation.title,
+            operationStatus: operation.status,
+            operationLastErrorCode: null,
+            revisionId: 'revision_qa',
+            version: 2,
+            latestVersionForOperation: 2,
+            isLatestVersion: true,
+            previousVersionDocumentId: 'document_qa_v1',
+            latestDocumentId: 'document_qa',
+            title: doc.title,
+            objective: doc.objective,
+            status: 'PARTIAL',
+            deliverable: false,
+            verdict: 'Partial: at least one finding is unresolved.',
+            verificationPosture: 'PARTIALLY_VERIFIED',
+            counts: { VERIFIED: 1, UNRESOLVED: 2, AWAITING_ASSESSMENT: 0, AI_INTERPRETATION: 0 },
+            provenance: { citationCount: 3, verifiableCitationCount: 2, providers: ['QA source', 'QA provider'], latestRetrievedAt: operation.lastActivityAt },
+            availableExports: ['pdf'],
+            pendingExportCount: 0,
+            activeShareCount: 0,
+            createdAt: operation.lastActivityAt,
+            reviewedAt: null,
+            lastUpdatedAt: operation.lastActivityAt,
+          }],
+          nextCursor: null,
+          limit: 20,
+          totalCount: 1,
+          workspaceDocumentCount: 2,
+          missions: [{ operationId: operation.id, title: operation.title, status: operation.status, documentCount: 2, latestVersion: 2 }],
+          failedOperations: [{ operationId: 'operation_failed_qa', title: 'QA failed mission without result', status: 'FAILED', lastActivityAt: operation.lastActivityAt, lastErrorCode: 'CONNECTOR_TIMEOUT', documentCount: 0 }],
+          artifactStoreConfigured: true,
+          canManageShares: true,
+        };
+  }
   if (payload !== undefined) { res.end(JSON.stringify(payload)); return; }
   assert.equal(req.url, '/v1/mydash/recent?limit=30');
   if (mode === 'denied') { res.statusCode = 403; res.end(JSON.stringify({ error: { code: 'DENIED' } })); }
@@ -249,6 +375,33 @@ try {
   const unsafeSource = await page('/en/missions/operation_qa/results/document_qa', true);
   assert.ok(!unsafeSource.includes('href="javascript:'), 'a javascript: citation is never a link'); assertions++;
   assert.ok(unsafeSource.includes('non verifiable') || unsafeSource.includes('not verifiable') || unsafeSource.includes('No citation available'), 'an unverifiable citation is labelled as such'); assertions++;
+  // MISSION A20 — Global Atlas Library: EN/FR library, filters, version diff, controlled share & robots.
+  mode = 'empty';
+  const emptyResults = await page('/en/results', true);
+  assert.ok(emptyResults.includes('Results library') && emptyResults.includes('No Atlas result has been recorded in this workspace yet'), 'empty Atlas Library renders honest empty state'); assertions++;
+  const anonResults = await page('/en/results');
+  assert.ok(anonResults.includes('Sign in to view or save your missions.') && !anonResults.includes('QA evidence document'), 'unauthenticated /en/results enforces session boundary'); assertions++;
+  mode = 'loaded';
+  const loadedResultsEn = await page('/en/results', true);
+  for (const text of ['Results library', 'QA evidence document', 'Partially verified', 'QA provider', 'QA failed mission without result', 'CONNECTOR_TIMEOUT']) {
+    assert.ok(loadedResultsEn.includes(text), 'EN Atlas Library includes ' + text); assertions++;
+  }
+  const loadedResultsFr = await page('/fr/results', true);
+  for (const text of ['Bibliothèque des résultats', 'Partiellement vérifié', 'Résultats']) {
+    assert.ok(loadedResultsFr.includes(text), 'FR Atlas Library includes ' + text); assertions++;
+  }
+  const atlasDetail = (await page('/en/results/document_qa', true)).replaceAll('<!-- -->', '');
+  for (const text of ['Version comparison', 'v1', 'v2', 'Previous version', 'Controlled external sharing', 'PDF']) {
+    assert.ok(atlasDetail.includes(text), 'Atlas Library detail includes ' + text); assertions++;
+  }
+  const publicShared = await page('/en/results/shared/valid_qa_share_token_000000000000');
+  assert.ok(publicShared.includes('noindex, nofollow'), 'shared result page sets noindex, nofollow'); assertions++;
+  assert.ok(publicShared.includes('QA reviewed deliverable') && publicShared.includes('External Board Memo'), 'shared result renders canonical deliverable'); assertions++;
+  assert.ok(!publicShared.includes('workspace_qa'), 'shared result never leaks workspaceId'); assertions++;
+  const revokedShared = await page('/en/results/shared/revoked_qa_share_token_0000000000');
+  assert.ok(revokedShared.includes('This shared result link has expired or been revoked') && !revokedShared.includes('QA reviewed deliverable'), 'revoked share link fails closed'); assertions++;
+  const robotsTxt = await page('/robots.txt');
+  assert.ok(robotsTxt.includes('Disallow: /results') && robotsTxt.includes('Disallow: /*/results'), 'robots.txt disallows /results routes'); assertions++;
   console.log(`PASS: ${assertions} HTTP assertions; EN/FR, session boundary, genuine empty/loaded/denied/malformed states. QA fixtures only; no database or agent runtime used.`);
   }
 } finally {

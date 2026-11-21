@@ -74,7 +74,14 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
 
   return (
     <AppShell lang={lang} active="missions">
-      <Link href={`/${lang}/missions/${id.data}`}>← {t.detail}</Link>
+      <div className="qx-breadcrumb-bar">
+        <Link href={`/${lang}/missions/${id.data}`}>← {t.detail}</Link>
+        <Link className="button secondary qx-small" href={`/${lang}/results/${doc.id}`}>
+          {lang === 'fr'
+            ? 'Ouvrir dans la bibliothèque Atlas (versions et partage)'
+            : 'Open in Atlas library (versions & sharing)'}
+        </Link>
+      </div>
       <AtlasResult
         doc={atlas}
         lang={lang}

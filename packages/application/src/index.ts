@@ -57,3 +57,4 @@ export * from './account-settings';
 export * from './email-templates';
 export * from './email-transports';
 export * from './notifications';
+export * from './atlas-library';
