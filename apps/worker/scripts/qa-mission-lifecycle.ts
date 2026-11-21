@@ -35,6 +35,7 @@ import { PgOutboxDispatcher, type ExecutionRequest, type OrchestratorPort } from
 import { DomainError, type ID, type Principal } from '@qeynox/domain';
 import { createWorkerDependencies } from '../src/runtime';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
+import { seedQaBetaGrant } from '../../api/scripts/qa-beta-fixture';
 
 let assertions = 0;
 const passed: string[] = [];
@@ -127,6 +128,8 @@ async function main(): Promise<void> {
       await connection!.db.insert(identityUsers).values({ id: userId, email: 'qa-a06-' + label + '-' + userId + '@example.invalid' });
       await connection!.db.insert(identityWorkspaces).values({ id: workspaceId, name: 'QA A06 ' + label, createdBy: userId });
       await connection!.db.insert(identityMemberships).values({ id: randomUUID(), userId, workspaceId, role: 'OWNER', status: 'ACTIVE' });
+      // A21.02: launches and provider spend require an ACTIVE beta grant (explicit QA precondition).
+      await seedQaBetaGrant(connection!.db, workspaceId);
       return { owner: { userId: userId as ID, workspaceId: workspaceId as ID, roles: ['OWNER'] } as Principal, workspaceId, userId };
     };
     const primary = await mkWorkspace('a');

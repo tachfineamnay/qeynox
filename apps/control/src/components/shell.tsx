@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Fragment, type ReactNode } from 'react';
 import { copy, type Locale } from '../lib/copy';
-import { can, CONSULTATION, OPERATIONS, READ_ASSIGNMENTS, READ_CATALOGUE, READ_CONFIGURATION, READ_ORGANIZATIONS, READ_USERS, SUPPORT } from '../lib/permissions';
+import { can, CONSULTATION, OPERATIONS, READ_ASSIGNMENTS, READ_BETA, READ_CATALOGUE, READ_CONFIGURATION, READ_ORGANIZATIONS, READ_USERS, SUPPORT } from '../lib/permissions';
 import { logoutAction } from '../lib/actions';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -66,6 +66,7 @@ export function Shell({ lang, path, permissions, userId, sessionExpiresAt, child
     { href: '/' + lang, label: t.navOverview, match: '', allowed: true, group: '' },
     { href: '/' + lang + '/users', label: t.navUsers, match: 'users', allowed: can(permissions, READ_USERS), group: t.groupCustomer },
     { href: '/' + lang + '/organizations', label: t.navOrganizations, match: 'organizations', allowed: can(permissions, READ_ORGANIZATIONS), group: t.groupCustomer },
+    { href: '/' + lang + '/beta', label: t.navBeta, match: 'beta', allowed: can(permissions, READ_BETA), group: t.groupCustomer },
     { href: '/' + lang + '/support', label: t.navSupport, match: 'support', allowed: can(permissions, SUPPORT), group: t.groupCustomer },
     { href: '/' + lang + '/admins', label: t.navAdmins, match: 'admins', allowed: can(permissions, READ_ASSIGNMENTS), group: t.groupPlatform },
     { href: '/' + lang + '/settings', label: t.navSettings, match: 'settings', allowed: can(permissions, READ_CATALOGUE), group: t.groupPlatform },

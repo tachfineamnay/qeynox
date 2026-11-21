@@ -244,7 +244,7 @@ const en = {
     exportDigest: 'Artifact SHA-256',
     category: {
       PLAN: 'Plan', CAPABILITY: 'Capability', OFFER: 'Offer', BUDGET: 'Budget',
-      PERMISSION: 'Permission', ENGINE: 'Engine', PROVIDER: 'Provider',
+      PERMISSION: 'Permission', ENGINE: 'Engine', PROVIDER: 'Provider', AUTHORIZATION: 'Access',
     },
     blocker: {
       PLAN_MISSING: 'No plan is recorded for this mission.',
@@ -255,6 +255,8 @@ const en = {
       SCOPE_NOT_ACCEPTED: 'No service scope has been accepted for this plan revision.',
       PAYMENT_NOT_CONFIGURED: 'No payment provider is configured for the accepted order.',
       PAYMENTS_FROZEN: 'Payments are frozen: the accepted paid order cannot be paid or executed right now.',
+      BETA_ACCESS_REQUIRED: 'Launching missions requires an active beta access grant for this workspace (invitation only).',
+      BETA_LIMIT_REACHED: 'A beta access limit is reached for this workspace (missions, concurrent missions or provider budget).',
       ORDER_NOT_AUTHORIZED: 'The commercial order does not authorize execution.',
       BUDGET_NOT_CONFIGURED: 'No active workspace budget policy covers this operation.',
       BUDGET_EXHAUSTED: 'The operation budget is exhausted.',
@@ -507,7 +509,7 @@ const fr: typeof en = {
     exportDigest: 'SHA-256 de l’artefact',
     category: {
       PLAN: 'Plan', CAPABILITY: 'Capacité', OFFER: 'Offre', BUDGET: 'Budget',
-      PERMISSION: 'Permission', ENGINE: 'Moteur', PROVIDER: 'Fournisseur',
+      PERMISSION: 'Permission', ENGINE: 'Moteur', PROVIDER: 'Fournisseur', AUTHORIZATION: 'Accès',
     },
     blocker: {
       PLAN_MISSING: 'Aucun plan n’est enregistré pour cette mission.',
@@ -518,6 +520,8 @@ const fr: typeof en = {
       SCOPE_NOT_ACCEPTED: 'Aucun périmètre de service n’a été accepté pour cette révision.',
       PAYMENT_NOT_CONFIGURED: 'Aucun fournisseur de paiement n’est configuré pour la commande acceptée.',
       PAYMENTS_FROZEN: 'Les paiements sont gelés : la commande payante acceptée ne peut être ni payée ni exécutée pour le moment.',
+      BETA_ACCESS_REQUIRED: 'Le lancement de missions exige un accès bêta actif pour cet espace de travail (sur invitation uniquement).',
+      BETA_LIMIT_REACHED: 'Une limite de l’accès bêta est atteinte pour cet espace de travail (missions, missions simultanées ou budget fournisseurs).',
       ORDER_NOT_AUTHORIZED: 'La commande commerciale n’autorise pas l’exécution.',
       BUDGET_NOT_CONFIGURED: 'Aucune politique budgétaire active ne couvre cette opération.',
       BUDGET_EXHAUSTED: 'Le budget de l’opération est épuisé.',

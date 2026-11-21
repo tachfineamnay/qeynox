@@ -256,3 +256,28 @@ export interface ServiceValidationFindingView {
 export interface PlatformServiceValidationView {
   valid: boolean; findings: ServiceValidationFindingView[]; maximumIterations: number | null;
 }
+
+// A21.02 — invite-only beta access.
+export type BetaGrantStatus = 'INVITED' | 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+export interface BetaGrantView {
+  grantId: string; workspaceId: string; workspaceName: string | null;
+  status: BetaGrantStatus; storedStatus: BetaGrantStatus;
+  expiresAt: string; invitationExpiresAt: string | null;
+  missionQuota: number; missionsUsed: number; missionsRemaining: number; concurrentLimit: number;
+  maxProviderSpendMinor: number; reservedMinor: number; spentMinor: number; spendRemainingMinor: number; currency: string;
+  grantedBy: string; grantedByEmail: string | null; grantReason: string; createdAt: string;
+  activatedAt: string | null; activatedBy: string | null; revokedAt: string | null; revokedBy: string | null; revokeReason: string | null;
+}
+export interface BetaGrantPageView { items: BetaGrantView[]; limit: number }
+export interface BetaGrantEventView {
+  eventId: string; kind: string; actorUserId: string | null; operationId: string | null; reservationId: string | null;
+  amountMinor: number | null; reason: string | null; detail: Record<string, unknown> | null; occurredAt: string;
+}
+export interface BetaGrantDetailView { grant: BetaGrantView; events: BetaGrantEventView[]; activeMissions: number }
+export interface BetaGrantState {
+  status: 'idle' | 'ok' | 'error';
+  code?: string;
+  token?: string;
+  grantId?: string;
+  invitationExpiresAt?: string | null;
+}

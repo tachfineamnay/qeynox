@@ -22,6 +22,7 @@ import type { ApplyConfigurationInput, ConfigurationEntry } from '@qeynox/contra
 import { BudgetService, ClaimsService, CommerceService, ConfigurationService, OperationExecutionService, PlanningService } from '@qeynox/application';
 import { DomainError, newId, type ID, type Principal } from '@qeynox/domain';
 import { createIsolatedQaDatabase } from './qa-isolated-database';
+import { seedQaBetaGrant } from './qa-beta-fixture';
 
 let assertions = 0;
 
@@ -347,6 +348,8 @@ async function main(): Promise<void> {
       { id: randomUUID(), userId: ownerUserId, workspaceId, role: 'OWNER', status: 'ACTIVE' },
       { id: randomUUID(), userId: memberUserId, workspaceId, role: 'MEMBER', status: 'ACTIVE' },
     ]);
+    // A21.02: launches and provider spend require an ACTIVE beta grant (explicit QA precondition).
+    await seedQaBetaGrant(db, workspaceId);
     const owner: Principal = { userId: ownerUserId as ID, workspaceId: workspaceId as ID, roles: ['OWNER'] };
     const member: Principal = { userId: memberUserId as ID, workspaceId: workspaceId as ID, roles: ['MEMBER'] };
 

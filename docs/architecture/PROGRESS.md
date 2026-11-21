@@ -1,5 +1,34 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION A21.02: invite-only beta access (draft PR, branch `arena/3e51529e-qeynox`, off `1177489`)
+
+Durable, workspace-scoped beta grants on the existing PostgreSQL identity and workspace model (no second authentication system). A PLATFORM_ADMIN creates a grant for one `identity_workspaces` row, with an expiry, a mission quota, a concurrent-mission limit and a provider-spend cap. The grant starts INVITED with a single-use 43-character token, stored only as a SHA-256 digest. An OWNER or ADMIN of that same workspace activates it. States are ACTIVE, EXPIRED (evaluated from the clock on every read and gate) and REVOKED. A **mandatory** server-side gate runs inside the launch transaction of start, retry and redo, and inside every provider-spend reservation. It locks the grant row: no grant, an INVITED, expired or revoked grant, or an unadmitted mission → 403 `BETA_ACCESS_REQUIRED`. Quota, concurrency or spend cap reached → 429 `BETA_LIMIT_REACHED`. Readiness names the blocker. Operators cannot grant a workspace they created or hold any membership in, and the issuer cannot activate their own grant. Every operator action (success or denial) lands in `platform_admin_audit`. Lifecycle, admissions, denials and spend go to the new `beta_grant_events` ledger. The new Control `/beta` pages list, grant, inspect and revoke. Additive migration `0026_beta_access.sql`.
+
+Verified on a disposable **real PostgreSQL 14.1** (applied nowhere else):
+- New `qa:beta-access`: **11 groups / 126 assertions PASS**, in-process and over the real `AppModule` HTTP API. It covers:
+  - unauthorized callers denied and audited;
+  - activation rules and single-use token;
+  - exact limits under parallel launches (2 of 6 within concurrency; quota 3) and parallel reservations (2 of 6 under the cap);
+  - DB CHECK backstops;
+  - revocation blocking start, racing launches, retry, redo and new spend at once;
+  - expired grants and invitations failing closed;
+  - A21.01 freeze precedence;
+  - audit and ledger completeness.
+  
+  Mutation check: removing the START gate makes the suite fail.
+- Suites that launch missions now seed an explicit ACTIVE grant via `apps/api/scripts/qa-beta-fixture.ts`; nothing was weakened. Results: `qa:payment-freeze` 369 PASS; `qa:backend` 28 PASS; `qa:agent-runtime` 65 PASS; `qa:mission-lifecycle` 88 PASS; `qa:business-packs` 370 PASS; `qa:stripe-payments` 108 PASS.
+- `qa:task02`: everything past the pre-existing parity failures passes (4310 assertions, run with only those pre-existing mismatches relaxed in a throwaway copy). The new beta tables have full Drizzle↔SQL parity.
+- `pnpm typecheck` 4/4; `pnpm build` 4/4; web `test:smoke` 199 PASS; `test:flow2` 35 PASS.
+- 20 other `qa:*` suites run and PASS.
+
+Pre-existing or environmental failures, not caused by this mission:
+- `qa:task02` parity: `email_deliveries_dedup_unique`, `notifications_dedup_unique` and their unique columns (0024), and `result_share_links_access_count_check` (0025).
+- `qa:platform-authorization` and `qa:platform-users` part B: `pilot.module.ts` queries the database at boot against the suite's unreachable URL. They fail identically on the untouched base.
+- `qa:connectors`, `qa:raas`, `qa:egress` and `qa:a03-service` part 2: BLOCKED because the live World Bank provider is unreachable. `qa:a03-service` reaches the provider call past the beta gate.
+- `qa:atlas-library` failed once on the reconcile assertion. It passed on two re-runs and on the base; it does not touch launches.
+
+NOT verified: browser rendering of the Control `/beta` pages and web blocker copy; real worker, Hermes or provider spend (exercised through `BudgetService.reserve/settle`); invitation e-mail (none is sent; delivery is manual). No production change. Once deployed, **no workspace can launch until it holds an ACTIVE grant**. One draft PR; not merged. Full record: [A21_BETA_ACCESS.md](../design/A21_BETA_ACCESS.md).
+
 ## 2026-11-21 — MISSION A21.01: hard payment freeze (draft PR, branch `arena/21a16ce5-qeynox`, off `d872738`)
 
 Server-authoritative `QEYNOX_COMMERCE_MODE` replaces Stripe key presence as the commercial switch. Supported values are `PAYMENTS_DISABLED` (the default when unset) and `BETA_FREE`. **Both freeze payments.** Any other value, including any paid mode, refuses API boot. The API now composes `FrozenPaymentGateway` and never constructs `StripePaymentProvider`. Configured Stripe test keys are not read and cannot lift the freeze. Checkout, capture, refund, reconcile and the Stripe webhook return `503 PAYMENTS_FROZEN` before any body, signature, database row or provider is touched. Webhooks are refused without verification or ledger write, so redelivered and new events can't authorize an order or record a fake success. Reads stay truthful: history is shown as stored, stale checkout links are withheld, the new `commerce` availability block and `GET /v1/commerce/availability` state the mode, and the readiness blocker is `PAYMENTS_FROZEN`. The web payment panel renders a frozen, read-only state with no checkout action. `BETA_FREE` grants no new entitlement: priced orders stay `PAYMENT_REQUIRED`. The Stripe adapter, the A08 `PaymentService`, prices, orders, payments, refunds, the webhook ledger and every DB contract are preserved. There is no migration.

@@ -20,3 +20,7 @@ export const MANAGE_CONFIGURATION = ['ADMINISTRATION'] as const;
 export const SUPPORT = ['SUPPORT'] as const;
 
 export const OPERATIONS = ['OPERATIONS'] as const;
+
+// A21.02 — beta grants: reads for ADMINISTRATION or SUPPORT, grant/revoke for ADMINISTRATION only.
+export const READ_BETA = ['ADMINISTRATION', 'SUPPORT'] as const;
+export const MANAGE_BETA = ['ADMINISTRATION'] as const;

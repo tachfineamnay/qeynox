@@ -3,7 +3,7 @@ import { requirePlatformMe, tryApi } from '../../../../lib/api';
 import { changeRoleAction, revokeMembershipAction } from '../../../../lib/actions';
 import { InviteForm } from '../../../../components/invite-form';
 import { copy, locale } from '../../../../lib/copy';
-import { ADMINISTRATION, can, READ_ORGANIZATIONS } from '../../../../lib/permissions';
+import { ADMINISTRATION, can, READ_BETA, READ_ORGANIZATIONS } from '../../../../lib/permissions';
 import { ApiErrorNotice, Badge, Card, Empty, Notice, OutcomeNotice, PageHeader, PermissionDenied, Shell } from '../../../../components/shell';
 import type { MemberPageView, MemberView, OrganizationDetailView } from '../../../../lib/types';
 
@@ -51,6 +51,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: {
                 <dt>{t.actor}</dt><dd>{detailResult.value.creatorEmail ?? detailResult.value.createdBy}</dd>
               </dl>
               <p className="muted">{t.ownerLastHint}</p>
+              {can(me.permissions, READ_BETA) ? <p><Link href={'/' + lang + '/beta?workspaceId=' + encodeURIComponent(workspaceId)}>{t.betaWorkspaceLink}</Link></p> : null}
             </Card>
             {canAdminister ? <InviteForm lang={lang} workspaceId={workspaceId} /> : null}
           </div>

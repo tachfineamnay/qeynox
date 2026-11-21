@@ -1,9 +1,11 @@
 import { and,eq,desc } from 'drizzle-orm';
 import { DomainError,newId,redoStep,descendants,type ID,type Principal,type StepAttempt,type Operation } from '@qeynox/domain';
-import { QeyNoxStore,attempts,commandIds,operations,outbox,approvals,events } from '@qeynox/persistence';
+import { QeyNoxStore,BetaAccessStore,attempts,commandIds,operations,outbox,approvals,events } from '@qeynox/persistence';
+import { withBetaDenialLedger } from './beta-access';
 
 export class OperationControlService {
-  constructor(private readonly store:QeyNoxStore){}
+  private readonly beta:BetaAccessStore;
+  constructor(private readonly store:QeyNoxStore){this.beta=new BetaAccessStore(store.db);}
   async interrupt(actor:Principal,operationId:ID,version:number) {
     const op=await this.store.getOperation(actor,operationId);
     if(!['RUNNING','WAITING_APPROVAL'].includes(op.status))throw new DomainError('INVALID_STATE','Operation is not active');
@@ -23,7 +25,8 @@ export class OperationControlService {
     const sequence=Math.max(prior.sequence,(existing[0]?.sequence??0))+1;
     const now=new Date().toISOString(),next=redoStep(prior,now,sequence);
     const affected=[...descendants(planSteps,prior.workStepId)];
-    return this.store.db.transaction(async tx=>{
+    // A21.02: a redo re-launches work, so it passes the same beta gate as a start (inside the transaction).
+    return withBetaDenialLedger(this.beta,{workspaceId:actor.workspaceId,actorUserId:actor.userId,operationId,kind:'LAUNCH_DENIED'},()=>this.store.db.transaction(async tx=>{
       const [duplicate]=await tx.select().from(commandIds).where(and(eq(commandIds.workspaceId,actor.workspaceId),eq(commandIds.commandKey,commandKey))).limit(1);
       if(duplicate) {
         if(duplicate.operationId!==operationId)throw new DomainError('CONFLICT','Idempotency key already used');
@@ -31,6 +34,7 @@ export class OperationControlService {
       }
       const [current]=await tx.select().from(operations).where(and(eq(operations.id,operationId),eq(operations.workspaceId,actor.workspaceId),eq(operations.version,expectedVersion))).limit(1);
       if(!current)throw new DomainError('CONFLICT','Concurrent operation change');
+      await this.beta.admitMission(tx,{workspaceId:actor.workspaceId,operationId,actorUserId:actor.userId,at:new Date(),trigger:'REDO'});
       const updated:Operation={...op,status:'RUNNING',version:expectedVersion+1,updatedAt:now,lastActivityAt:now};
       const [modified]=await tx.update(operations).set({payload:updated,status:'RUNNING',version:updated.version,lastActivityAt:now}).where(and(eq(operations.id,operationId),eq(operations.version,expectedVersion))).returning({id:operations.id});
       if(!modified)throw new DomainError('CONFLICT','Concurrent change');
@@ -41,7 +45,7 @@ export class OperationControlService {
       const ev={id:newId(),workspaceId:actor.workspaceId,operationId,kind:'STEP_REDO_REQUESTED',actorId:actor.userId,data:{priorAttemptId,newAttemptId:next.id,affected},occurredAt:now,eventVersion:1};
       await tx.insert(events).values({id:ev.id,workspaceId:actor.workspaceId,operationId,kind:ev.kind,occurredAt:now,payload:ev});
       return {...outcome,alreadyAccepted:false};
-    });
+    }));
   }
 
   /**

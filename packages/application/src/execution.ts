@@ -1,13 +1,15 @@
 import { and,eq } from 'drizzle-orm';
 import { DomainError,newId,type ID,type Principal,type StepAttempt,type Operation } from '@qeynox/domain';
-import { QeyNoxStore,attempts,outbox,events,operations,commandIds,planSeals } from '@qeynox/persistence';
+import { QeyNoxStore,BetaAccessStore,attempts,outbox,events,operations,commandIds,planSeals } from '@qeynox/persistence';
 import { PlanSealer } from './plan-seal';
 import { CommerceService } from './commerce';
 import { BudgetService } from './budgets';
+import { withBetaDenialLedger } from './beta-access';
 export class OperationExecutionService {
  private readonly sealer:PlanSealer;
  private readonly commerce:CommerceService;
- constructor(private readonly store:QeyNoxStore){this.sealer=new PlanSealer(store);this.commerce=new CommerceService(store);}
+ private readonly beta:BetaAccessStore;
+ constructor(private readonly store:QeyNoxStore){this.sealer=new PlanSealer(store);this.commerce=new CommerceService(store);this.beta=new BetaAccessStore(store.db);}
  async start(actor:Principal,operationId:ID,expectedVersion:number,commandKey:string){
   const [accepted]=await this.store.db.select().from(commandIds).where(and(eq(commandIds.workspaceId,actor.workspaceId),eq(commandIds.commandKey,commandKey))).limit(1);
   if(accepted){if(accepted.operationId!==operationId)throw new DomainError('CONFLICT','Idempotency key reused');return {...accepted.outcome,alreadyAccepted:true};}
@@ -23,9 +25,13 @@ export class OperationExecutionService {
   const previous=await this.store.db.select().from(attempts).where(eq(attempts.stepId,first.id));
   const now=new Date().toISOString();
   const attempt:StepAttempt={id:newId(),operationId,planRevisionId:first.planRevisionId,workStepId:first.id,sequence:previous.length+1,state:'PENDING',version:1,createdAt:now};
-  return this.store.db.transaction(async tx=>{
+  // A21.02: beta eligibility is decided inside the launch transaction, under a row lock on the
+  // workspace's grant, so a revocation, expiry, exhausted quota or full concurrency slot refuses the
+  // launch atomically. A refusal rolls everything back and is then recorded in the beta ledger.
+  return withBetaDenialLedger(this.beta,{workspaceId:actor.workspaceId,actorUserId:actor.userId,operationId,kind:'LAUNCH_DENIED'},()=>this.store.db.transaction(async tx=>{
    const [current]=await tx.select().from(operations).where(and(eq(operations.id,operationId),eq(operations.workspaceId,actor.workspaceId),eq(operations.version,expectedVersion))).for('update').limit(1);
    if(!current)throw new DomainError('CONFLICT','Concurrent operation start');
+   await this.beta.admitMission(tx,{workspaceId:actor.workspaceId,operationId,actorUserId:actor.userId,at:new Date(),trigger:'START'});
    const [sealed]=await tx.select().from(planSeals).where(eq(planSeals.revisionId,planSeal.revisionId)).limit(1);
    if(sealed&&sealed.contentHash!==planSeal.contentHash)throw new DomainError('CONFLICT','Plan changed after sealing');
    if(!sealed)await tx.insert(planSeals).values(planSeal);
@@ -37,6 +43,6 @@ export class OperationExecutionService {
    const ev={id:newId(),workspaceId:actor.workspaceId,operationId,kind:'EXECUTION_REQUESTED',actorId:actor.userId,data:{attemptId:attempt.id,revisionId:attempt.planRevisionId},occurredAt:now,eventVersion:1};
    await tx.insert(events).values({id:ev.id,workspaceId:ev.workspaceId,operationId,kind:ev.kind,occurredAt:now,payload:ev});
    return {operationId,attemptId:attempt.id,alreadyAccepted:false};
-  });
+  }));
  }
 }

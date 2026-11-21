@@ -28,6 +28,7 @@ import {
 import { DomainError, type ID, type Principal } from '@qeynox/domain';
 import { createWorkerDependencies } from '../src/runtime';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
+import { seedQaBetaGrant } from '../../api/scripts/qa-beta-fixture';
 
 let assertions = 0;
 function assert(condition: unknown, message: string): asserts condition {
@@ -109,6 +110,8 @@ async function main(): Promise<void> {
     await db.insert(identityUsers).values({ id: ownerUserId, email: 'qa-connector-' + ownerUserId + '@example.invalid' });
     await db.insert(identityWorkspaces).values({ id: workspaceId, name: 'QA Connector Workspace', createdBy: ownerUserId });
     await db.insert(identityMemberships).values({ id: randomUUID(), userId: ownerUserId, workspaceId, role: 'OWNER', status: 'ACTIVE' });
+    // A21.02: launches and provider spend require an ACTIVE beta grant (explicit QA precondition).
+    await seedQaBetaGrant(db, workspaceId);
     const owner: Principal = { userId: ownerUserId as ID, workspaceId: workspaceId as ID, roles: ['OWNER'] };
     const attestation = new EgressPolicy({ attested: true, allowedHosts: ['api.worldbank.org'] });
 

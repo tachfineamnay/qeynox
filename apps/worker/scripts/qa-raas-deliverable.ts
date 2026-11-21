@@ -30,6 +30,7 @@ import {
 } from '@qeynox/tools';
 import { DomainError, type ID, type Principal, type Source } from '@qeynox/domain';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
+import { seedQaBetaGrant } from '../../api/scripts/qa-beta-fixture';
 
 let assertions = 0;
 function assert(condition: unknown, message: string): asserts condition {
@@ -88,6 +89,8 @@ async function main(): Promise<void> {
       { id: randomUUID(), userId: ownerUserId, workspaceId, role: 'OWNER', status: 'ACTIVE' },
       { id: randomUUID(), userId: memberUserId, workspaceId, role: 'MEMBER', status: 'ACTIVE' },
     ]);
+    // A21.02: launches and provider spend require an ACTIVE beta grant (explicit QA precondition).
+    await seedQaBetaGrant(db, workspaceId);
     const owner: Principal = { userId: ownerUserId as ID, workspaceId: workspaceId as ID, roles: ['OWNER'] };
     const member: Principal = { userId: memberUserId as ID, workspaceId: workspaceId as ID, roles: ['MEMBER'] };
 

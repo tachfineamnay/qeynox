@@ -4,7 +4,11 @@ export type DomainErrorCode='INVALID_INPUT'|'INVALID_STATE'|'DENIED'|'CONFLICT'|
  |'UNEXPECTED_EXECUTION_ERROR'
  // A21.01: payments are frozen by server policy (QEYNOX_COMMERCE_MODE). Distinct from
  // PAYMENT_NOT_CONFIGURED: a configured provider credential can never lift this refusal.
- |'PAYMENTS_FROZEN';
+ |'PAYMENTS_FROZEN'
+ // A21.02: invite-only beta. BETA_ACCESS_REQUIRED = no ACTIVE, unexpired, unrevoked grant for the
+ // workspace (fail closed). BETA_LIMIT_REACHED = a grant limit (missions, concurrency, provider spend).
+ |'BETA_ACCESS_REQUIRED'
+ |'BETA_LIMIT_REACHED';
 export class DomainError extends Error {
  constructor(public readonly code:DomainErrorCode,message:string,public readonly context?:Readonly<Record<string,string>>){
   super(message);this.name='DomainError';

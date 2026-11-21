@@ -7,7 +7,13 @@ import { errorText } from './forms';
 import { Feedback } from './ui';
 
 function outcome(lang: Locale, code: string, done: string): string {
-  return code === 'OK' ? done : errorText(code, lang) + ' (' + code + ')';
+  if (code === 'OK') return done;
+  // A21.02: beta refusals carry their own actionable explanation instead of a generic error.
+  if (code === 'BETA_ACCESS_REQUIRED' || code === 'BETA_LIMIT_REACHED') {
+    const blocker = (missionCopy(lang).flow.blocker as Record<string, string>)[code];
+    if (blocker) return blocker + ' (' + code + ')';
+  }
+  return errorText(code, lang) + ' (' + code + ')';
 }
 
 /**
