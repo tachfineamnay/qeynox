@@ -8,6 +8,7 @@ export * from './platform-operations-store';
 export * from './support-link-store';
 export * from './workspace-store';
 export * from './beta-access-store';
+export * from './registration-store';
 export * from './connection-schema';
 export * from './document-schema';
 export * from './account-schema';

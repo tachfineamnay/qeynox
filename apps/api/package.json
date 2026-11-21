@@ -30,6 +30,7 @@
     "qa:payment-freeze": "tsx scripts/qa-payment-freeze.ts",
     "qa:beta-access": "tsx scripts/qa-beta-access.ts",
     "qa:beta-execution": "tsx scripts/qa-beta-execution.ts",
+    "qa:registration": "tsx scripts/qa-registration.ts",
     "qa:beta-journey": "tsx scripts/qa-beta-journey.ts"
   },
   "dependencies": {

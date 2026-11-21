@@ -9,6 +9,9 @@ const switchWorkspaceSchema=z.object({workspaceId:idSchema});
 @Controller('v1/auth')
 export class AuthController {
   constructor(@Inject(AuthService) private readonly auth:AuthService){}
+  /** A21.05: public, read-only. The web register page renders only what this reports. */
+  @PublicRoute() @Get('registration-policy')
+  registrationPolicy(){return this.auth.registrationPolicy();}
   @PublicRoute() @Post('register')
   async register(@Body()body:unknown){const session=await this.auth.register(body);return this.withWorkspaces(session);}
   @PublicRoute() @Post('login')

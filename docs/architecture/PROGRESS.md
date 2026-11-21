@@ -1,5 +1,88 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION A21.05: registration configuration mismatch fixed; invite-only beta registration (draft PR, branch `arena/6d6d13aa-qeynox`, off `c2d2f62`)
+
+**The bug.** The two layers read different switches with opposite defaults:
+- The web register page read `QEYNOX_REGISTRATION_ENABLED`, which defaulted the form to ON.
+- The API read `QEYNOX_ALLOW_REGISTRATION`, which defaulted to OFF.
+
+So the default deployment offered a form that the API always refused with 503.
+
+**One authoritative server-side policy now decides.** `QEYNOX_REGISTRATION_MODE` is resolved by `resolveRegistrationPolicy` (`packages/application/src/registration.ts`):
+- `CLOSED` is the default.
+- `INVITE_ONLY` requires a registration invitation.
+- `OPEN` allows public signup.
+- Any other value fails closed to `CLOSED`.
+- `QEYNOX_ALLOW_REGISTRATION=true` is kept as a deprecated alias for `OPEN`, honoured only when the mode is unset.
+
+**How the API and the web share it:**
+- The API enforces the policy on `POST /v1/auth/register` and publishes it on the public `GET /v1/auth/registration-policy`.
+- The policy is resolved on every call, never cached.
+- The web register page renders only what that endpoint reports: OPEN or INVITE_ONLY forms, or CLOSED / unavailable / not-configured states with no form.
+- `QEYNOX_REGISTRATION_ENABLED` is no longer read anywhere.
+
+**Invite-only beta registration.** Additive migration **0028** adds `registration_invitations`:
+- operator-issued, single-use, bound to an e-mail address, stored as a SHA-256 digest only, valid 7 days;
+- it carries the beta terms.
+
+Platform routes are at `/v1/platform/registration-invitations`:
+- issue: ADMINISTRATION, with a justification; no self-invitation; no invitation for an e-mail that already has an account; one pending invitation per e-mail; audited;
+- list: ADMINISTRATION or SUPPORT;
+- revoke: ADMINISTRATION.
+
+Redemption happens inside the one signup transaction in `RegistrationStore.register`. It writes, atomically:
+- the account, workspace and ACTIVE OWNER membership;
+- an **ACTIVE beta grant** with the invited terms;
+- ledger events `INVITED` and `ACTIVATED`;
+- the invitation marked `REDEEMED`.
+
+**Refusals and preserved behaviour:**
+- Every invitation problem returns the same 403 `INVITATION_INVALID`: missing, malformed, unknown, used, revoked, expired or for another e-mail.
+- A duplicate e-mail stays the generic 409 and never consumes the invitation.
+- Concurrent redemptions yield exactly one account.
+- An uninvited OPEN signup stays `NOT_ENROLLED` and cannot launch beta missions. Public signup never bypasses beta enrollment.
+- Password 12–256, workspace creation and the 24-hour session are unchanged.
+
+Verified on a disposable **real PostgreSQL 14.1** (applied nowhere else):
+- **New `qa:registration`: 9 groups / 149 assertions PASS** over the real HTTP API. It covers:
+  - policy resolution;
+  - a web/API agreement matrix over 9 configurations, with `QEYNOX_REGISTRATION_ENABLED=true` set throughout;
+  - disabled and enabled registration;
+  - operator issuance;
+  - every invalid-invitation case;
+  - valid invitation, including the grant and journey checks;
+  - duplicate e-mail in OPEN and INVITE_ONLY;
+  - three-way concurrent redemption.
+- Schema parity of `registration_invitations` (columns, 3 indexes, 11 checks, 5 FKs) was checked against the migrated database with the same `getTableConfig` comparison that qa:task02 uses.
+- Web `test:smoke`: **386 PASS** (was 329). It covers the register page in OPEN, OPEN with an invitation link, INVITE_ONLY, CLOSED, malformed policy and failing policy, in EN and FR. The retired web switch is set to `true` and is ignored. The policy is read on every render. `test:flow2` 35 PASS.
+- Headless-Chromium screenshots (24) at 390×844 and 1440×900, EN and FR, are in `docs/design/screenshots/a21-05/`. No horizontal overflow and no unlabeled inputs (`report.json`).
+- Regressions, identical to the A21.04 baseline:
+
+  | Suite | Assertions |
+  |---|---|
+  | `qa:backend` | 28 |
+  | `qa:identity` | 57 |
+  | `qa:beta-access` | 126 |
+  | `qa:beta-execution` | 440 |
+  | `qa:beta-journey` | 128 |
+  | `qa:payment-freeze` | 369 |
+  | `qa:workspace-management` | 82 |
+  | `qa:platform-organizations` | 87 |
+  | `qa:agent-runtime` | 65 |
+
+  `pnpm typecheck` and `pnpm build` 4/4.
+
+Pre-existing failures (unchanged, not caused here): `qa:task02` still stops at its first known parity failure, the missing `email_deliveries_dedup_unique` index. World Bank TLS still blocks `qa:connectors` and `qa:raas` in this sandbox.
+
+NOT verified:
+- no production or deployed check;
+- no real e-mail delivery of invitations (reported `BLOCKED / MANUAL_DELIVERY_REQUIRED`);
+- no operator console screen for invitations (API only).
+
+Design: `docs/design/A21_REGISTRATION_POLICY.md`. ADR-023 consequences updated.
+
+No production change. One draft PR; not merged.
+
 ## 2026-11-21 — MISSION A21.04: free beta customer UX, EN/FR (draft PR, branch `arena/846bce88-qeynox`, off `6676229`)
 
 The customer now sees the free beta truthfully on every commercial surface. A new read-only endpoint, `GET /v1/workspaces/current/beta-access/journey` (`BetaJourneyService`), composes server-side:

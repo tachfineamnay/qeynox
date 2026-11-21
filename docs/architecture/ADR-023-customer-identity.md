@@ -102,8 +102,13 @@ never about delivery.
 
 ## Consequences
 
-- Public registration remains off unless `QEYNOX_ALLOW_REGISTRATION=true`. The registration **UI**
-  additionally hides itself unless the API is configured and `QEYNOX_REGISTRATION_ENABLED !== 'false'`.
+- Public registration remains off by default. **Superseded by MISSION A21.05**
+  (`docs/design/A21_REGISTRATION_POLICY.md`): one server-side policy, `QEYNOX_REGISTRATION_MODE`
+  (`CLOSED` default | `INVITE_ONLY` | `OPEN`; unsupported values fail closed), enforced by
+  `POST /v1/auth/register` and published on the public `GET /v1/auth/registration-policy`. The register
+  **UI** renders only what that endpoint reports; the former web-only `QEYNOX_REGISTRATION_ENABLED`
+  (which defaulted the form ON while the API refused) is no longer read. `QEYNOX_ALLOW_REGISTRATION=true`
+  remains a deprecated alias for `OPEN`, honoured only when `QEYNOX_REGISTRATION_MODE` is unset.
 - Enabling real e-mail requires implementing `EmailTransport`, wiring it in `email-transport.provider.ts`
   behind an explicit provider switch, and independent review. Until then the flows are correct and
   undeliverable, which the API states plainly.

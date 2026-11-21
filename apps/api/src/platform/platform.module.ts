@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { PlatformAdminService, PlatformBetaAccessService, PlatformCatalogueService, PlatformConfigurationService, PlatformOperationsService, PlatformOrganizationsService, PlatformSupportService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
-import { BetaAccessStore, NotificationStore, PlatformAdminStore, PlatformOperationsStore, PlatformUserStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection, type QeyNoxStore } from '@qeynox/persistence';
+import { PlatformAdminService, PlatformBetaAccessService, PlatformCatalogueService, PlatformConfigurationService, PlatformOperationsService, PlatformOrganizationsService, PlatformRegistrationInvitationService, PlatformSupportService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
+import { BetaAccessStore, NotificationStore, PlatformAdminStore, PlatformOperationsStore, PlatformUserStore, RegistrationStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection, type QeyNoxStore } from '@qeynox/persistence';
 import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';
 import { hashSessionToken } from '../auth/password';
@@ -21,6 +21,7 @@ import { PlatformOperationsController } from './platform-operations.controller';
 import { PlatformCatalogueController } from './platform-catalogue.controller';
 import { PlatformConfigurationController } from './platform-configuration.controller';
 import { PlatformBetaAccessController } from './platform-beta-access.controller';
+import { PlatformRegistrationInvitationsController } from './platform-registration-invitations.controller';
 import { apiRuntimeReadiness } from '../operations/runtime-readiness';
 import { CHATWOOT_PORT, PLATFORM_SUPPORT_SERVICE, SUPPORT_LINK_STORE } from '../support/support.tokens';
 import {
@@ -38,11 +39,12 @@ import {
   PLATFORM_CATALOGUE_SERVICE,
   PLATFORM_CONFIGURATION_SERVICE,
   PLATFORM_BETA_ACCESS_SERVICE,
+  PLATFORM_REGISTRATION_INVITATION_SERVICE,
 } from './platform.tokens';
 
 @Module({
   imports: [AuthModule],
-  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController, PlatformOperationsController, PlatformCatalogueController, PlatformConfigurationController, PlatformBetaAccessController],
+  controllers: [PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController, PlatformOperationsController, PlatformCatalogueController, PlatformConfigurationController, PlatformBetaAccessController, PlatformRegistrationInvitationsController],
   providers: [
     {
       provide: PLATFORM_STORE,
@@ -140,6 +142,13 @@ import {
       // (ADMINISTRATION to grant/revoke) and audits into platform_admin_audit.
       provide: PLATFORM_BETA_ACCESS_SERVICE,
       useFactory: (connection: DatabaseConnection, platform: PlatformAdminService) => new PlatformBetaAccessService(new BetaAccessStore(connection.db), platform),
+      inject: [DB_CONNECTION, PLATFORM_ADMIN_SERVICE],
+    },
+    {
+      // A21.05: invite-only registration. Same operator model as beta grants (ADMINISTRATION to
+      // issue/revoke, audited into platform_admin_audit); redemption happens in AuthService.register.
+      provide: PLATFORM_REGISTRATION_INVITATION_SERVICE,
+      useFactory: (connection: DatabaseConnection, platform: PlatformAdminService) => new PlatformRegistrationInvitationService(new RegistrationStore(connection.db), platform),
       inject: [DB_CONNECTION, PLATFORM_ADMIN_SERVICE],
     },
     { provide: APP_GUARD, useClass: PlatformAccessGuard },

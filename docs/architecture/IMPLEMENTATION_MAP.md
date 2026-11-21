@@ -245,3 +245,20 @@ Operator follow-ups (not performed by the agent):
 
 No push to main, no merge, no deployment.
 
+## Registration policy and invite-only registration (Mission A21.05)
+
+| Responsibility | Code area | Status |
+| --- | --- | --- |
+| One server-side registration policy: `QEYNOX_REGISTRATION_MODE` = CLOSED (default) / INVITE_ONLY / OPEN, unsupported values fail closed, deprecated `QEYNOX_ALLOW_REGISTRATION=true` alias for OPEN only when the mode is unset; resolved per call | packages/application/src/registration.ts (`resolveRegistrationPolicy`, `registrationAdmission`) | **VERIFIED IN DISPOSABLE QA** (`qa:registration` group 1) |
+| Enforcement on `POST /v1/auth/register` and the public `GET /v1/auth/registration-policy`; `INVITATION_INVALID` → 403 | apps/api/src/auth/auth.service.ts, auth.controller.ts, transport/domain-exception.filter.ts, packages/domain/src/errors.ts | **VERIFIED IN DISPOSABLE QA** (agreement matrix, 9 configurations) |
+| Registration invitations (migration 0028, additive): e-mail-bound, SHA-256 token digest, 7-day TTL, beta terms; operator issue / list / revoke with audit, no self-invitation, no invitation for an existing account | packages/persistence/migrations/0028_registration_invitations.sql, src/registration-schema.ts, src/registration-store.ts; apps/api/src/platform/platform-registration-invitations.controller.ts | **VERIFIED IN DISPOSABLE QA** |
+| Atomic signup: account + workspace + OWNER + optional redemption → ACTIVE beta grant + ledger; a duplicate never consumes the invitation; race-safe | packages/persistence/src/registration-store.ts (`register`) | **VERIFIED IN DISPOSABLE QA** (groups 7–9) |
+| Web register page renders only the API policy (OPEN / INVITE_ONLY form, CLOSED, unavailable, not configured), invitation link pre-fill, no-referrer, EN/FR copy; `QEYNOX_REGISTRATION_ENABLED` removed | apps/web/src/app/[lang]/account/register/page.tsx, lib/registration.ts, lib/registration-copy.ts, components/forms.tsx, lib/actions.ts | **VERIFIED IN SMOKE (fixture API) + SCREENSHOTS** |
+
+Operator follow-ups (not performed by the agent):
+- Set `QEYNOX_REGISTRATION_MODE=INVITE_ONLY` for the beta, or leave the default CLOSED.
+- Remove `QEYNOX_REGISTRATION_ENABLED` and `QEYNOX_ALLOW_REGISTRATION` from deployed environments.
+- Apply migration 0028 only through the normal release procedure.
+- Invitations are delivered manually (`registrationPath` is returned once). An operator console screen and an e-mail adapter remain open.
+
+No push to main, no merge, no deployment; the migration was applied only to disposable databases.

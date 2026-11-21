@@ -61,4 +61,5 @@ export * from './email-transports';
 export * from './notifications';
 export * from './atlas-library';
 export * from './beta-access';
+export * from './registration';
 export * from './beta-journey';

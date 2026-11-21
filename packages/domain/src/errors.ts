@@ -8,7 +8,11 @@ export type DomainErrorCode='INVALID_INPUT'|'INVALID_STATE'|'DENIED'|'CONFLICT'|
  // A21.02: invite-only beta. BETA_ACCESS_REQUIRED = no ACTIVE, unexpired, unrevoked grant for the
  // workspace (fail closed). BETA_LIMIT_REACHED = a grant limit (missions, concurrency, provider spend).
  |'BETA_ACCESS_REQUIRED'
- |'BETA_LIMIT_REACHED';
+ |'BETA_LIMIT_REACHED'
+ // A21.05: invite-only registration. The presented registration invitation is missing, malformed,
+ // unknown, already used, revoked, expired or bound to another e-mail. One code for all of them, so
+ // the response never reveals which invitations or accounts exist.
+ |'INVITATION_INVALID';
 export class DomainError extends Error {
  constructor(public readonly code:DomainErrorCode,message:string,public readonly context?:Readonly<Record<string,string>>){
   super(message);this.name='DomainError';

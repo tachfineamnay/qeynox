@@ -3,12 +3,16 @@ import { Injectable, Inject } from '@nestjs/common';
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import type { DatabaseConnection } from '@qeynox/persistence';
-import { identityUsers, identityCredentials, identityWorkspaces, identityMemberships, identitySessions, identityAudit } from '@qeynox/persistence';
+import { identityUsers, identityCredentials, identityWorkspaces, identityMemberships, identitySessions, identityAudit, RegistrationStore } from '@qeynox/persistence';
+import { publicRegistrationPolicy, registrationAdmission, registrationPolicyFromEnvironment, type PublicRegistrationPolicy } from '@qeynox/application';
 import { DomainError, type Principal, type ID } from '@qeynox/domain';
 import { DB_CONNECTION } from '../database/database.module';
 import { hashPassword, hashSessionToken, verifyPassword } from './password';
 
-const signupSchema=z.object({email:z.email(),password:z.string().min(12).max(256),workspaceName:z.string().trim().min(2).max(120),locale:z.string().min(2).max(12).default('en')});
+// A21.05: invitationToken is optional at the schema level; whether it is required (INVITE_ONLY) and
+// whether it is well formed is decided by the registration policy, so every invitation refusal is the
+// same INVITATION_INVALID instead of a validation error that would distinguish malformed tokens.
+const signupSchema=z.object({email:z.email(),password:z.string().min(12).max(256),workspaceName:z.string().trim().min(2).max(120),locale:z.string().min(2).max(12).default('en'),invitationToken:z.string().max(256).optional()});
 const loginSchema=z.object({email:z.email(),password:z.string().min(1).max(256)});
 export type IdentitySession = {userId:ID;token:string;expiresAt:string;workspaceId:ID};
 export type WorkspaceSummary = {workspaceId:ID;name:string;role:string};
@@ -18,20 +22,28 @@ const sessionTTL=24*60*60*1000;
 export class AuthService {
   constructor(@Inject(DB_CONNECTION)private readonly connection:DatabaseConnection){}
   private get db() {return this.connection.db;}
+  /** A21.05: the one authoritative registration policy, as served to the web register page. */
+  registrationPolicy():PublicRegistrationPolicy {return publicRegistrationPolicy(registrationPolicyFromEnvironment());}
+  /**
+   * A21.05: the policy is resolved on every call (never cached), so what the policy endpoint reports
+   * and what this method enforces always agree. CLOSED refuses before any input is read
+   * (NOT_CONFIGURED); INVITE_ONLY requires a valid invitation bound to the same e-mail, redeemed in the
+   * signup transaction together with an ACTIVE beta grant for the new workspace.
+   */
   async register(body:unknown):Promise<IdentitySession> {
-    if(process.env.QEYNOX_ALLOW_REGISTRATION!=='true') throw new DomainError('NOT_CONFIGURED','Registration is disabled');
+    const policy=registrationPolicyFromEnvironment();
+    if(!policy.acceptingRegistrations) throw new DomainError('NOT_CONFIGURED','Registration is disabled');
     const input=signupSchema.parse(body); const email=input.email.toLowerCase().trim();
+    const {invitationTokenHash}=registrationAdmission(policy,input.invitationToken);
     const id=randomUUID() as ID,workspaceId=randomUUID() as ID;
     const pw=await hashPassword(input.password);
-    try {
-      await this.db.transaction(async tx=>{
-        await tx.insert(identityUsers).values({id,email,locale:input.locale});
-        await tx.insert(identityCredentials).values({userId:id,salt:pw.salt,passwordHash:pw.hash});
-        await tx.insert(identityWorkspaces).values({id:workspaceId,name:input.workspaceName,createdBy:id});
-        await tx.insert(identityMemberships).values({id:randomUUID(),userId:id,workspaceId,role:'OWNER',status:'ACTIVE'});
-        await tx.insert(identityAudit).values({id:randomUUID(),userId:id,workspaceId,action:'REGISTER',outcome:'SUCCESS'});
-      });
-    }catch(error:unknown){throw new DomainError('CONFLICT','Account could not be created');}
+    const result=await new RegistrationStore(this.db).register({
+      userId:id,email,locale:input.locale,salt:pw.salt,passwordHash:pw.hash,workspaceId,workspaceName:input.workspaceName,
+      invitationTokenHash,at:new Date(),
+    });
+    if(result.outcome==='INVITATION_INVALID') throw new DomainError('INVITATION_INVALID','A valid registration invitation is required');
+    // Duplicate e-mail stays a generic, non-enumerating refusal (unchanged since ADR-023).
+    if(result.outcome==='DUPLICATE') throw new DomainError('CONFLICT','Account could not be created');
     return this.issueSession(id,workspaceId);
   }
   async login(body:unknown):Promise<IdentitySession> {

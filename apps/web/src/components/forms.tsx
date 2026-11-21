@@ -3,6 +3,7 @@ import { useActionState } from 'react';
 import { confirmRecoveryAction, confirmVerificationAction, createMission, login, registerAction, requestRecoveryAction, requestVerificationAction, type IdentityState } from '../lib/actions';
 import { copy, type Locale } from '../lib/copy';
 import { Feedback } from './ui';
+import { registrationCopy } from '../lib/registration-copy';
 export function errorText(code: string, lang: Locale) {
   const t = copy[lang];
   return code === 'NOT_CONFIGURED' ? t.notConfigured : code === 'SESSION_REQUIRED' ? t.signInRequired : code === 'DENIED' ? t.denied : code === 'INVALID_INPUT' ? t.invalid : code === 'UNKNOWN_OUTCOME' ? t.unknown : t.error;
@@ -38,10 +39,33 @@ export function identityErrorText(code: string, lang: Locale): string {
   return errorText(code, lang);
 }
 
-export function RegisterForm({ lang }: { lang: Locale }) {
-  const t = copy[lang]; const [state, action, pending] = useActionState(registerAction, { kind: 'IDLE' } as IdentityState);
+/**
+ * A21.05 — register-specific refusals. Duplicate e-mail (CONFLICT) stays generic and non-enumerating;
+ * NOT_CONFIGURED here means the policy closed between page render and submit.
+ */
+export function registerErrorText(code: string, lang: Locale): string {
+  const r = registrationCopy[lang];
+  if (code === 'INVITATION_INVALID') return r.invitationInvalid;
+  if (code === 'CONFLICT') return r.conflict;
+  if (code === 'NOT_CONFIGURED') return r.closedAtSubmit;
+  return identityErrorText(code, lang);
+}
+
+/**
+ * Rendered only when the API's registration policy accepts registrations (A21.05). The invitation
+ * field is required when the policy is INVITE_ONLY, and shown (pre-filled) in OPEN mode only when the
+ * visitor arrived through an invitation link, so the invited workspace is enrolled in the beta.
+ */
+export function RegisterForm({ lang, invitationRequired, invitation }: { lang: Locale; invitationRequired: boolean; invitation: string }) {
+  const t = copy[lang]; const r = registrationCopy[lang]; const [state, action, pending] = useActionState(registerAction, { kind: 'IDLE' } as IdentityState);
+  const showInvitation = invitationRequired || invitation !== '';
   return <form action={action} className="login-form"><input type="hidden" name="locale" value={lang}/>
     <p className="muted">{t.createAccountNote}</p>
+    {showInvitation && <>
+      <label htmlFor="register-invitation">{r.invitationLabel}</label>
+      <p id="invitation-rule" className="muted">{invitationRequired ? r.invitationHint : r.invitationEnrollsHint}</p>
+      <input id="register-invitation" name="invitationToken" type="text" autoComplete="off" spellCheck={false} defaultValue={invitation} required={invitationRequired} maxLength={256} aria-describedby="invitation-rule" disabled={pending}/>
+    </>}
     <label htmlFor="register-email">{t.email}</label>
     <input id="register-email" name="email" type="email" autoComplete="email" required disabled={pending}/>
     <label htmlFor="register-password">{t.password}</label>
@@ -50,7 +74,7 @@ export function RegisterForm({ lang }: { lang: Locale }) {
     <label htmlFor="register-workspace">{t.workspaceName}</label>
     <input id="register-workspace" name="workspaceName" type="text" autoComplete="organization" minLength={2} maxLength={120} required disabled={pending}/>
     <button disabled={pending}>{pending ? t.pending : t.register}</button>
-    {state.kind === 'ERROR' && <Feedback title={identityErrorText(state.code, lang)} error/>}
+    {state.kind === 'ERROR' && <Feedback title={registerErrorText(state.code, lang)} error/>}
     <p className="muted"><a href={'/' + lang + '/account'}>{t.haveAccount}</a></p>
   </form>;
 }
