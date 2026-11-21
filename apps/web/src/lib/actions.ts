@@ -70,6 +70,7 @@ export type IdentityState =
   | { readonly kind: 'DONE'; readonly message: string };
 
 const workspaceName = (form: FormData) => String(form.get('workspaceName') ?? '').trim();
+const invitationToken = (form: FormData) => String(form.get('invitationToken') ?? '').trim();
 
 /** Create an account and open the owner session the API returns. */
 export async function registerAction(previous: IdentityState, form: FormData): Promise<IdentityState> {
@@ -78,6 +79,8 @@ export async function registerAction(previous: IdentityState, form: FormData): P
     const result = sessionSchema.parse(await api('/v1/auth/register', 'POST', {
       email: String(form.get('email') ?? ''), password: String(form.get('password') ?? ''),
       workspaceName: workspaceName(form), locale: locale(String(form.get('locale'))),
+      // A21.05: sent only when present; the API's registration policy decides whether it is required.
+      ...(invitationToken(form) ? { invitationToken: invitationToken(form) } : {}),
     }, false));
     (await cookies()).set('qx-session', JSON.stringify(result), {
       httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', expires: new Date(result.expiresAt),

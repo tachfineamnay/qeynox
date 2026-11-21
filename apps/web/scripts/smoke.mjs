@@ -9,6 +9,9 @@ import { createServer as createPortProbe } from 'node:net';
 let mode = 'empty';
 // MISSION A21.04 — which free-beta journey the fixture API reports (independent of `mode`).
 let beta = 'active';
+// MISSION A21.05 — which registration policy the fixture API reports: open | invite | closed | malformed | error.
+let registration = 'open';
+let registrationPolicyReads = 0;
 const journeyAccount = {
   status: 'ACTIVE', expiresAt: '2026-12-31T23:59:00.000Z', invitationExpiresAt: null, activatedAt: '2026-11-01T09:00:00.000Z',
   missionQuota: 5, missionsUsed: 2, missionsRemaining: 3, activeMissions: 0, concurrentLimit: 2,
@@ -51,7 +54,21 @@ const backend = createServer((req, res) => {
     const query = new URL(req.url, 'http://fixture').searchParams;
     if (query.get('mode')) mode = query.get('mode');
     if (query.get('beta')) beta = query.get('beta');
-    res.end(JSON.stringify({ mode, beta })); return;
+    if (query.get('registration')) registration = query.get('registration');
+    res.end(JSON.stringify({ mode, beta, registration })); return;
+  }
+  // MISSION A21.05 — the public registration policy. Read without a session, like the real API.
+  if (req.url === '/v1/auth/registration-policy') {
+    assert.equal(req.headers.authorization, undefined); registrationPolicyReads++;
+    const policies = {
+      open: { mode: 'OPEN', acceptingRegistrations: true, invitationRequired: false },
+      invite: { mode: 'INVITE_ONLY', acceptingRegistrations: true, invitationRequired: true },
+      closed: { mode: 'CLOSED', acceptingRegistrations: false, invitationRequired: false },
+      // Internally inconsistent: the web must refuse it rather than guess.
+      malformed: { mode: 'CLOSED', acceptingRegistrations: true, invitationRequired: false },
+    };
+    if (registration === 'error') { res.statusCode = 500; res.end(JSON.stringify({ error: { code: 'INTERNAL_ERROR' } })); return; }
+    res.end(JSON.stringify(policies[registration])); return;
   }
   if (req.url === '/v1/auth/login' && req.method === 'POST') { res.end(JSON.stringify({ token, workspaceId: 'workspace_qa', expiresAt: '2099-01-01T00:00:00.000Z' })); return; }
   // MISSION A04 — public identity routes. The web layer calls these without a session, so the
@@ -323,7 +340,9 @@ const port = process.env.QEYNOX_SMOKE_INTERACTIVE === '1' ? 3137 : probe.address
 await new Promise(resolve => probe.close(resolve));
 const app = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-p', String(port)], {
   cwd: fileURLToPath(new URL('..', import.meta.url)),
-  env: { ...process.env, QEYNOX_API_URL: `http://127.0.0.1:${backend.address().port}`, NEXT_TELEMETRY_DISABLED: '1' },
+  // QEYNOX_REGISTRATION_ENABLED is the retired web-only switch (A21.05): it is set to 'true' here to prove
+  // the register page ignores it and follows the API's policy alone.
+  env: { ...process.env, QEYNOX_API_URL: `http://127.0.0.1:${backend.address().port}`, NEXT_TELEMETRY_DISABLED: '1', QEYNOX_REGISTRATION_ENABLED: 'true' },
   stdio: ['ignore', 'pipe', 'pipe']
 });
 let logs = '';
@@ -362,6 +381,51 @@ try {
   const register = await page('/en/account/register');
   assert.match(register, /Create an account/); assertions++;
   assert.match(register, /minlength="12"/i); assertions++;
+  // MISSION A21.05 — the register page renders ONLY the API's registration policy (one authority).
+  {
+    const invitation = 'Ab-_' + 'x'.repeat(39);
+    const hasForm = html => /id="register-email"/.test(html) && /id="register-password"/.test(html);
+    const invitationInput = html => (html.match(/<input[^>]*name="invitationToken"[^>]*>/) ?? [''])[0];
+    const reads = registrationPolicyReads;
+    // OPEN: the form, no invitation field (uninvited signup), mode reported from the API.
+    assert.match(register, /data-registration-mode="OPEN"/); assertions++;
+    assert.ok(hasForm(register) && !invitationInput(register), 'OPEN renders the form without an invitation field'); assertions++;
+    await page('/en/account/register');
+    assert.ok(registrationPolicyReads > reads, 'every render reads the policy from the API (never cached)'); assertions++;
+    assert.match(register, /<meta name="referrer" content="no-referrer"/); assertions++;
+    // OPEN + invitation link: pre-filled, optional, explains beta enrollment. A malformed token is ignored.
+    const openInvited = await page('/en/account/register?invitation=' + invitation);
+    assert.ok(invitationInput(openInvited).includes('value="' + invitation + '"') && !/required/.test(invitationInput(openInvited)), 'OPEN pre-fills an optional invitation from the link'); assertions++;
+    assert.match(openInvited, /enrolls the new workspace in the free beta/); assertions++;
+    const openGarbage = await page('/en/account/register?invitation=%3Cscript%3E');
+    assert.ok(!invitationInput(openGarbage) && !openGarbage.includes('<script>alert'), 'a malformed invitation token is never echoed'); assertions++;
+    for (const [lang, text] of [
+      ['en', { inviteTitle: 'Private beta: invitation required', inviteLabel: 'Invitation code', closed: 'Registration is closed', unavailable: 'Registration status unavailable', signIn: 'Sign in' }],
+      ['fr', { inviteTitle: 'Bêta privée : invitation requise', inviteLabel: 'Code d’invitation', closed: 'Les inscriptions sont fermées', unavailable: 'État des inscriptions indisponible', signIn: 'Se connecter' }],
+    ]) {
+      registration = 'invite';
+      const invite = await page('/' + lang + '/account/register');
+      assert.match(invite, /data-registration-mode="INVITE_ONLY"/); assertions++;
+      assert.ok(invite.includes(text.inviteTitle) && invite.includes(text.inviteLabel), lang + ' INVITE_ONLY explains the invitation requirement'); assertions++;
+      assert.ok(hasForm(invite) && /required/.test(invitationInput(invite)), lang + ' INVITE_ONLY renders the form with a REQUIRED invitation field'); assertions++;
+      assert.match(invite, /minlength="12"/i); assertions++;
+      const invited = await page('/' + lang + '/account/register?invitation=' + invitation);
+      assert.ok(invitationInput(invited).includes('value="' + invitation + '"'), lang + ' INVITE_ONLY pre-fills the invitation from the link'); assertions++;
+      registration = 'closed';
+      // The retired web switch QEYNOX_REGISTRATION_ENABLED=true is set for this server: it must not matter.
+      const closed = await page('/' + lang + '/account/register');
+      assert.match(closed, /data-registration-mode="CLOSED"/); assertions++;
+      assert.ok(closed.includes(text.closed) && !hasForm(closed) && !invitationInput(closed), lang + ' CLOSED never offers a form'); assertions++;
+      assert.ok(closed.includes(text.signIn) && closed.includes('href="/' + lang + '/account"'), lang + ' CLOSED points to sign-in'); assertions++;
+      for (const failure of ['malformed', 'error']) {
+        registration = failure;
+        const unavailable = await page('/' + lang + '/account/register');
+        assert.ok(unavailable.includes(text.unavailable) && !hasForm(unavailable), lang + ' ' + failure + ' policy fails closed (no form)'); assertions++;
+        assert.match(unavailable, /data-registration-mode="UNAVAILABLE"/); assertions++;
+      }
+    }
+    registration = 'open';
+  }
   for (const path of ['/en/account/recover','/fr/account/recover']) await page(path);
   const deadReset = await page('/en/account/reset?token=' + 'x'.repeat(64));
   assert.match(deadReset, /no longer valid/); assertions++;

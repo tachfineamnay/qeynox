@@ -1,0 +1,326 @@
+[
+  {
+    "name": "register-open-en-390.jpg",
+    "registration": "open",
+    "invited": false,
+    "lang": "en",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "OPEN",
+    "form": true,
+    "invitation": null,
+    "unlabeled": 0
+  },
+  {
+    "name": "register-open-en-1440.jpg",
+    "registration": "open",
+    "invited": false,
+    "lang": "en",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "OPEN",
+    "form": true,
+    "invitation": null,
+    "unlabeled": 0
+  },
+  {
+    "name": "register-open-fr-390.jpg",
+    "registration": "open",
+    "invited": false,
+    "lang": "fr",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "OPEN",
+    "form": true,
+    "invitation": null,
+    "unlabeled": 0
+  },
+  {
+    "name": "register-open-fr-1440.jpg",
+    "registration": "open",
+    "invited": false,
+    "lang": "fr",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "OPEN",
+    "form": true,
+    "invitation": null,
+    "unlabeled": 0
+  },
+  {
+    "name": "register-open-invited-en-390.jpg",
+    "registration": "open",
+    "invited": true,
+    "lang": "en",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "OPEN",
+    "form": true,
+    "invitation": {
+      "required": false,
+      "value": 43
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-open-invited-en-1440.jpg",
+    "registration": "open",
+    "invited": true,
+    "lang": "en",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "OPEN",
+    "form": true,
+    "invitation": {
+      "required": false,
+      "value": 43
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-open-invited-fr-390.jpg",
+    "registration": "open",
+    "invited": true,
+    "lang": "fr",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "OPEN",
+    "form": true,
+    "invitation": {
+      "required": false,
+      "value": 43
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-open-invited-fr-1440.jpg",
+    "registration": "open",
+    "invited": true,
+    "lang": "fr",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "OPEN",
+    "form": true,
+    "invitation": {
+      "required": false,
+      "value": 43
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-invite-en-390.jpg",
+    "registration": "invite",
+    "invited": false,
+    "lang": "en",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "INVITE_ONLY",
+    "form": true,
+    "invitation": {
+      "required": true,
+      "value": 0
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-invite-en-1440.jpg",
+    "registration": "invite",
+    "invited": false,
+    "lang": "en",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "INVITE_ONLY",
+    "form": true,
+    "invitation": {
+      "required": true,
+      "value": 0
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-invite-fr-390.jpg",
+    "registration": "invite",
+    "invited": false,
+    "lang": "fr",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "INVITE_ONLY",
+    "form": true,
+    "invitation": {
+      "required": true,
+      "value": 0
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-invite-fr-1440.jpg",
+    "registration": "invite",
+    "invited": false,
+    "lang": "fr",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "INVITE_ONLY",
+    "form": true,
+    "invitation": {
+      "required": true,
+      "value": 0
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-invite-invited-en-390.jpg",
+    "registration": "invite",
+    "invited": true,
+    "lang": "en",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "INVITE_ONLY",
+    "form": true,
+    "invitation": {
+      "required": true,
+      "value": 43
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-invite-invited-en-1440.jpg",
+    "registration": "invite",
+    "invited": true,
+    "lang": "en",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "INVITE_ONLY",
+    "form": true,
+    "invitation": {
+      "required": true,
+      "value": 43
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-invite-invited-fr-390.jpg",
+    "registration": "invite",
+    "invited": true,
+    "lang": "fr",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "INVITE_ONLY",
+    "form": true,
+    "invitation": {
+      "required": true,
+      "value": 43
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-invite-invited-fr-1440.jpg",
+    "registration": "invite",
+    "invited": true,
+    "lang": "fr",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "INVITE_ONLY",
+    "form": true,
+    "invitation": {
+      "required": true,
+      "value": 43
+    },
+    "unlabeled": 0
+  },
+  {
+    "name": "register-closed-en-390.jpg",
+    "registration": "closed",
+    "invited": false,
+    "lang": "en",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "CLOSED",
+    "form": false,
+    "invitation": null,
+    "unlabeled": 0
+  },
+  {
+    "name": "register-closed-en-1440.jpg",
+    "registration": "closed",
+    "invited": false,
+    "lang": "en",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "CLOSED",
+    "form": false,
+    "invitation": null,
+    "unlabeled": 0
+  },
+  {
+    "name": "register-closed-fr-390.jpg",
+    "registration": "closed",
+    "invited": false,
+    "lang": "fr",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "CLOSED",
+    "form": false,
+    "invitation": null,
+    "unlabeled": 0
+  },
+  {
+    "name": "register-closed-fr-1440.jpg",
+    "registration": "closed",
+    "invited": false,
+    "lang": "fr",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "CLOSED",
+    "form": false,
+    "invitation": null,
+    "unlabeled": 0
+  },
+  {
+    "name": "register-error-en-390.jpg",
+    "registration": "error",
+    "invited": false,
+    "lang": "en",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "UNAVAILABLE",
+    "form": false,
+    "invitation": null,
+    "unlabeled": 0
+  },
+  {
+    "name": "register-error-en-1440.jpg",
+    "registration": "error",
+    "invited": false,
+    "lang": "en",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "UNAVAILABLE",
+    "form": false,
+    "invitation": null,
+    "unlabeled": 0
+  },
+  {
+    "name": "register-error-fr-390.jpg",
+    "registration": "error",
+    "invited": false,
+    "lang": "fr",
+    "viewport": "390x844",
+    "overflow": false,
+    "mode": "UNAVAILABLE",
+    "form": false,
+    "invitation": null,
+    "unlabeled": 0
+  },
+  {
+    "name": "register-error-fr-1440.jpg",
+    "registration": "error",
+    "invited": false,
+    "lang": "fr",
+    "viewport": "1440x900",
+    "overflow": false,
+    "mode": "UNAVAILABLE",
+    "form": false,
+    "invitation": null,
+    "unlabeled": 0
+  }
+]
