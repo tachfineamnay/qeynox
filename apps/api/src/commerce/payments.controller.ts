@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Inject, Param, Post, Req, RawBodyRequest } from '@nestjs/common';
 import { z } from 'zod';
 import { DomainError, requireId, type Principal } from '@qeynox/domain';
-import { PaymentService } from '@qeynox/application';
+import { FrozenPaymentGateway } from '@qeynox/application';
 import { PublicRoute } from '../auth/public-route';
 import { PAYMENT_SERVICE } from './commerce.tokens';
 
@@ -15,6 +15,12 @@ import { PAYMENT_SERVICE } from './commerce.tokens';
  *
  * There is deliberately NO route that marks a payment as paid from a redirect. A return-from-provider
  * page may read, never write.
+ *
+ * MISSION A21.01 — HARD PAYMENT FREEZE. The injected surface is `FrozenPaymentGateway`. Every mutating
+ * route (checkout, capture, refund, reconcile, webhook) calls `assertMutationAllowed` FIRST, before the
+ * session, body, raw bytes or signature are inspected, and answers `503 PAYMENTS_FROZEN`. Reads (payment
+ * view, return page) stay available and read the database only. `GET v1/commerce/availability` states
+ * the server's commerce mode so clients never infer it from missing credentials.
  */
 interface Authed { principal?: Principal }
 interface RawRequest extends Authed { rawBody?: Buffer }
@@ -34,7 +40,14 @@ const refund = z.object({
 
 @Controller()
 export class PaymentsController {
-  constructor(@Inject(PAYMENT_SERVICE) private readonly payments: PaymentService) {}
+  constructor(@Inject(PAYMENT_SERVICE) private readonly payments: FrozenPaymentGateway) {}
+
+  /** The server-authoritative commerce mode and what it allows. Session required; no tenant data. */
+  @Get('v1/commerce/availability')
+  availability(@Req() request: Authed) {
+    if (!request.principal) throw new DomainError('DENIED', 'Session required');
+    return this.payments.availability();
+  }
 
   @PublicRoute()
   @Post('v1/payments/webhook/stripe')
@@ -43,6 +56,9 @@ export class PaymentsController {
     @Headers('stripe-signature') signature: string | undefined,
     @Body() body: unknown,
   ) {
+    // Refused before the payload or signature is even read: nothing received during the freeze can be
+    // verified, recorded, or applied to an order. The provider keeps the event and retries.
+    this.payments.assertMutationAllowed('WEBHOOK');
     // The signature covers the exact bytes the provider sent. NestJS can only hand those back when raw
     // body capture is enabled; if it is not, we refuse rather than verify a re-serialised payload.
     const raw = request.rawBody;
@@ -64,6 +80,7 @@ export class PaymentsController {
   /** Starts or safely resumes checkout. Idempotent on the supplied key. */
   @Post('v1/operations/:operationId/payments/checkout')
   async checkout(@Req() request: Authed, @Param('operationId') operationId: string, @Body() body: unknown) {
+    this.payments.assertMutationAllowed('CHECKOUT');
     if (!request.principal) throw new DomainError('DENIED', 'Session required');
     const input = startCheckout.parse(body);
     return this.payments.startCheckout(
@@ -87,6 +104,7 @@ export class PaymentsController {
 
   @Post('v1/operations/:operationId/payments/capture')
   capture(@Req() request: Authed, @Param('operationId') operationId: string, @Body() body: unknown) {
+    this.payments.assertMutationAllowed('CAPTURE');
     if (!request.principal) throw new DomainError('DENIED', 'Session required');
     const input = capture.parse(body);
     return this.payments.capture(request.principal, requireId(operationId), requireId(input.orderId), input.idempotencyKey);
@@ -94,6 +112,7 @@ export class PaymentsController {
 
   @Post('v1/operations/:operationId/payments/refund')
   refund(@Req() request: Authed, @Param('operationId') operationId: string, @Body() body: unknown) {
+    this.payments.assertMutationAllowed('REFUND');
     if (!request.principal) throw new DomainError('DENIED', 'Session required');
     const input = refund.parse(body);
     return this.payments.refund(
@@ -104,6 +123,7 @@ export class PaymentsController {
   /** Operator-triggered reconciliation against the provider of record. */
   @Post('v1/operations/:operationId/payments/reconcile')
   reconcile(@Req() request: Authed, @Param('operationId') operationId: string, @Body() body: unknown) {
+    this.payments.assertMutationAllowed('RECONCILE');
     if (!request.principal) throw new DomainError('DENIED', 'Session required');
     const input = capture.parse(body);
     return this.payments.reconcileOrder(request.principal, requireId(operationId), requireId(input.orderId));

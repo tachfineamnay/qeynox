@@ -211,7 +211,7 @@ export type EditorStep = z.infer<typeof editorStepSchema>;
 export { formatMoney } from './money';
 
 /**
- * MIRROR OF `GET /v1/operations/:id/payment` (MISSION A08).
+ * MIRROR OF `GET /v1/operations/:id/payment` (MISSION A08, frozen by A21.01).
  *
  * Every state the customer can see is named explicitly by the server. The page must never infer
  * "paid" from anything, so there is no boolean here that the UI could misread as success: it reads
@@ -236,5 +236,18 @@ export const paymentViewSchema = z.object({
   canStartCheckout: z.boolean(),
   blockedReason: z.string().nullable(),
   providerConfigured: z.boolean(),
+  /**
+   * MISSION A21.01 — server-authoritative commerce availability. Required: a response without it is
+   * rejected, and the page then reports payment status as unavailable rather than guessing a mode.
+   * Every supported mode freezes payments, so the availability flags are literal `false`.
+   */
+  commerce: z.object({
+    mode: z.enum(['PAYMENTS_DISABLED', 'BETA_FREE']),
+    paymentsAvailable: z.literal(false),
+    checkoutAvailable: z.literal(false),
+    refundsAvailable: z.literal(false),
+    betaFree: z.boolean(),
+    reason: z.literal('PAYMENTS_FROZEN'),
+  }),
 });
 export type PaymentView = z.infer<typeof paymentViewSchema>;

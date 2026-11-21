@@ -7,6 +7,13 @@ One-time payments for versioned RaaS offers, behind the existing `PaymentPort`. 
 > contacted.** Live test-mode Stripe, a real browser redirect and the provider dashboard remain
 > NOT VERIFIED.
 
+> **FROZEN by MISSION A21.01 (2026-11-21).** Nothing in this guide is active. The API composes its
+> payment surface from `QEYNOX_COMMERCE_MODE` (`PAYMENTS_DISABLED` by default, or `BETA_FREE`). Both
+> values refuse checkout, capture, refund, reconciliation and webhooks with `503 PAYMENTS_FROZEN`. **The
+> Stripe variables below are no longer read, and setting them changes nothing.** A paid mode doesn't
+> exist, and any other mode value refuses API boot. The code described here is kept unchanged for a
+> future, separately reviewed reactivation. See [A21_PAYMENT_FREEZE.md](../design/A21_PAYMENT_FREEZE.md).
+
 ## 1. What is never true
 
 These are enforced in code and covered by tests; treat them as invariants of the product, not of the
@@ -22,6 +29,7 @@ deployment.
 
 ## 2. Configuration
 
+*(Historical — superseded by A21.01: the credentials below are inert while payments are frozen.)*
 Three environment variables. Nothing else is required, and there is no separate feature flag: the
 presence of both credentials is the configuration.
 

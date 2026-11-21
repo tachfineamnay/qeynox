@@ -178,3 +178,19 @@ No push, merge or deployment.
 ## Final closeout continuation (2026-11-14)
 
 The latest targeted tests and outstanding release gates are recorded in [FINAL_CLOSEOUT_2026-11-14.md](FINAL_CLOSEOUT_2026-11-14.md). MAIN and PREPRODUCTION remain **NO-GO**; Chatwoot carries the verified A10 reconciliation design but remains intentionally NOT_CONFIGURED pending the documented live-verification procedure.
+
+## Commerce payment freeze (Mission A21.01)
+
+| Responsibility | Code area | Status |
+| --- | --- | --- |
+| Server-authoritative commerce mode (`QEYNOX_COMMERCE_MODE`: `PAYMENTS_DISABLED` default, `BETA_FREE`; no paid mode) | packages/application/src/commerce-mode.ts, apps/api/src/commerce/commerce.module.ts | **VERIFIED IN DISPOSABLE QA (2026-11-21)**: `qa:payment-freeze` 21 groups / 369 assertions. A paid value refuses API boot. |
+| Payment mutation freeze (checkout, capture, refund, reconcile, webhook → 503 `PAYMENTS_FROZEN`; Stripe keys inert) | apps/api/src/commerce/payments.controller.ts, `FrozenPaymentGateway`, `FrozenPaymentProvider`, packages/domain/src/errors.ts, apps/api/src/transport/domain-exception.filter.ts | **VERIFIED IN DISPOSABLE QA**, in-process and over real `AppModule` HTTP, for both modes × Stripe test keys present/absent. Zero non-loopback network attempts (positive control proved detection). Historical commerce tables deep-equal before and after. |
+| Frozen payment read model and UI availability (`commerce` block, `GET /v1/commerce/availability`, readiness `PAYMENTS_FROZEN`, read-only payment panel) | packages/application/src/plan-read.ts, apps/web/src/components/payment-panel.tsx, apps/web/src/lib/plan.ts, apps/web/src/lib/mission-copy.ts | API side verified in QA. Web typecheck and build PASS. **Browser rendering NOT VERIFIED** (server-rendered HTML asserted by web `test:smoke`: 199 PASS). |
+| Dormant A08 Stripe lifecycle (preserved, unreachable from the API) | packages/application/src/stripe-payments.ts, packages/application/src/payment-service.ts | Unchanged. `qa:stripe-payments` 108 PASS. Live Stripe NOT VERIFIED (by design, no call is possible while frozen). |
+
+Operator follow-ups (not performed by the agent):
+- Disable the Stripe webhook endpoint for the duration of the freeze.
+- Reconcile any pre-freeze uncaptured authorizations before any future reactivation.
+- Optionally set `QEYNOX_COMMERCE_MODE` explicitly per environment (the default is already frozen).
+
+No push to main, no merge, no deployment, no migration.

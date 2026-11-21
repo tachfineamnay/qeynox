@@ -26,7 +26,8 @@
     "qa:support-reconciliation": "tsx scripts/qa-support-reconciliation.ts",
     "qa:notifications": "tsx scripts/qa-notifications.ts",
     "qa:business-packs": "tsx scripts/qa-business-packs.ts",
-    "qa:atlas-library": "tsx scripts/qa-atlas-library.ts"
+    "qa:atlas-library": "tsx scripts/qa-atlas-library.ts",
+    "qa:payment-freeze": "tsx scripts/qa-payment-freeze.ts"
   },
   "dependencies": {
     "@qeynox/application": "workspace:*",

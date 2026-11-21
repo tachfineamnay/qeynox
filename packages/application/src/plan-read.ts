@@ -249,7 +249,10 @@ export class PlanReadService {
           ? { code: 'SCOPE_NOT_ACCEPTED', category: 'OFFER', detail: 'No accepted service scope for the current plan revision' }
           : { code: 'OFFER_NOT_CONFIGURED', category: 'OFFER', detail: 'No active configured offer covers every capability in this plan' });
       } else if (order.state === 'PAYMENT_REQUIRED') {
-        blockers.push({ code: 'PAYMENT_NOT_CONFIGURED', category: 'OFFER', detail: 'No payment provider configured for the accepted order' });
+        // A21.01: every supported QEYNOX_COMMERCE_MODE freezes payments, so an unpaid paid order cannot be
+        // paid in this release. Naming the freeze (not a missing provider) keeps the blocker truthful even
+        // when Stripe credentials happen to be configured.
+        blockers.push({ code: 'PAYMENTS_FROZEN', category: 'OFFER', detail: 'Payments are frozen (QEYNOX_COMMERCE_MODE); the accepted paid order cannot be paid or executed' });
       } else if (!authorizedOrderStates.includes(order.state)) {
         blockers.push({ code: 'ORDER_NOT_AUTHORIZED', category: 'OFFER', detail: 'Order state is ' + order.state });
       }

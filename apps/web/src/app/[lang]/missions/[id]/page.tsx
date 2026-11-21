@@ -365,6 +365,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
               executionAuthorized={paymentData?.executionAuthorized ?? commercialData.executionAuthorized}
               canStartCheckout={paymentData?.canStartCheckout ?? false}
               providerConfigured={paymentData?.providerConfigured ?? false}
+              commerce={paymentData?.commerce ?? null}
               returned={returnMarker === 'returned'}
             />
           ) : null}
