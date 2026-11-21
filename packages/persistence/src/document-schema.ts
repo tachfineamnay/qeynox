@@ -85,6 +85,39 @@ export const documentIngestJobs = pgTable('document_ingest_jobs', {
   check('document_ingest_jobs_state_check', sql`${t.state} IN ('PENDING', 'PROCESSING', 'DONE', 'FAILED')`),
 ]);
 
+/**
+ * P12 (migration 0030) — durable storage-deletion intent. Deliberately no foreign keys: it outlives the
+ * document row (and the workspace) until the object is verified absent.
+ */
+export type StorageDeletionState = 'PENDING' | 'DELETED' | 'FAILED';
+export type StorageDeletionReason = 'USER_DELETE' | 'RETENTION_EXPIRED';
+export const documentStorageDeletions = pgTable('document_storage_deletions', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  documentId: text('document_id').notNull().unique(),
+  storageKey: text('storage_key').notNull(),
+  sha256: text('sha256').notNull(),
+  sizeBytes: integer('size_bytes').notNull(),
+  contentType: text('content_type').notNull(),
+  documentState: text('document_state').notNull(),
+  reason: text('reason').$type<StorageDeletionReason>().notNull(),
+  requestedBy: text('requested_by'),
+  state: text('state').$type<StorageDeletionState>().notNull().default('PENDING'),
+  attempts: integer('attempts').notNull().default(0),
+  lastErrorCode: text('last_error_code'),
+  notBefore: timestamp('not_before', { withTimezone: true }).notNull().defaultNow(),
+  leaseToken: text('lease_token'),
+  leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+}, t => [
+  index('document_storage_deletions_due_idx').on(t.notBefore).where(sql`${t.state} = 'PENDING'`),
+  index('document_storage_deletions_workspace_idx').on(t.workspaceId, t.createdAt),
+  check('document_storage_deletions_state_check', sql`${t.state} IN ('PENDING', 'DELETED', 'FAILED')`),
+  check('document_storage_deletions_reason_check', sql`${t.reason} IN ('USER_DELETE', 'RETENTION_EXPIRED')`),
+]);
+
 export const documentAuditEvents = pgTable('document_audit_events', {
   id: text('id').primaryKey(),
   workspaceId: text('workspace_id').notNull().references(() => identityWorkspaces.id, { onDelete: 'cascade' }),

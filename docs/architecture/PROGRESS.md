@@ -1,5 +1,64 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-21 — MISSION P12: safe document deletion (PR, branch `arena/c199d114-qeynox`, off `3d6732f`)
+
+**Defect.** `DocumentVaultService.delete` and `purgeExpired` swallowed S3 `deleteObject` errors and
+deleted the PostgreSQL row anyway. A failed or ambiguous storage delete left an orphaned private object
+with no record of it.
+
+**Fix (same mechanism for user deletion and retention expiry).**
+- **Migration `0030_document_storage_deletions.sql` (additive).** A durable intent with no foreign keys,
+  so it outlives the document row and the workspace. It stores the storage key, SHA-256, size, content
+  type, the document state at deletion, the reason (`USER_DELETE` / `RETENTION_EXPIRED`), the requester,
+  the state (`PENDING` / `DELETED` / `FAILED`), attempts, a classified last error, the backoff
+  (`not_before`) and a lease. The document name and content are not retained.
+- **Immediate revocation.** One transaction locks the live document in the caller's workspace, inserts
+  the intent and deletes the row. FK cascades remove chunks, mission attachments and ingest jobs, so the
+  document can no longer be listed, searched, downloaded, attached or retrieved into an agent context
+  (P10 queries live rows only). An in-flight P11 ingestion aborts at finalize.
+- **Storage deletion.** `deleteObject` followed by `head`. DELETED is recorded only when `head` reports the
+  object absent. Otherwise the intent stays PENDING with a code:
+  - `DELETE_FAILED:<SdkErrorName>`;
+  - `VERIFY_FAILED:<name>`, which is ambiguous and never assumed deleted;
+  - `STILL_PRESENT`.
+- **Retries.** `drainStorageDeletions` runs in the worker loop next to `purgeExpired`.
+  - Claims use SKIP LOCKED with a fencing lease token (2 min).
+  - Backoff is exponential, from 1 minute up to 6 hours.
+  - After 12 attempts the intent is FAILED, which needs operator attention; the worker logs it.
+  - PENDING_UPLOAD documents wait 11 minutes, until any presigned PUT has expired.
+- **Truthful outcomes.** `delete` returns `{ storage: 'DELETED' | 'PENDING' }`. `DELETE /v1/documents/:id`
+  keeps `{ ok: true }` and adds `storage`. Audit events: `DELETE` / `EXPIRED_PURGE` "access_revoked", then
+  `STORAGE_DELETE` SUCCESS "verified_absent" or FAILED "will_retry:…" / "attempts_exhausted:…". The
+  tenant-scoped `storageDeletionStatus()` reads the intent.
+- **Retention.** `purgeExpired` now covers expired documents in any state, not only AVAILABLE, using the
+  same revoke-and-queue path.
+- **Behaviour change.** Deleting no longer requires object storage to be configured: access is revoked
+  and the intent waits as PENDING.
+
+**Verified.**
+- `pnpm typecheck` passes (4/4).
+- The existing `qa:documents` suite passes 77/77 on a disposable local PostgreSQL 14.
+- A throwaway check (not committed) covered:
+  - tenant isolation;
+  - a verified happy path;
+  - access revoked despite storage failure;
+  - no agent passages after deletion;
+  - backoff;
+  - an ambiguous verify not counted as deleted;
+  - a retry succeeding;
+  - an object still present not counted as success;
+  - FAILED after exhausted attempts;
+  - retention going through the same path;
+  - the presigned-upload grace period;
+  - no name, content or error message retained.
+
+**Not verified / limits.**
+- Real S3 behaviour is not verified.
+- Migration 0030 is not applied in production.
+- No full QA or browser run (deferred by the mission).
+- Download URLs already issued (180 s) remain usable until the object is actually deleted.
+- The web UI does not yet display `storage`.
+
 ## 2026-11-21 — MISSION P11: stuck document ingest jobs fixed (PR, branch `arena/236acc84-qeynox`, off `3b18d58`)
 
 **Defect.** A `document_ingest_jobs` row claimed as PROCESSING stayed there forever if the worker

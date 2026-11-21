@@ -83,8 +83,10 @@ export class DocumentsController {
 
   @Delete('v1/documents/:id')
   async remove(@Req() request: Authed, @Param('id') id: string) {
-    await this.documents.delete(principal(request), idSchema.parse(id));
-    return { ok: true };
+    // P12: access is revoked now; `storage` is DELETED only when the object was verified absent,
+    // otherwise PENDING (a durable intent retries it). `ok` keeps the existing contract.
+    const result = await this.documents.delete(principal(request), idSchema.parse(id));
+    return { ok: true, storage: result.storage };
   }
 
   @Post('v1/operations/:operationId/documents/:documentId/attach')

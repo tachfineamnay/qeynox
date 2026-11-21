@@ -44,7 +44,15 @@ async function startDocumentIngestPoller(): Promise<void> {
     void vault.drainIngestPending({ limit: 5 }).catch(error => {
       console.error('[documents] ingest drain failed:', error instanceof Error ? error.message : 'unknown');
     });
-    void vault.purgeExpired({ limit: 10 }).catch(() => undefined);
+    void vault.purgeExpired({ limit: 10 }).catch(error => {
+      console.error('[documents] retention purge failed:', error instanceof Error ? error.message : 'unknown');
+    });
+    // P12: retry storage deletions of revoked/expired documents until the object is verified absent.
+    void vault.drainStorageDeletions({ limit: 10 }).then(result => {
+      if (result.failed) console.error('[documents] storage deletion attempts exhausted for ' + result.failed + ' object(s); operator attention required');
+    }).catch(error => {
+      console.error('[documents] storage deletion sweep failed:', error instanceof Error ? error.message : 'unknown');
+    });
   }, interval).unref();
   console.log('[documents] ingest poller running every ' + interval + ' ms');
 }

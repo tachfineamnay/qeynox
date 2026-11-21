@@ -22,16 +22,22 @@
  * a claim, mutates an operation or writes an evidence record.
  *
  * Retention & consent: upload requires an explicit purpose statement (the recorded consent act) and
- * stores it; retentionDays/expiresAt bound lifetime; delete revokes everywhere (storage object + rows)
- * and writes a workspace audit event. Expired documents are excluded from list/search/download and
- * are hard-deleted by purgeExpired.
+ * stores it; retentionDays/expiresAt bound lifetime. Expired documents are excluded from
+ * list/search/download and are purged by purgeExpired.
+ *
+ * Deletion (P12): delete and retention purge revoke access atomically — the document row, chunks,
+ * attachments and ingest job disappear in the same transaction that persists a durable
+ * document_storage_deletions intent. The storage object is then deleted and verified absent, with
+ * lease-protected retries (drainStorageDeletions); storage deletion is never reported as done unless
+ * verified, and an exhausted intent ends FAILED for operator attention instead of being forgotten.
  */
 import { createHash, randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { and, count, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { DomainError, newId, type ID, type Principal } from '@qeynox/domain';
 import {
-  QeyNoxStore, documentAuditEvents, documentChunks, documentIngestJobs, documents, identityMemberships, operationDocuments, operations,
+  QeyNoxStore, documentAuditEvents, documentChunks, documentIngestJobs, documentStorageDeletions, documents, identityMemberships, operationDocuments, operations,
+  type StorageDeletionReason, type StorageDeletionState,
 } from '@qeynox/persistence';
 import { cosineSimilarity, type EmbeddingProvider } from './embeddings';
 
@@ -98,6 +104,21 @@ interface ExtractedPage { readonly text: string; readonly page?: number }
 interface ExtractedDocument { readonly pages: readonly ExtractedPage[] }
 
 const sha256Of = (content: Uint8Array) => createHash('sha256').update(content).digest('hex');
+
+/** P12 — storage deletion of a revoked document: what the caller can truthfully be told. */
+export type StorageDeletionOutcome = 'DELETED' | 'PENDING';
+/** P12 — storage-deletion attempts before the intent is FAILED (operator attention); ~1 min → 6 h backoff. */
+export const STORAGE_DELETION_MAX_ATTEMPTS = 12;
+const STORAGE_DELETION_MAX_BACKOFF_MS = 6 * 60 * 60 * 1000;
+const STORAGE_DELETION_LEASE_MS = 120_000;
+/** Presigned PUT lifetime (600 s, see beginUpload) plus margin. */
+const UPLOAD_URL_GRACE_MS = 11 * 60 * 1000;
+interface ClaimedStorageDeletion { readonly id: string; readonly workspaceId: string; readonly documentId: string; readonly storageKey: string; readonly attempts: number; readonly token: string; readonly notBefore: Date }
+/** A short, non-sensitive error classifier (SDK error name only — never messages, keys or URLs). */
+function storageErrorSuffix(error: unknown): string {
+  const name = (error as { name?: unknown } | null)?.name;
+  return typeof name === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,60}$/.test(name) ? ':' + name : '';
+}
 
 /** P11 — ingestion attempts per document before a terminal FAILED (claims of abandoned jobs count). */
 export const INGEST_MAX_ATTEMPTS = 3;
@@ -773,30 +794,168 @@ export class DocumentVaultService {
     return rows.map(row => this.toView(row.document, attachments.get(row.document.id) ?? 0));
   }
 
-  /** Hard-delete everywhere: storage object (best-effort), rows, chunks, attachments, audit kept. */
-  async delete(actor: Principal, documentId: string): Promise<void> {
-    const objects = this.requireStorage();
-    const row = await this.getRow(actor, documentId);
-    try { await objects.deleteObject(row.storageKey); } catch { /* object may already be gone; rows still deleted */ }
-    await this.store.db.delete(documents).where(and(eq(documents.id, row.id), eq(documents.workspaceId, actor.workspaceId)));
-    await this.audit(actor.workspaceId, row.id, actor.userId, 'DELETE', 'SUCCESS');
+  /**
+   * P12 — delete a document. Access is revoked IMMEDIATELY and atomically: one transaction removes the
+   * document row (cascading chunks, mission attachments and ingest jobs, so it can no longer be listed,
+   * searched, downloaded, attached or put in an agent context) and persists a durable storage-deletion
+   * intent. The object is then deleted and verified absent; if that fails or is ambiguous the intent
+   * stays PENDING and is retried by drainStorageDeletions. `storage` reports what actually happened.
+   */
+  async delete(actor: Principal, documentId: string): Promise<{ storage: StorageDeletionOutcome }> {
+    const intent = await this.revokeAndQueueDeletion(actor.workspaceId, documentId, 'USER_DELETE', actor.userId);
+    if (!intent) throw new DomainError('NOT_FOUND', 'Document not found');
+    await this.audit(actor.workspaceId, documentId, actor.userId, 'DELETE', 'SUCCESS', 'access_revoked');
+    const storage = await this.attemptStorageDeletionNow(intent);
+    return { storage };
   }
 
-  /** Retention enforcement: hard-delete AVAILABLE documents whose retention window expired. */
+  /**
+   * Retention enforcement through the same mechanism: every expired, not-yet-deleted document (any
+   * state) is revoked and queued; storage deletion is attempted and otherwise retried. `deleted`
+   * counts revoked documents, not storage outcomes (those are on the intent and in the audit log).
+   */
   async purgeExpired(options: { limit?: number } = {}): Promise<{ deleted: number }> {
-    const objects = this.requireStorage();
     const limit = Math.max(1, Math.min(50, options.limit ?? 20));
-    const expired = await this.store.db.select().from(documents)
-      .where(and(eq(documents.state, 'AVAILABLE'), isNull(documents.deletedAt), lt(documents.expiresAt, new Date())))
+    const expired = await this.store.db.select({ id: documents.id, workspaceId: documents.workspaceId }).from(documents)
+      .where(and(isNull(documents.deletedAt), lt(documents.expiresAt, new Date())))
+      .orderBy(documents.expiresAt)
       .limit(limit);
     let deleted = 0;
     for (const row of expired) {
-      try { await objects.deleteObject(row.storageKey); } catch { /* keep going; rows must still be purged */ }
-      await this.store.db.delete(documents).where(and(eq(documents.id, row.id), eq(documents.state, 'AVAILABLE')));
-      await this.audit(row.workspaceId, row.id, null, 'EXPIRED_PURGE', 'SUCCESS');
+      const intent = await this.revokeAndQueueDeletion(row.workspaceId, row.id, 'RETENTION_EXPIRED', null);
+      if (!intent) continue; // deleted concurrently by its owner or another sweep
+      await this.audit(row.workspaceId, row.id, null, 'EXPIRED_PURGE', 'SUCCESS', 'access_revoked');
+      await this.attemptStorageDeletionNow(intent);
       deleted++;
     }
     return { deleted };
+  }
+
+  /**
+   * Retries due storage-deletion intents (worker sweep). Each claim is lease-protected (SKIP LOCKED +
+   * fencing token), so concurrent sweeps never act on the same intent and a crashed sweep's claim is
+   * picked up again after its lease expires. DELETED is recorded only once `head` confirms absence.
+   */
+  async drainStorageDeletions(options: { limit?: number } = {}): Promise<{ deleted: number; retrying: number; failed: number }> {
+    const objects = this.requireStorage();
+    const limit = Math.max(1, Math.min(50, options.limit ?? 10));
+    const claimed = await this.claimStorageDeletions(limit);
+    const totals = { deleted: 0, retrying: 0, failed: 0 };
+    for (const intent of claimed) {
+      const outcome = await this.executeStorageDeletion(objects, intent);
+      if (outcome === 'DELETED') totals.deleted++;
+      else if (outcome === 'FAILED') totals.failed++;
+      else if (outcome === 'PENDING') totals.retrying++;
+    }
+    return totals;
+  }
+
+  /** Read-only status of a deletion intent in the actor's workspace (null when none exists). */
+  async storageDeletionStatus(actor: Principal, documentId: string): Promise<{ state: StorageDeletionState; attempts: number; lastErrorCode: string | null; completedAt: string | null } | null> {
+    const [row] = await this.store.db.select().from(documentStorageDeletions)
+      .where(and(eq(documentStorageDeletions.workspaceId, actor.workspaceId), eq(documentStorageDeletions.documentId, documentId))).limit(1);
+    return row ? { state: row.state, attempts: row.attempts, lastErrorCode: row.lastErrorCode ?? null, completedAt: row.completedAt ? new Date(row.completedAt).toISOString() : null } : null;
+  }
+
+  /**
+   * One transaction: lock the live document in its workspace, persist the intent with the metadata
+   * cleanup needs, then delete the row (FK cascades remove chunks, attachments and ingest jobs).
+   * Returns null when the document does not exist (or is already deleted) in that workspace.
+   */
+  private async revokeAndQueueDeletion(workspaceId: string, documentId: string, reason: StorageDeletionReason, requestedBy: string | null): Promise<ClaimedStorageDeletion | null> {
+    return this.store.db.transaction(async tx => {
+      const [row] = await tx.select().from(documents)
+        .where(and(eq(documents.id, documentId), eq(documents.workspaceId, workspaceId), isNull(documents.deletedAt)))
+        .for('update').limit(1);
+      if (!row) return null;
+      // A presigned PUT issued for a PENDING_UPLOAD document stays usable for up to 10 minutes, so its
+      // object could land after an immediate delete: wait until every such URL has expired.
+      const notBefore = row.state === 'PENDING_UPLOAD' ? new Date(Date.now() + UPLOAD_URL_GRACE_MS) : new Date();
+      const id = uuid();
+      await tx.insert(documentStorageDeletions).values({
+        id, workspaceId, documentId: row.id, storageKey: row.storageKey, sha256: row.sha256, sizeBytes: row.sizeBytes,
+        contentType: row.contentType, documentState: row.state, reason, requestedBy, state: 'PENDING', notBefore,
+      });
+      await tx.delete(documents).where(and(eq(documents.id, row.id), eq(documents.workspaceId, workspaceId)));
+      return { id, workspaceId, documentId: row.id, storageKey: row.storageKey, attempts: 0, token: '', notBefore };
+    });
+  }
+
+  /** Immediate best-effort attempt after revocation; never reports DELETED unless verified. */
+  private async attemptStorageDeletionNow(intent: ClaimedStorageDeletion): Promise<StorageDeletionOutcome> {
+    if (!this.objects || intent.notBefore.getTime() > Date.now()) return 'PENDING';
+    const [claimed] = await this.claimStorageDeletions(1, intent.id);
+    if (!claimed) return 'PENDING';
+    const outcome = await this.executeStorageDeletion(this.objects, claimed);
+    return outcome === 'DELETED' ? 'DELETED' : 'PENDING';
+  }
+
+  private async claimStorageDeletions(limit: number, onlyId?: string): Promise<ClaimedStorageDeletion[]> {
+    const token = randomUUID();
+    const executed = await this.store.db.execute(sql`
+      UPDATE document_storage_deletions AS d
+      SET attempts = d.attempts + 1, lease_token = ${token} || ':' || d.id,
+          lease_expires_at = now() + make_interval(secs => ${STORAGE_DELETION_LEASE_MS / 1000}), updated_at = now()
+      WHERE d.id IN (
+        SELECT c.id FROM document_storage_deletions c
+        WHERE c.state = 'PENDING' AND c.not_before <= now()
+          AND (c.lease_expires_at IS NULL OR c.lease_expires_at < now())
+          ${onlyId ? sql`AND c.id = ${onlyId}` : sql``}
+        ORDER BY c.not_before
+        LIMIT ${limit}
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING d.id, d.workspace_id, d.document_id, d.storage_key, d.attempts, d.lease_token, d.not_before
+    `);
+    const rows = ((executed as unknown as { rows?: unknown[] }).rows ?? (executed as unknown as unknown[])) as Array<{ id: string; workspace_id: string; document_id: string; storage_key: string; attempts: number; lease_token: string; not_before: string | Date }>;
+    return rows.map(row => ({ id: row.id, workspaceId: row.workspace_id, documentId: row.document_id, storageKey: row.storage_key, attempts: Number(row.attempts), token: row.lease_token, notBefore: new Date(row.not_before) }));
+  }
+
+  /**
+   * Delete, then verify absence with `head`. Outcomes:
+   *   head reports absent             ⇒ DELETED (completed_at set)
+   *   delete threw                    ⇒ retry (DELETE_FAILED)
+   *   head threw                      ⇒ retry (VERIFY_FAILED — ambiguous, never assumed deleted)
+   *   object still present after delete ⇒ retry (STILL_PRESENT)
+   * Retries back off exponentially; after STORAGE_DELETION_MAX_ATTEMPTS the intent is FAILED (the
+   * object may still exist; operator attention required). All writes are fenced by the lease token.
+   */
+  private async executeStorageDeletion(objects: DocumentObjectPort, intent: ClaimedStorageDeletion): Promise<StorageDeletionState | 'LEASE_LOST'> {
+    let errorCode: string | null = null;
+    try {
+      await objects.deleteObject(intent.storageKey);
+    } catch (error: unknown) {
+      errorCode = 'DELETE_FAILED' + storageErrorSuffix(error);
+    }
+    if (!errorCode) {
+      try {
+        if (await objects.head(intent.storageKey)) errorCode = 'STILL_PRESENT';
+      } catch (error: unknown) {
+        errorCode = 'VERIFY_FAILED' + storageErrorSuffix(error);
+      }
+    }
+    const fenced = and(eq(documentStorageDeletions.id, intent.id), eq(documentStorageDeletions.state, 'PENDING'), eq(documentStorageDeletions.leaseToken, intent.token));
+    let next: StorageDeletionState;
+    if (!errorCode) {
+      next = 'DELETED';
+      const [done] = await this.store.db.update(documentStorageDeletions)
+        .set({ state: 'DELETED', lastErrorCode: null, leaseToken: null, leaseExpiresAt: null, completedAt: new Date(), updatedAt: new Date() })
+        .where(fenced).returning({ id: documentStorageDeletions.id });
+      if (!done) return 'LEASE_LOST';
+    } else {
+      const terminal = intent.attempts >= STORAGE_DELETION_MAX_ATTEMPTS;
+      next = terminal ? 'FAILED' : 'PENDING';
+      const backoffMs = Math.min(STORAGE_DELETION_MAX_BACKOFF_MS, 60_000 * 2 ** Math.max(0, intent.attempts - 1));
+      const [recorded] = await this.store.db.update(documentStorageDeletions)
+        .set({ state: next, lastErrorCode: errorCode, leaseToken: null, leaseExpiresAt: null, notBefore: new Date(Date.now() + backoffMs), updatedAt: new Date() })
+        .where(fenced).returning({ id: documentStorageDeletions.id });
+      if (!recorded) return 'LEASE_LOST';
+    }
+    // Audit is best-effort here: the intent row is the durable, truthful record (and the workspace — the
+    // audit table's FK parent — may itself have been deleted since).
+    await this.audit(intent.workspaceId, intent.documentId, null, 'STORAGE_DELETE', next === 'DELETED' ? 'SUCCESS' : 'FAILED',
+      next === 'DELETED' ? 'verified_absent' : (next === 'FAILED' ? 'attempts_exhausted:' : 'will_retry:') + errorCode).catch(() => undefined);
+    return next;
   }
 }
 
