@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { and,eq } from 'drizzle-orm';
 import { DomainError,isConsentActive,newId,type ID,type Principal,type Evidence,type Source } from '@qeynox/domain';
-import { QeyNoxStore,approvals,identityMemberships,sourceSnapshots } from '@qeynox/persistence';
+import { PgExecutionAuthority,type MissionContextAuthority,type MissionAuthorityScope,QeyNoxStore,approvals,identityMemberships,sourceSnapshots } from '@qeynox/persistence';
 import type { EnginePort,AgentProfile,EngineOutcome,EngineRequest } from '@qeynox/engine';
 import { ToolBroker,ToolRegistry,PgToolLedger,PgToolAuthorization,configuredProviderRateLimiter,providerCostCeilingIssues,type ConnectorCall,type PermissionContext } from '@qeynox/tools';
 import { BudgetService } from './budgets';
@@ -20,7 +20,7 @@ export class BrokeredAgentExecutor {
  constructor(private readonly store:QeyNoxStore,private readonly engine:EnginePort,private readonly registry:ToolRegistry){
    this.broker=new ToolBroker(registry,new PgToolLedger(store.db),configuredProviderRateLimiter(),new PgToolAuthorization(store.db));
  }
- async run(request:EngineRequest,capability:CapabilityDefinition):Promise<BrokeredRunResult>{
+ async run(request:EngineRequest,capability:CapabilityDefinition,binding?:{attemptVersion:number;context?:MissionContextAuthority}):Promise<BrokeredRunResult>{
    const [operation,attempt]=await Promise.all([
      this.store.db.query.operations.findFirst({where:(t,{and,eq})=>and(eq(t.id,request.operationId),eq(t.workspaceId,request.workspaceId))}),
      this.store.getAttempt(request.stepAttemptId),
@@ -31,6 +31,11 @@ export class BrokeredAgentExecutor {
    const [member]=await this.store.db.select().from(identityMemberships).where(and(eq(identityMemberships.userId,operation.payload.createdBy),eq(identityMemberships.workspaceId,request.workspaceId),eq(identityMemberships.status,'ACTIVE'))).limit(1);
    if(!member)throw new DomainError('DENIED','Operation owner membership no longer active');
    const principal:Principal={userId:member.userId as ID,workspaceId:member.workspaceId as ID,roles:[member.role]};
+   const authority=new PgExecutionAuthority(this.store.db);
+   const scope:MissionAuthorityScope={principal,operationId:request.operationId,planRevisionId:attempt.planRevisionId,stepAttemptId:attempt.id,
+     attemptVersion:binding?.attemptVersion??attempt.version,capabilityId:capability.id,capabilityVersion:capability.version,
+     profileId:request.profile.id,profileVersion:request.profile.version,context:binding?.context};
+   await authority.assertCurrent(scope);
    const approved=(await this.store.db.select().from(approvals).where(and(eq(approvals.operationId,request.operationId),eq(approvals.workspaceId,request.workspaceId)))).map(r=>r.payload);
    const allowed=capability.allowedTools.filter(t=>request.profile.allowedTools.includes(t));
    const toolGuide=allowed.map(ref=>{
@@ -49,6 +54,8 @@ export class BrokeredAgentExecutor {
      const budget=new BudgetService(this.store);
      const engineReservation=await budget.reserve(principal,request.operationId,attempt.id,'ENGINE','hermes',request.correlationId+':turn:'+i);
      let answer:EngineOutcome;
+     // Admission is outside settlement catch: a competing worker must not settle another call.
+     await authority.admitInference(scope,engineReservation.reservationId);
      try {
        answer=await this.engine.invoke({...request,userMessage:request.userMessage+'\n\nQeyNox reviewed broker input contracts (proposals only; never direct provider calls): '+JSON.stringify(toolGuide),priorMessages:history});
        // Hermes reports an all-zero usage block when it observed nothing, so a missing usage means
@@ -59,6 +66,7 @@ export class BrokeredAgentExecutor {
        await budget.settle(principal,engineReservation.reservationId as ID,{origin:'UNKNOWN'});
        throw error;
      }
+     await authority.assertCurrent(scope);
      if(answer.status!=='COMPLETED')return {outcome:answer,observations:captured};
      if(!answer.proposedTools.length)return {outcome:answer,observations:captured};
      if(answer.proposedTools.length>remainingCalls-callsUsed)throw new DomainError('DENIED','Agent requested more tools than its budget');
@@ -69,7 +77,7 @@ export class BrokeredAgentExecutor {
        // Reload immediately before every proposed call; a run-start snapshot is not authority.
        const consent=await this.store.getConsents(principal.workspaceId,principal.userId);
        const consentScopes=consent.filter(c=>c.userId===principal.userId&&c.workspaceId===principal.workspaceId&&isConsentActive(c,new Date().toISOString())).flatMap(c=>c.scopes);
-       const permission:PermissionContext={principal,operationId:request.operationId,planRevisionId:attempt.planRevisionId,stepAttemptId:attempt.id,capabilityId:capability.id,profileId:request.profile.id,profileVersion:request.profile.version,allowedConnectorTools:allowed,consentScopes,approvedRequests:approved,remainingCostUnits:0,remainingToolCalls:remainingCalls-callsUsed};
+       const permission:PermissionContext={principal,operationId:request.operationId,planRevisionId:attempt.planRevisionId,stepAttemptId:attempt.id,capabilityId:capability.id,profileId:request.profile.id,profileVersion:request.profile.version,attemptVersion:scope.attemptVersion,capabilityVersion:scope.capabilityVersion,contextAuthority:scope.context,allowedConnectorTools:allowed,consentScopes,approvedRequests:approved,remainingCostUnits:0,remainingToolCalls:remainingCalls-callsUsed};
        // Tool actions are proposals, never authority. WRITE requires a pre-approved intentId tied to the exact payload; no auto-approved writes.
        const serialized=JSON.stringify({proposal,attemptId:attempt.id,iteration:i,position:j});
        const hash=createHash('sha256').update(serialized).digest('hex');
@@ -77,13 +85,16 @@ export class BrokeredAgentExecutor {
        const budget=new BudgetService(this.store);
        const reserved=await budget.reserve(principal,request.operationId,attempt.id,'TOOL',call.connectorId+':'+call.toolName+'@'+call.version,call.idempotencyKey);
        permission.remainingCostUnits=reserved.maximumCostMinor;
+       permission.reservationId=reserved.reservationId;
        let result;
        try { result=await this.broker.invoke(call,permission);
          await budget.settle(principal,reserved.reservationId as ID,{origin:'ESTIMATED',costMinor:reserved.maximumCostMinor});
        } catch (error) {
-         await budget.settle(principal,reserved.reservationId as ID,{origin:'UNKNOWN'});
+         // A losing duplicate or denied admission must not settle another worker's reservation.
+         if(!(error instanceof DomainError&&error.context?.toolInvocation==='NOT_STARTED'))await budget.settle(principal,reserved.reservationId as ID,{origin:'UNKNOWN'});
          throw error;
        }
+       await authority.assertCurrent(scope);
        callsUsed++;
        // Returned search pages are citable discovery sources. Their digest binds the complete
        // provider response, NOT a fetch of each page; never represent a snippet as verified content.

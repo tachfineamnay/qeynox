@@ -7,7 +7,7 @@ import {
   type Consent, type ID, type Principal, type SoulOnboardingContentStep, type SoulOnboardingDisplayStatus,
   type SoulOnboardingRecord, type SoulOnboardingStep, type UserContext,
 } from '@qeynox/domain';
-import { QeyNoxStore, consents, soulOnboarding, commandIds, type QeyNoxDatabase } from '@qeynox/persistence';
+import { assertActiveWorkspaceMember, assertInteractiveInference, QeyNoxStore, consents, soulOnboarding, commandIds, type QeyNoxDatabase } from '@qeynox/persistence';
 import type { AgentProfile, EnginePort, EngineOutcome } from '@qeynox/engine';
 import { AgentProfileStore } from './profiles';
 import {
@@ -54,8 +54,10 @@ export class SoulService {
     await this.store.saveContext(fact);return fact;
   }
   async viewContext(actor:Principal):Promise<readonly UserContext[]> {
+    await assertActiveWorkspaceMember(this.store.db,actor);
     const items=await this.store.getContext(actor.workspaceId,actor.userId);
     const permits=await this.store.getConsents(actor.workspaceId,actor.userId);
+    await assertActiveWorkspaceMember(this.store.db,actor);
     return contextSubset(items,permits,['context:read'],new Date().toISOString());
   }
   async deleteFact(actor:Principal,factId:ID):Promise<void> {
@@ -77,6 +79,9 @@ export class SoulService {
     if(message.length>5000)throw new DomainError('INVALID_INPUT','Message too long');
     const facts=await this.viewContext(actor);
     const selective=Object.fromEntries(facts.filter(f=>profile.permittedContextKeys.includes(f.key)).map(f=>[f.key,f.value]));
+    const bindings=(await this.store.getConsents(actor.workspaceId,actor.userId)).filter(permit=>facts.some(fact=>fact.consentId===permit.id)).map(permit=>({id:permit.id,version:permit.version}));
+    if(facts.some(fact=>!bindings.some(binding=>binding.id===fact.consentId)))throw new DomainError('DENIED','Prepared fact consent disappeared');
+    await assertInteractiveInference(this.store.db,actor,profile,bindings);
     return this.engine.invoke({workspaceId:actor.workspaceId,operationId,stepAttemptId:attemptId,profile,userMessage:message,context:selective,correlationId:newId()});
   }
 }
@@ -357,7 +362,7 @@ export class SoulOnboardingService {
    * profile surfaces as NOT_CONFIGURED and the guide converts it into the deterministic fallback.
    */
   private guidanceService(): GuidedOnboardingPort {
-    return new GuidedOnboardingService(this.soul.enginePort, () => this.soul.activeSoulProfile());
+    return new GuidedOnboardingService(this.soul.enginePort, () => this.soul.activeSoulProfile(), { authorize: (actor,profile,request)=>assertInteractiveInference(this.store.db,actor,profile,request.consentBindings) });
   }
 
   /**
@@ -397,7 +402,11 @@ export class SoulOnboardingService {
     const answers = facts
       .filter(fact => !fact.deletedAt && Object.values(SOUL_ONBOARDING_FACT_KEYS).includes(fact.key as never))
       .map(fact => ({ step: fact.key, value: typeof fact.value === 'string' ? fact.value : String(fact.value ?? '') }));
+    const permits=await this.store.getConsents(actor.workspaceId,actor.userId);
+    const consentBindings=permits.filter(permit=>facts.some(fact=>fact.consentId===permit.id)).map(permit=>({id:permit.id,version:permit.version}));
+    if(facts.some(fact=>!consentBindings.some(binding=>binding.id===fact.consentId)))throw new DomainError('DENIED','Prepared guidance consent disappeared');
     const outcome = await this.guidance.guide(actor, {
+      consentBindings,
       onboardingId: record.id,
       step,
       message: input.message,

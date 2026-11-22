@@ -15,3 +15,6 @@ export * from './account-schema';
 export * from './account-store';
 export * from './notification-schema';
 export * from './notification-store';
+
+export * from './execution-authority';
+export * from './context-authority';

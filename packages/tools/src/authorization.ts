@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { DomainError, isConsentActive } from '@qeynox/domain';
-import { agentProfiles, capabilities, approvals, attempts, consents, identityMemberships, operations, type QeyNoxDatabase } from '@qeynox/persistence';
+import { PgExecutionAuthority, agentProfiles, capabilities, approvals, attempts, consents, identityMemberships, operations, type QeyNoxDatabase } from '@qeynox/persistence';
 import { resolveConfiguredProviders } from './providers/configured';
 import type { ConnectorCall, PermissionContext, ToolDefinition } from './types';
 
@@ -41,10 +41,21 @@ export class PgToolAuthorization implements ToolAuthorizationPort {
         throw new DomainError('DENIED', 'Write approval expired or is no longer active');
       }
     }
-    if (!definition.requiredScopes.length) return;
+
     const rows = await this.db.select().from(consents).where(and(eq(consents.workspaceId, actor.workspaceId), eq(consents.userId, actor.userId)));
     const now = new Date().toISOString();
     const scopes = new Set(rows.flatMap(row => row.payload.userId === actor.userId && row.payload.workspaceId === actor.workspaceId && isConsentActive(row.payload, now) ? [...row.payload.scopes] : []));
     if (definition.requiredScopes.some(scope => !scopes.has(scope))) throw new DomainError('DENIED', 'Tool consent expired or was revoked before invocation');
+    // Preserve the checks above. The final short snapshot closes their intervening DB waits and
+    // additionally fences resumed attempts, revoked beta admissions and stale spend reservations.
+    if (permission.attemptVersion === undefined || permission.capabilityVersion === undefined || !permission.reservationId) throw new DomainError('DENIED', 'Tool execution epoch and reservation required');
+    await new PgExecutionAuthority(this.db).assertCurrent({ principal: actor, operationId: call.operationId,
+      planRevisionId: call.planRevisionId, stepAttemptId: call.stepAttemptId, attemptVersion: permission.attemptVersion,
+      capabilityId: call.capabilityId, capabilityVersion: permission.capabilityVersion,
+      profileId: permission.profileId, profileVersion: permission.profileVersion, context: permission.contextAuthority,
+    }, { intentId: call.intentId, requiredScopes: definition.requiredScopes, connector: { id: call.connectorId, version: call.version },
+      reservation: { id: permission.reservationId, kind: 'TOOL', provider: ref, key: call.idempotencyKey },
+      ...(definition.mode === 'WRITE' ? { writeApproval: { id: call.approvalId!, intentId: call.intentId } } : {}),
+    });
   }
 }

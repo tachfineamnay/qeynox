@@ -9,6 +9,14 @@ const keyOf=(c:ConnectorCall)=>c.connectorId+':'+c.toolName+'@'+c.version;
 export class ToolBroker {
  constructor(private readonly registry:ToolRegistry,private readonly ledger:ToolLedgerPort,private readonly limiter:ProviderRateLimiter=new ProviderRateLimiter(),private readonly authorization?:ToolAuthorizationPort){}
  async invoke(call:ConnectorCall,permission:PermissionContext):Promise<ToolResult>{
+   const dispatch={invoked:false};
+   try{return await this.invokeOnce(call,permission,dispatch);}
+   catch(error:unknown){
+     if(!dispatch.invoked)throw new DomainError(error instanceof DomainError?error.code:'UNEXPECTED_EXECUTION_ERROR',error instanceof DomainError?error.message:'Tool failed before provider admission',{...(error instanceof DomainError?error.context:{}),toolInvocation:'NOT_STARTED'});
+     throw error;
+   }
+ }
+ private async invokeOnce(call:ConnectorCall,permission:PermissionContext,dispatch:{invoked:boolean}):Promise<ToolResult>{
    if(!permission.principal.userId||!permission.principal.workspaceId)throw new DomainError('DENIED','Authenticated workspace required');
    if(permission.operationId!==call.operationId||permission.stepAttemptId!==call.stepAttemptId||permission.planRevisionId!==call.planRevisionId||permission.capabilityId!==call.capabilityId)throw new DomainError('DENIED','Tool execution identity mismatch');
    if(!permission.profileId||!Number.isSafeInteger(permission.profileVersion)||permission.profileVersion<1)throw new DomainError('DENIED','Profile identity missing');
@@ -26,7 +34,7 @@ export class ToolBroker {
    await this.limiter.check(call.connectorId,manifest.rateLimit.maxPerMinute);
    const intent:ToolInvocationIntent={id:call.intentId,operationId:call.operationId,planRevisionId:call.planRevisionId,stepAttemptId:call.stepAttemptId,capabilityId:call.capabilityId,toolName:keyOf(call),toolVersion:call.version,payload:input,idempotencyKey:call.idempotencyKey,mode:definition.mode,approvalId:call.approvalId,requestedBy:permission.principal.userId,createdAt:new Date().toISOString()};
    const existing=await this.ledger.reserve({intent,workspaceId:permission.principal.workspaceId,connectorId:call.connectorId,requestDigest:hash,status:'STARTED',provider:connector.id,capturedAt:new Date().toISOString()});
-   if(existing!=='RESERVED')throw new DomainError('CONFLICT','Existing invocation requires reconciliation');
+   if(existing!=='RESERVED')throw new DomainError('CONFLICT','Existing invocation requires reconciliation',{toolInvocation:'NOT_STARTED'});
    const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),definition.timeoutMs);
    let invoked=false;
    try{
@@ -40,7 +48,7 @@ export class ToolBroker {
      const work=async()=>{
        await this.authorization?.assertCurrent(call,permission,definition);
        if(ac.signal.aborted)throw new DomainError('UNAVAILABLE','Tool deadline exceeded',{providerFailure:'TIMEOUT'});
-       invoked=true;
+       invoked=true;dispatch.invoked=true;
        return connector.invoke(call.toolName,call.version,input,{principal:permission.principal,operationId:call.operationId,stepAttemptId:call.stepAttemptId,signal:ac.signal});
      };
      let raw:Awaited<ReturnType<typeof connector.invoke>>;
@@ -57,7 +65,14 @@ export class ToolBroker {
      await this.ledger.complete(call.intentId,responseDigest,provenance);
      return {value,provenance,sources};
    }catch(error:unknown){
-     await this.ledger.fail(call.intentId,error instanceof DomainError?error.code:'TOOL_EXECUTION_FAILED',invoked&&definition.mode==='WRITE');
+     try {
+       await this.ledger.fail(call.intentId,error instanceof DomainError?error.code:'TOOL_EXECUTION_FAILED',invoked&&definition.mode==='WRITE');
+     } catch(recordingError:unknown) {
+       if(invoked&&definition.mode==='WRITE')throw new DomainError('UNKNOWN_OUTCOME','External write and its ledger acknowledgement require reconciliation');
+       throw recordingError;
+     }
+     if(invoked&&definition.mode==='WRITE')throw new DomainError('UNKNOWN_OUTCOME','External write may have started; reconcile its outcome before any retry');
+     if(!invoked&&error instanceof DomainError)throw new DomainError(error.code,error.message,{...error.context,toolInvocation:'NOT_STARTED'});
      throw error;
    }finally{clearTimeout(timer);}
  }
