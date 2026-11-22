@@ -1,5 +1,26 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-22 — MISSION P17: Hermes → Vertex source integration (P22 certification deferred)
+
+Hermes remains the agent runtime and Hatchet the single durable orchestrator. Added mandatory
+Hermes-only read-only credential/config mounts, an offline hardened Vertex model-route renderer,
+local dependency/mount/config health checks and shared API/Worker settings with explicit Vertex
+model/deadline validation. Existing probes now require rejected-key auth enforcement, exact model
+advertisement and explicit valid native-tool inventory; provider/timeout changes invalidate evidence.
+Native tools/MCP/fallbacks remain disabled in desired config; no attestation default was enabled.
+Inference/response bounds, provider error classification, structured engine/recovery facts and token
+integer/consistency checks are implemented. ToolBroker and conservative ESTIMATED/UNKNOWN cost
+settlement remain canonical; no invented price, financial schema/history or payment behavior change.
+
+Local checks: frozen install, existing Hermes contract **57 assertions**, new Vertex contract **7 tests**,
+readiness **70+27 assertions**, P16 regression **7 tests**, typecheck **6 tasks + release tooling**,
+API/Worker targeted TypeScript builds and YAML/Python syntax checks. No real Google/Vertex request,
+credential access/change, image build/deploy/restart, DB/migration or actual isolation proof. Real
+inference/IAM/token refresh/model/egress/image/usage certification is explicitly **DEFERRED TO P22**.
+See [P17 verification](../../infra/P17_VERIFICATION.md) and
+[updated operator runbook](HERMES_VERTEX_LIVE_RUNBOOK.md).
+
+
 ## 2026-11-22 — MISSION P16: release integration (source/local validation only)
 
 Four role-specific fail-closed env contracts, immutable image SHA/version stamps and live health

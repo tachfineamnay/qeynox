@@ -9,6 +9,7 @@
     "@qeynox/domain": "workspace:*"
   },
   "scripts": {
-    "qa:hermes-contract": "tsx scripts/qa-hermes-contract.ts"
+    "qa:hermes-contract": "tsx scripts/qa-hermes-contract.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   }
 }

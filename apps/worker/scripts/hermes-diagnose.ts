@@ -17,7 +17,7 @@ const privateOrigin = process.env.HERMES_PRIVATE_ORIGIN;
 const nativeToolsIsolated = process.env.HERMES_NATIVE_TOOLS_ISOLATED === 'true';
 const egressAttested = process.env.QEYNOX_NETWORK_POLICY_ATTESTED === 'true';
 
-const blockers = describeInferenceBlockers({ baseUrl, apiKey, nativeToolsIsolated, egressAttested });
+const blockers = [...describeInferenceBlockers({ baseUrl, apiKey, nativeToolsIsolated, egressAttested }), ...(!model ? ['HERMES_MODEL (explicit discovery target required)'] : [])];
 
 async function main(): Promise<number> {
   console.log('QeyNox -> Hermes diagnostics (no credentials are printed)');
@@ -56,7 +56,7 @@ async function main(): Promise<number> {
 
   console.log('');
   if (blockers.length) console.log('Configuration blockers: ' + blockers.join(', '));
-  const operational = report.reachable && report.authenticated && report.nativeToolsIsolated === true && blockers.length === 0;
+  const operational = report.reachable && report.platform === 'hermes-agent' && Boolean(report.runtimeVersion) && report.authenticated && report.activeModelAdvertised === true && report.nativeToolsIsolated === true && report.failures.length === 0 && blockers.length === 0;
   if (!operational) {
     console.log('BLOCKED: the deployment is not ready for tenant inference. No attestation was set by this command.');
     return 3;

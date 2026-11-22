@@ -101,7 +101,7 @@ export interface SoulOnboardingConsentView {
   readonly scopes: readonly string[]; readonly grantedAt: string | null;
 }
 export type OnboardingAiReason =
-  | 'READY' | 'NO_ENDPOINT' | 'NO_CREDENTIAL' | 'NO_ATTESTATION' | 'INVALID_TIMEOUT' | 'UNKNOWN';
+  | 'READY' | 'NO_ENDPOINT' | 'NO_CREDENTIAL' | 'NO_ATTESTATION' | 'INVALID_TIMEOUT' | 'INVALID_MODEL' | 'INVALID_ENDPOINT' | 'UNKNOWN';
 
 export interface SoulOnboardingView {
   readonly status: SoulOnboardingDisplayStatus;

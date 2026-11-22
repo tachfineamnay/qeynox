@@ -144,6 +144,7 @@ export function normalizeUsage(usage: HermesUsage | undefined): {
   const input = numberOrUndefined(usage?.prompt_tokens);
   const output = numberOrUndefined(usage?.completion_tokens);
   const total = numberOrUndefined(usage?.total_tokens);
+  if (total !== undefined && ((input ?? 0) + (output ?? 0) > total)) return { reported: false };
   const reported = Boolean((input ?? 0) > 0 || (output ?? 0) > 0 || (total ?? 0) > 0);
   return reported
     ? { inputTokens: input, outputTokens: output, totalTokens: total, reported: true }
@@ -151,7 +152,7 @@ export function normalizeUsage(usage: HermesUsage | undefined): {
 }
 
 function numberOrUndefined(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= 2_147_483_647 ? value : undefined;
 }
 
 /** The OpenAI-style error envelope, which Hermes also uses for hard failures. */
@@ -218,7 +219,7 @@ export function redactSecrets(text: string, limit = 500): string {
     .replace(/\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi, '[REDACTED_CREDENTIAL]')
     .replace(/\bAIza[0-9A-Za-z_-]{20,}\b/g, '[REDACTED_GOOGLE_KEY]')
     .replace(/\bya29\.[0-9A-Za-z._-]{10,}\b/g, '[REDACTED_GOOGLE_TOKEN]')
-    .replace(/"(?:private_key|client_secret|refresh_token|access_token|api_key|apiKey|authorization)"\s*:\s*"[^"]*"/gi, '"$1":"[REDACTED]"')
+    .replace(/"(private_key|client_secret|refresh_token|access_token|api_key|apiKey|authorization)"\s*:\s*"[^"]*"/gi, '"$1":"[REDACTED]"')
     .replace(/\b[A-Za-z0-9_-]{32,}\b/g, match => (looksLikeOpaqueCredential(match) ? '[REDACTED]' : match));
   return redacted.length > limit ? redacted.slice(0, limit) + '…' : redacted;
 }

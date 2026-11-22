@@ -13,7 +13,7 @@ export const hermesCapabilities:RuntimeCapabilities={
  structuredOutputs:'NOT_VERIFIED',nativeToolControl:'UNSUPPORTED',
  usageMetering:'NOT_VERIFIED',approvalEvents:'UNSUPPORTED',
  runtimeIdentity:'NOT_VERIFIED',isolation:'NOT_VERIFIED',
- notes:['OpenAI-compatible text invocation is coded but has not been called or compiled',
+ notes:['OpenAI-compatible text invocation is contract-tested locally; real Vertex inference certification is deferred to P22',
  'Native tools and network egress must be demonstrably isolated before use with customer data',
  'A language model switch is not agent runtime replacement'],
 };

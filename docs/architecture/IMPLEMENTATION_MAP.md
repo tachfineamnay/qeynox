@@ -1,5 +1,14 @@
 # QeyNox 2027 — source implementation map
 
+**2026-11-22 P17 Hermes Vertex integration:** source-only read-only Hermes credential/config mounts,
+hardened exact-model renderer, shared app settings, auth/model/toolset probe tightening, bounded
+inference, classified/logged recovery facts and truthful estimated/unknown accounting are implemented.
+Local contract tests and compilation pass; **real Vertex inference/IAM/refresh/isolation certification
+is deferred to P22**. No credential change, deploy, restart, DB/migration or live provider call.
+See [P17_VERIFICATION.md](../../infra/P17_VERIFICATION.md) and
+[HERMES_VERTEX_LIVE_RUNBOOK.md](HERMES_VERTEX_LIVE_RUNBOOK.md).
+
+
 **2026-11-22 P16 release integration:** role env/identity/startup/health contracts, private topology,
 Control `/admin`, direct worker entrypoint/heartbeat, authenticated private-storage Web relay,
 GET-only inventory, operator readiness and current32 migration/rollback configuration are source

@@ -1,5 +1,7 @@
 import { DomainError } from '@qeynox/domain';
 import { hermesEndpoint } from './hermes-origin';
+import { validHermesTimeout, validVertexModel } from './hermes-settings';
+import { classifyProviderFailure } from './hermes-failures';
 import {
   classifyCompletion,
   classifyStatus,
@@ -63,15 +65,23 @@ export class HermesAdapter implements EnginePort {
     }
     if (!this.config.baseUrl) return { available: false, reason: 'NO_ENDPOINT' };
     if (!this.config.apiKey) return { available: false, reason: 'NO_CREDENTIAL' };
-    if (!Number.isFinite(this.config.timeoutMs) || this.config.timeoutMs <= 0) {
+    if (!validHermesTimeout(this.config.timeoutMs)) {
       return { available: false, reason: 'INVALID_TIMEOUT' };
     }
+    if (!this.config.model || (this.config.provider === 'vertex' && !validVertexModel(this.config.model))) return { available: false, reason: 'INVALID_MODEL' };
+    try { this.resolveEndpoint(); } catch { return { available: false, reason: 'INVALID_ENDPOINT' }; }
     return { available: true, reason: 'READY' };
   }
 
   private diagnostic(event: HermesDiagnostic): void {
     try {
-      this.config.onDiagnostic?.(event);
+      const scrub = (value: string) => redactSecrets(this.config.apiKey ? value.split(this.config.apiKey).join('[REDACTED]') : value, 200);
+      this.config.onDiagnostic?.({ ...event, model: scrub(event.model), correlationId: scrub(event.correlationId),
+        provider: event.provider ? scrub(event.provider) : undefined,
+        endpointOrigin: event.endpointOrigin ? scrub(event.endpointOrigin) : undefined,
+        finishReason: event.finishReason ? scrub(event.finishReason) : undefined,
+        errorCode: event.errorCode ? scrub(event.errorCode) : undefined,
+        detail: undefined });
     } catch {
       // A diagnostics sink must never break an inference call.
     }
@@ -79,14 +89,16 @@ export class HermesAdapter implements EnginePort {
 
   async invoke(request: EngineRequest, options?: { signal?: AbortSignal }): Promise<EngineOutcome> {
     this.assertOperational();
+    this.assertModel();
     const url = this.resolveEndpoint();
     const started = Date.now();
     const ac = new AbortController();
+    let timedOut = false;
     const forwardAbort = () => ac.abort();
     // An already-aborted caller signal must not start a request that will be ignored.
     if (options?.signal?.aborted) throw new DomainError('INVALID_STATE', 'Hermes request was cancelled before dispatch; no provider call was made');
     options?.signal?.addEventListener('abort', forwardAbort, { once: true });
-    const timeout = setTimeout(() => ac.abort(), this.config.timeoutMs);
+    const timeout = setTimeout(() => { timedOut = true; ac.abort(); }, this.config.timeoutMs);
     const correlationId = request.correlationId;
     try {
       const body = this.buildBody(request);
@@ -101,8 +113,8 @@ export class HermesAdapter implements EnginePort {
         body: JSON.stringify(body),
         redirect: 'error',
       });
-      if (!response.ok) this.throwForStatus(response, correlationId, started);
       const payload = await this.readJson(response, correlationId, started);
+      if (!response.ok) this.throwForStatus(response, correlationId, started, payload);
       const outcome = this.interpret(payload, response.headers, correlationId, started);
       this.diagnostic({
         phase: 'RESPONSE', correlationId, model: this.config.model, provider: this.config.provider,
@@ -111,10 +123,12 @@ export class HermesAdapter implements EnginePort {
       });
       return outcome;
     } catch (error: unknown) {
-      if (error instanceof DomainError) throw error;
+      if (error instanceof DomainError) {
+        this.diagnostic({ phase: 'FAILURE', correlationId, model: this.config.model, provider: this.config.provider, errorCode: error.context?.hermesFailure ?? error.code, durationMs: Date.now() - started });
+        throw error;
+      }
       // Distinguish a timeout from a caller cancellation: they imply different operator actions.
       if (ac.signal.aborted) {
-        const timedOut = Date.now() - started >= this.config.timeoutMs - 25;
         const code = timedOut ? 'TIMEOUT' : 'CANCELLED';
         this.diagnostic({
           phase: timedOut ? 'FAILURE' : 'CANCELLED', correlationId, model: this.config.model,
@@ -131,7 +145,7 @@ export class HermesAdapter implements EnginePort {
       this.diagnostic({
         phase: 'FAILURE', correlationId, model: this.config.model, provider: this.config.provider,
         errorCode: 'UNREACHABLE', durationMs: Date.now() - started,
-        detail: redactSecrets(error instanceof Error ? error.message : String(error), 200),
+        detail: 'Private endpoint request failed',
       });
       throw new DomainError('UNAVAILABLE', 'Hermes endpoint is unreachable', { hermesFailure: 'UNREACHABLE' });
     } finally {
@@ -152,8 +166,14 @@ export class HermesAdapter implements EnginePort {
     if (!this.config.baseUrl || !this.config.apiKey) {
       throw new DomainError('NOT_CONFIGURED', 'Hermes endpoint and API key are required');
     }
-    if (!Number.isFinite(this.config.timeoutMs) || this.config.timeoutMs <= 0) {
-      throw new DomainError('NOT_CONFIGURED', 'Hermes request timeout must be a positive number of milliseconds');
+    if (!validHermesTimeout(this.config.timeoutMs)) {
+      throw new DomainError('NOT_CONFIGURED', 'Hermes request timeout must be an integer between 250 and 120000 milliseconds');
+    }
+  }
+
+  private assertModel(): void {
+    if (!this.config.model || (this.config.provider === 'vertex' && !validVertexModel(this.config.model))) {
+      throw new DomainError('NOT_CONFIGURED', 'Explicit google/gemini model required for Vertex routing', { hermesFailure: 'PROVIDER_CONFIGURATION' });
     }
   }
 
@@ -166,6 +186,7 @@ export class HermesAdapter implements EnginePort {
   }
 
   private buildBody(request: EngineRequest): Record<string, unknown> {
+    if (!Number.isSafeInteger(request.profile.maxOutputTokens) || request.profile.maxOutputTokens < 1) throw new DomainError('INVALID_INPUT', 'Profile output token budget must be a positive integer');
     const safeContext = Object.fromEntries(
       Object.entries(request.context).filter(([key]) => request.profile.permittedContextKeys.includes(key)),
     );
@@ -195,41 +216,56 @@ export class HermesAdapter implements EnginePort {
     };
   }
 
-  private throwForStatus(response: Response, correlationId: string, started: number): never {
+  private throwForStatus(response: Response, correlationId: string, started: number, payload: unknown): never {
     const failure = classifyStatus(response.status);
-    const headerFacts = readCompletionHeaders(response.headers);
+    const envelope = parseErrorEnvelope(payload);
+    const providerFailure = failure === 'SERVER_ERROR' && envelope?.code === 'agent_incomplete'
+      ? classifyProviderFailure(envelope.extras?.error ?? envelope.message) : undefined;
     this.diagnostic({
       phase: failure === 'RATE_LIMITED' ? 'RATE_LIMITED' : 'FAILURE',
       correlationId, model: this.config.model, provider: this.config.provider,
       httpStatus: response.status, durationMs: Date.now() - started,
-      errorCode: failure ?? 'HTTP_ERROR', detail: headerFacts.errorSummary,
+      errorCode: providerFailure ?? failure ?? 'HTTP_ERROR',
     });
     if (failure === 'UNAUTHORIZED') {
       throw new DomainError('NOT_CONFIGURED', 'Hermes rejected the API key (HTTP ' + response.status + ')', { hermesFailure: 'UNAUTHORIZED' });
     }
     if (failure === 'RATE_LIMITED') {
-      const retryAfter = response.headers.get('retry-after');
+      const rawRetryAfter = response.headers.get('retry-after');
+      const retryAfter = rawRetryAfter && /^\d{1,4}$/.test(rawRetryAfter) ? rawRetryAfter : undefined;
       throw new DomainError('UNAVAILABLE', 'Hermes is at its concurrency limit; retry later', {
         hermesFailure: 'RATE_LIMITED', ...(retryAfter ? { retryAfter } : {}),
       });
     }
     if (failure === 'SERVER_ERROR') {
       // HTTP 502 with code `agent_incomplete` is the documented hard-failure path.
-      throw new DomainError('UNAVAILABLE', 'Hermes reported a failed agent run (HTTP ' + response.status + ')', { hermesFailure: 'SERVER_ERROR' });
+      throw new DomainError('UNAVAILABLE', 'Hermes reported a failed agent run (HTTP ' + response.status + ')', { hermesFailure: providerFailure ?? 'SERVER_ERROR' });
     }
     throw new DomainError('INVALID_STATE', 'Hermes rejected the request (HTTP ' + response.status + ')', { hermesFailure: failure ?? 'BAD_REQUEST' });
   }
 
   private async readJson(response: Response, correlationId: string, started: number): Promise<unknown> {
-    const raw = await response.text();
+    const reader = response.body?.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    if (reader) try {
+      while (true) {
+        const next = await reader.read();
+        if (next.done) break;
+        size += next.value.byteLength;
+        if (size > 2 * 1024 * 1024) {
+          await reader.cancel();
+          throw new DomainError('INVALID_STATE', 'Hermes response exceeds the bounded response size', { hermesFailure: 'MALFORMED' });
+        }
+        chunks.push(next.value);
+      }
+    } finally { reader.releaseLock(); }
+    const raw = Buffer.concat(chunks).toString('utf8');
     try {
       return raw.length ? JSON.parse(raw) : null;
     } catch {
-      this.diagnostic({
-        phase: 'FAILURE', correlationId, model: this.config.model, provider: this.config.provider,
-        httpStatus: response.status, durationMs: Date.now() - started, errorCode: 'MALFORMED',
-        detail: redactSecrets(raw, 200),
-      });
+      if (!response.ok) return null; // Status still classifies a non-JSON upstream error.
+      this.diagnostic({ phase: 'FAILURE', correlationId, model: this.config.model, provider: this.config.provider, httpStatus: response.status, durationMs: Date.now() - started, errorCode: 'MALFORMED' });
       throw new DomainError('INVALID_STATE', 'Hermes returned a body that is not valid JSON', { hermesFailure: 'MALFORMED' });
     }
   }
@@ -240,39 +276,39 @@ export class HermesAdapter implements EnginePort {
       // A 2xx body carrying an error envelope is still a failure, never a result.
       this.diagnostic({
         phase: 'FAILURE', correlationId, model: this.config.model, provider: this.config.provider,
-        errorCode: envelope.code ?? 'ERROR_ENVELOPE', durationMs: Date.now() - started,
-        detail: redactSecrets(envelope.message, 200),
+        errorCode: 'ERROR_ENVELOPE', durationMs: Date.now() - started,
       });
       throw new DomainError('INVALID_STATE', 'Hermes returned an error envelope instead of a completion', { hermesFailure: 'MALFORMED' });
     }
     const wire = payload as HermesChatBody | null;
     const choice = wire?.choices?.[0];
-    if (!choice) throw new DomainError('INVALID_STATE', 'Hermes returned no choice');
+    if (!choice) throw new DomainError('INVALID_STATE', 'Hermes returned no choice', { hermesFailure: 'MALFORMED' });
     // A native tool call cannot be mediated by ToolBroker; never treat it as agent output.
     if (choice.message?.tool_calls?.length || choice.message?.function_call || choice.finish_reason === 'tool_calls' || choice.finish_reason === 'function_call') {
-      throw new DomainError('DENIED', 'Hermes returned a native tool call; QeyNox requires ToolBroker mediation');
+      throw new DomainError('DENIED', 'Hermes returned a native tool call; QeyNox requires ToolBroker mediation', { hermesFailure: 'NATIVE_TOOLS_DETECTED' });
     }
     const content = choice.message?.content;
-    if (typeof content !== 'string') throw new DomainError('INVALID_STATE', 'Hermes returned no text content');
+    if (typeof content !== 'string') throw new DomainError('INVALID_STATE', 'Hermes returned no text content', { hermesFailure: 'MALFORMED' });
 
-    const finishReason = choice.finish_reason ?? undefined;
+    const rawFinishReason = choice.finish_reason;
+    const finishReason = typeof rawFinishReason === 'string' ? (['stop', 'length', 'error', 'cancelled', 'tool_calls', 'function_call'].includes(rawFinishReason) ? rawFinishReason : 'unknown_finish_reason') : undefined;
     const extras = wire?.hermes;
     const disposition = classifyCompletion({ finishReason, extras, content });
     const headerFacts = readCompletionHeaders(responseHeaders);
 
     if (disposition === 'PROVIDER_FAILURE') {
-      const detail = extras?.error ?? headerFacts.errorSummary ?? '';
+      const detail = extras?.error ?? headerFacts.errorSummary ?? content;
+      const failure = classifyProviderFailure(detail);
       this.diagnostic({
         phase: 'FAILURE', correlationId, model: this.config.model, provider: this.config.provider,
-        finishReason, errorCode: extras?.error_code ?? 'PROVIDER_FAILURE', durationMs: Date.now() - started,
-        detail: detail ? redactSecrets(detail, 200) : undefined,
+        finishReason, errorCode: failure, durationMs: Date.now() - started,
       });
       // The narrow text heuristics are kept for older builds that rendered the failure as content;
       // the structured flags above are authoritative for current builds.
       if (isProviderFailureText(content)) {
-        throw new DomainError('INVALID_STATE', 'Hermes has no usable inference provider', { hermesFailure: 'PROVIDER_FAILURE' });
+        throw new DomainError('INVALID_STATE', 'Hermes has no usable inference provider', { hermesFailure: failure });
       }
-      throw new DomainError('UNAVAILABLE', 'Hermes reported a failed agent run', { hermesFailure: 'PROVIDER_FAILURE' });
+      throw new DomainError('UNAVAILABLE', 'Hermes reported a failed agent run', { hermesFailure: failure });
     }
     if (disposition === 'CANCELLED') {
       this.diagnostic({
@@ -285,12 +321,13 @@ export class HermesAdapter implements EnginePort {
       throw new DomainError('INVALID_STATE', 'Hermes returned an empty partial response', { hermesFailure: 'INCOMPLETE' });
     }
 
+    if (!content.trim()) throw new DomainError('INVALID_STATE', 'Hermes returned an empty answer', { hermesFailure: 'MALFORMED' });
     const { content: text, proposedTools } = parseProposals(content);
     const usage = normalizeUsage(wire?.usage);
     return {
       status: disposition === 'INCOMPLETE' ? 'INCOMPLETE' : finishReason === 'stop' || finishReason === undefined ? 'COMPLETED' : 'INCOMPLETE',
       engine: 'hermes',
-      engineRunId: wire?.id,
+      engineRunId: typeof wire?.id === 'string' && /^[A-Za-z0-9_.:-]{1,160}$/.test(wire.id) ? wire.id : undefined,
       content: text,
       proposedTools,
       usage: usage.reported

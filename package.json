@@ -68,7 +68,9 @@
     "release:check": "node infra/release/config-check.mjs",
     "release:verify": "tsx infra/release/verify.ts",
     "release:test": "tsx --test infra/release/release.test.ts",
-    "typecheck:release": "tsc --noEmit -p infra/release/tsconfig.json"
+    "typecheck:release": "tsc --noEmit -p infra/release/tsconfig.json",
+    "hermes:vertex-config": "node infra/services/render-hermes-vertex.mjs",
+    "qa:hermes-vertex-contract": "tsx --test packages/engine/scripts/qa-hermes-vertex-contract.test.ts"
   },
   "devDependencies": {
     "typescript": "5.9.3",
