@@ -71,15 +71,15 @@ signed S3 download router, qeynox-api/qeynox-worker containers, PostgreSQL/Redis
    existing services.
 5. Deploy manually, watch the build, then GET `https://qeynox.io/admin` (redirect to `/admin/en`) and
    check platform login. Do not deploy from this mission.
-6. Run the additive migration procedure (`infra/MIGRATIONS_0012_0017_PREPRODUCTION.md`) before
-   relying on Control features that need migration 0012+.
+6. Follow the incremental operator release procedure (`infra/DATABASE_RELEASE.md`) before
+   starting code that requires pending migrations. Discover the complete candidate set; do not use a fixed 0012–0017 generator.
 
 ## Rollback
 
 - Control is a separate application: stop/pause it and remove the `/admin` proxy rule; web, API,
   worker, storage, database and signed download routes are unaffected.
-- No database rollback is normally needed because migrations 0012–0017 are additive. If a full
-  candidate rollback is required, restore the pre-migration backup; never DROP tables manually.
+- Assess backward compatibility before application rollback. If database recovery is required,
+  follow `infra/DATABASE_RELEASE.md`: restore into a separate verified database and perform an authorized cutover; never DROP tables or edit the migration ledger.
 - Roll back the Git candidate by deploying the previous qeynox-control image/commit; deleting the
   application resource is an operator decision, not part of this preparation.
 

@@ -57,3 +57,11 @@ Last consolidated baseline: `b51608b` plus the cleanup/08A commits. The five cor
 
 Source foundation with isolated-QA verification only. **NOT DEPLOYED / NOT PRODUCTION-READY.** Isolated MinIO storage (private uploads, signed expiry, tenant isolation, reconciliation) is verified, but no production object-storage bucket is configured or certified. External Hatchet dispatch/run observation, Hermes network/tool isolation, deployment egress firewall, provider licensing/freshness review and public identity hardening remain unverified deployment gates. No production data or external runtime credentials are configured in this repository.
 
+
+## Incremental database releases
+
+`pnpm db:release` defaults to read-only preflight, discovers the full migration release and supports
+explicit `--mode dry-run` / guarded `--mode apply` on populated databases. Target parameters are required;
+apply also requires a reviewed plan digest, backup/restore attestation and stopped writers. See
+[the database release runbook](infra/DATABASE_RELEASE.md) for commands, resume and recovery.
+Migrations are never an automatic application startup step. The old fixed-range SQL generator is retired.
