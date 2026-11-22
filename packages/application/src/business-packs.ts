@@ -48,6 +48,15 @@ export const REQUIRED_PROVIDER_BY_PACK: Readonly<Record<BusinessPackDomain, 'wor
   content: 'brave-search',
 };
 
+/** Pack identity fixes the external-data contract; an arbitrary tool allowlist cannot substitute it. */
+export function requiredToolForPack(pack: BusinessPackDomain): string {
+  return REQUIRED_PROVIDER_BY_PACK[pack] === 'world-bank' ? 'world-bank:indicator@1' : 'brave-search:web@1';
+}
+export function assertBusinessPackProvider(pack: BusinessPackDomain, capability: CapabilityDefinition): void {
+  const required = requiredToolForPack(pack);
+  if (capability.allowedTools.length !== 1 || capability.allowedTools[0] !== required) throw new DomainError('NOT_CONFIGURED', 'Business pack requires its reviewed read-only provider: ' + required);
+}
+
 /**
  * Truthful external connector status derived from infra/connectors.registry.json.
  * Missing external permissions are explicitly surfaced as BLOCKED, never simulated.
@@ -579,7 +588,7 @@ function proposeSeoPack(
     {
       title: `[${capability.name}] Inspect live SERP intent & visibility for ${normalized.targetQueries.length} query(ies)`,
       description:
-        `Specialization (${config.specialization}): run brave-search:web@1 (country=${country}, search_lang=${searchLang}) across [${normalized.targetQueries.join('; ')}] to capture top ranking URLs, dominant intent, and whether ${domain} appears.`,
+        `Specialization (${config.specialization}): run brave-search:web@1 (country=${country}, searchLang=${searchLangParts[0]!.toLowerCase()}; requested locale ${searchLang}; country controls geography) across [${normalized.targetQueries.join('; ')}] to capture top ranking URLs, dominant intent, and whether ${domain} appears.`,
       capabilityId: capability.id,
       intent: 'RESEARCH',
       dependsOnIndices: [],
@@ -949,7 +958,7 @@ function proposeContentPack(
     {
       title: `[${capability.name}] Gather verifiable reference sources across ${normalized.referenceQueries.length} query(ies)`,
       description:
-        `Specialization (${config.specialization}): search authoritative public sources via brave-search:web@1 (search_lang=${normalized.language}) for [${normalized.referenceQueries.join('; ')}].`,
+        `Specialization (${config.specialization}): search authoritative public sources via brave-search:web@1 (searchLang=${normalized.language}) for [${normalized.referenceQueries.join('; ')}].`,
       capabilityId: capability.id,
       intent: 'RESEARCH',
       dependsOnIndices: [],
@@ -1005,6 +1014,7 @@ export function buildPackPlanProposal(
   capability: CapabilityDefinition,
   rawInput: unknown,
 ): BusinessPackPlanProposal {
+  assertBusinessPackProvider(config.pack, capability);
   switch (config.pack) {
     case 'research':
       return proposeResearchPack(rawInput, config, capability);

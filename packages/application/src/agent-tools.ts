@@ -1,9 +1,10 @@
+import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { and,eq } from 'drizzle-orm';
 import { DomainError,isConsentActive,newId,type ID,type Principal,type Evidence,type Source } from '@qeynox/domain';
 import { QeyNoxStore,approvals,identityMemberships,sourceSnapshots } from '@qeynox/persistence';
 import type { EnginePort,AgentProfile,EngineOutcome,EngineRequest } from '@qeynox/engine';
-import { ToolBroker,ToolRegistry,PgToolLedger,PgToolAuthorization,configuredProviderRateLimiter,type ConnectorCall,type PermissionContext } from '@qeynox/tools';
+import { ToolBroker,ToolRegistry,PgToolLedger,PgToolAuthorization,configuredProviderRateLimiter,providerCostCeilingIssues,type ConnectorCall,type PermissionContext } from '@qeynox/tools';
 import { BudgetService } from './budgets';
 import type { CapabilityDefinition } from '@qeynox/domain';
 
@@ -16,7 +17,7 @@ export interface BrokeredRunResult { readonly outcome:EngineOutcome; readonly ob
 
 export class BrokeredAgentExecutor {
  private readonly broker:ToolBroker;
- constructor(private readonly store:QeyNoxStore,private readonly engine:EnginePort,registry:ToolRegistry){
+ constructor(private readonly store:QeyNoxStore,private readonly engine:EnginePort,private readonly registry:ToolRegistry){
    this.broker=new ToolBroker(registry,new PgToolLedger(store.db),configuredProviderRateLimiter(),new PgToolAuthorization(store.db));
  }
  async run(request:EngineRequest,capability:CapabilityDefinition):Promise<BrokeredRunResult>{
@@ -32,6 +33,14 @@ export class BrokeredAgentExecutor {
    const principal:Principal={userId:member.userId as ID,workspaceId:member.workspaceId as ID,roles:[member.role]};
    const approved=(await this.store.db.select().from(approvals).where(and(eq(approvals.operationId,request.operationId),eq(approvals.workspaceId,request.workspaceId)))).map(r=>r.payload);
    const allowed=capability.allowedTools.filter(t=>request.profile.allowedTools.includes(t));
+   const toolGuide=allowed.map(ref=>{
+     const match=/^([^:]+):([^@]+)@(.+)$/.exec(ref);
+     if(!match)throw new DomainError('NOT_CONFIGURED','Invalid configured tool reference');
+     const definition=this.registry.lookup(match[1]!,match[2]!,match[3]!).definition;
+     return {ref,mode:definition.mode,requiredScopes:definition.requiredScopes,input:z.toJSONSchema(definition.input,{io:'input'})};
+   });
+   const policy=await new BudgetService(this.store).requirePolicy(principal,request.operationId);
+   if(providerCostCeilingIssues(policy.unitMaxMinor,['hermes',...allowed]).length)throw new DomainError('NOT_CONFIGURED','Provider cost ceilings are absent or invalid');
    const history: Array<{role:'user'|'assistant';content:string}>=[...(request.priorMessages??[])];
    const captured:CapturedObservation[]=[];
    let callsUsed=0;
@@ -41,7 +50,7 @@ export class BrokeredAgentExecutor {
      const engineReservation=await budget.reserve(principal,request.operationId,attempt.id,'ENGINE','hermes',request.correlationId+':turn:'+i);
      let answer:EngineOutcome;
      try {
-       answer=await this.engine.invoke({...request,priorMessages:history});
+       answer=await this.engine.invoke({...request,userMessage:request.userMessage+'\n\nQeyNox reviewed broker input contracts (proposals only; never direct provider calls): '+JSON.stringify(toolGuide),priorMessages:history});
        // Hermes reports an all-zero usage block when it observed nothing, so a missing usage means
        // "not measured", never "zero provider-metered tokens". The adapter withholds unobserved
        // usage, and the ledger keeps the reservation ESTIMATED instead of claiming provider proof.
@@ -76,13 +85,20 @@ export class BrokeredAgentExecutor {
          throw error;
        }
        callsUsed++;
-       const source:Source={id:newId(),workspaceId:principal.workspaceId,operationId:request.operationId,provider:result.provenance.provider,title:proposal.toolName,uri:result.provenance.sourceUri,retrievedAt:result.provenance.retrievedAt,sourcePublishedAt:result.provenance.publishedAt,fingerprint:result.provenance.responseDigest};
-       await this.store.recordSource(source);
-       await this.store.db.insert(sourceSnapshots).values({id:newId(),workspaceId:principal.workspaceId,operationId:request.operationId,sourceId:source.id,provider:result.provenance.provider,retrievedAt:result.provenance.retrievedAt,publishedAt:result.provenance.publishedAt,sha256:result.provenance.responseDigest,citationUri:result.provenance.sourceUri,createdAt:new Date().toISOString()});
-       const evidence:Evidence={id:newId(),operationId:request.operationId,stepAttemptId:attempt.id,sourceId:source.id,statement:'Provider observation from '+proposal.toolName,observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['Provider response has not been independently assessed']};
-       await this.store.recordEvidence(evidence);
-       observations.push({tool:proposal.toolName,sourceId:source.id,evidenceId:evidence.id,observation:sanitize(result.value),provenance:result.provenance});
-       captured.push({sourceId:source.id,evidenceId:evidence.id,responseDigest:result.provenance.responseDigest,provider:result.provenance.provider,uri:result.provenance.sourceUri,statement:'Provider observation from '+proposal.toolName});
+       // Returned search pages are citable discovery sources. Their digest binds the complete
+       // provider response, NOT a fetch of each page; never represent a snippet as verified content.
+       const sourceViews:Array<{sourceId:ID;evidenceId:ID;uri?:string}>=[];
+       for(const observed of result.sources??(result.provenance.sourceUri?[{uri:result.provenance.sourceUri,title:proposal.toolName}]:[])){
+         const source:Source={id:newId(),workspaceId:principal.workspaceId,operationId:request.operationId,provider:result.provenance.provider,title:observed.title,uri:observed.uri,retrievedAt:result.provenance.retrievedAt,sourcePublishedAt:result.provenance.publishedAt,fingerprint:result.provenance.responseDigest};
+         await this.store.recordSource(source);
+         await this.store.db.insert(sourceSnapshots).values({id:newId(),workspaceId:principal.workspaceId,operationId:request.operationId,sourceId:source.id,provider:result.provenance.provider,retrievedAt:result.provenance.retrievedAt,publishedAt:result.provenance.publishedAt,sha256:result.provenance.responseDigest,citationUri:source.uri,createdAt:new Date().toISOString()});
+         const statement=result.provenance.provider==='brave-search'?'Search discovery snippet from Brave Search; target page not fetched':'Provider observation from '+proposal.toolName;
+         const evidence:Evidence={id:newId(),operationId:request.operationId,stepAttemptId:attempt.id,sourceId:source.id,statement,observedAt:result.provenance.retrievedAt,status:'UNVERIFIED',limitations:['Provider response has not been independently assessed',...(result.provenance.provider==='brave-search'?['Search snippet only; page contents and publication date are not verified']:[])]};
+         await this.store.recordEvidence(evidence);
+         sourceViews.push({sourceId:source.id,evidenceId:evidence.id,uri:source.uri});
+         captured.push({sourceId:source.id,evidenceId:evidence.id,responseDigest:result.provenance.responseDigest,provider:result.provenance.provider,uri:source.uri,statement});
+       }
+       observations.push({tool:proposal.toolName,...sourceViews[0],sources:sourceViews,observation:sanitize(result.value),provenance:result.provenance});
      }
      await new BudgetService(this.store).progress(principal,request.operationId,'agent:'+attempt.id,createHash('sha256').update(JSON.stringify(observations)).digest('hex'));
      history.push({role:'assistant',content:answer.content.slice(0,3000)},{role:'user',content:JSON.stringify({kind:'brokered_tool_observations',observations})});

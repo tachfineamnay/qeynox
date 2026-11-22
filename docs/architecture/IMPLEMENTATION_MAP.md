@@ -1,5 +1,16 @@
 # QeyNox 2027 — source implementation map
 
+**2026-11-22 P19 business-provider integration:** all eight A16 requirements inspected; shared actual
+adapter resolution/status, manifest alias compatibility, catalogue/Pilot provider blockers, pack-safe
+selection/input guidance, positive paid-search ceilings, per-call authority reload, returned-page
+snippet citations/raw-response digests and whole provider deadlines are source implemented. Only
+existing READ_ONLY WB/Brave tools, no business OAuth/write connector invented. **Typecheck passes
+(6 tasks + release); tests/builds not run, real certification deferred to P22.** Provider configuration
+is explicitly NOT live verification. No live call/config/credential mutation, deployment or migration.
+See [P19_VERIFICATION.md](../../infra/P19_VERIFICATION.md) and
+[BUSINESS_PROVIDERS_RELEASE.md](../../infra/BUSINESS_PROVIDERS_RELEASE.md).
+
+
 **2026-11-22 P18 private storage integration:** shared API/Worker config, bounded S3 transport,
 SSE/conditional PUT signing, HEAD-checked read grants, canonical-resource-authorized same-origin relay,
 lease-aware maintenance batches and protected read-only storage/queue diagnostics are source

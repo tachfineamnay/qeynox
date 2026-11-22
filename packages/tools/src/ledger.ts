@@ -19,7 +19,7 @@ export class PgToolLedger implements ToolLedgerPort{
   });
  }
  async complete(intentId:ID,resultDigest:string,metadata:Provenance):Promise<void>{
-   const affected=await this.db.update(toolLedger).set({outcome:'COMPLETED',result:{provider:metadata.provider,sourceUri:metadata.sourceUri,retrievedAt:metadata.retrievedAt,responseDigest:resultDigest},updatedAt:new Date().toISOString()}).where(and(eq(toolLedger.intentId,intentId),eq(toolLedger.outcome,'STARTED'))).returning({id:toolLedger.id});
+   const affected=await this.db.update(toolLedger).set({outcome:'COMPLETED',result:{...metadata,responseDigest:resultDigest},updatedAt:new Date().toISOString()}).where(and(eq(toolLedger.intentId,intentId),eq(toolLedger.outcome,'STARTED'))).returning({id:toolLedger.id});
    if(!affected.length)throw new DomainError('CONFLICT','Tool completion conflict');
  }
  async fail(intentId:ID,code:string,uncertain:boolean):Promise<void>{

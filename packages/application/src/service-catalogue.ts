@@ -6,6 +6,7 @@ import type {
   ServiceDeployment,
 } from '@qeynox/contracts';
 import { QeyNoxStore, offers } from '@qeynox/persistence';
+import { assertBusinessPackProvider } from './business-packs';
 import { capabilityAvailability } from './capability-availability';
 import { failClosedRuntime, type OperationalState, type RuntimeReadinessSource } from './runtime-readiness';
 import { resolveContract, type ServiceContractRegistry } from './service-contracts';
@@ -63,6 +64,8 @@ export interface ServiceCapabilityView {
   readonly maximumSteps: number;
   readonly maximumToolCalls: number;
   readonly operationalState: OperationalState;
+  readonly providerStatus?: 'BLOCKED' | 'CONFIGURED_NOT_LIVE_VERIFIED' | 'NOT_REQUIRED';
+  readonly providerBlockers?: { tool: string; reason: string }[];
   readonly providerReady: boolean;
   readonly missingProviders: string[];
   readonly profileReady: boolean;
@@ -129,12 +132,11 @@ export class ServiceCatalogueService {
     if (!view) return null;
     const capabilities = await this.capabilityViews(view.capabilityIds);
     const { contract } = resolveContract(this.contracts, row.id, view.capabilityIds);
+    const deployment = view.contractKey && this.deploymentProbe ? this.deploymentProbe(view.contractKey, row.id) : null;
     return {
       ...view,
       capabilities,
-      deployment: view.contractKey && this.deploymentProbe
-        ? this.deploymentProbe(view.contractKey, row.id)
-        : null,
+      deployment: deployment ? { ...deployment, providerStatus: capabilities.length > 0 && capabilities.every(capability => capability.providerReady) ? 'CONFIGURED_NOT_LIVE_VERIFIED' : 'BLOCKED' } : null,
       ...(contract?.contractMeta ? { contractMeta: contract.contractMeta } : {}),
     };
   }
@@ -196,6 +198,15 @@ export class ServiceCatalogueService {
           states.push('BLOCKED');
         }
       }
+      if (contract?.packDomain) {
+        try {
+          for (const id of capabilityIds) {
+            const definition = byId.get(id);
+            if (!definition) throw new Error('Missing capability');
+            assertBusinessPackProvider(contract.packDomain, definition);
+          }
+        } catch { blockers.add('PACK_PROVIDER_MISMATCH'); states.push('BLOCKED'); }
+      }
       const operationalState = worstState(states);
       views.push({
         offerId: row.id,
@@ -241,6 +252,8 @@ export class ServiceCatalogueService {
         maximumToolCalls: definition.maximumToolCalls,
         operationalState: entry?.operationalState ?? 'BLOCKED',
         providerReady: entry?.providerReady ?? false,
+        providerStatus: entry?.providerStatus ?? 'BLOCKED',
+        providerBlockers: [...(entry?.providerBlockers ?? [])],
         missingProviders: entry ? [...entry.missingProviders] : [],
         profileReady: entry?.profileReady ?? false,
         policyReady: entry?.policyReady ?? false,

@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { DomainError, isConsentActive } from '@qeynox/domain';
-import { approvals, attempts, consents, identityMemberships, operations, type QeyNoxDatabase } from '@qeynox/persistence';
+import { agentProfiles, capabilities, approvals, attempts, consents, identityMemberships, operations, type QeyNoxDatabase } from '@qeynox/persistence';
+import { resolveConfiguredProviders } from './providers/configured';
 import type { ConnectorCall, PermissionContext, ToolDefinition } from './types';
 
 /** Last authorization decision after quota/ledger waits, immediately before provider invocation. */
@@ -19,6 +20,14 @@ export class PgToolAuthorization implements ToolAuthorizationPort {
       .innerJoin(identityMemberships, and(eq(identityMemberships.workspaceId, operations.workspaceId), eq(identityMemberships.userId, actor.userId), eq(identityMemberships.status, 'ACTIVE')))
       .where(and(eq(operations.id, call.operationId), eq(operations.workspaceId, actor.workspaceId), eq(operations.createdBy, actor.userId), eq(operations.currentRevisionId, call.planRevisionId), eq(operations.status, 'RUNNING'))).limit(1);
     if (!scope) throw new DomainError('DENIED', 'Tool operation or active membership changed');
+    // A long inference/quota wait must not retain a disabled provider, capability or profile.
+    const [capability] = await this.db.select().from(capabilities).where(and(eq(capabilities.id, call.capabilityId), eq(capabilities.status, 'ACTIVE'))).limit(1);
+    const [profile] = await this.db.select().from(agentProfiles).where(and(eq(agentProfiles.id, permission.profileId), eq(agentProfiles.version, permission.profileVersion), eq(agentProfiles.active, true))).limit(1);
+    const ref = call.connectorId + ':' + call.toolName + '@' + call.version;
+    if (!capability?.payload.allowedTools.includes(ref) || !profile || profile.roleKey !== 'business:' + capability.slot || !Array.isArray(profile.payload.allowedTools) || !profile.payload.allowedTools.includes(ref)) throw new DomainError('DENIED', 'Tool capability or profile is no longer active');
+    const { registry } = await resolveConfiguredProviders(this.db);
+    const current = registry.lookup(call.connectorId, call.toolName, call.version).definition;
+    if (current.mode !== definition.mode || !current.allowedCapabilities.includes(call.capabilityId)) throw new DomainError('DENIED', 'Tool provider authority changed');
     if (definition.mode === 'WRITE') {
       const [approval] = call.approvalId ? await this.db.select().from(approvals).where(and(
         eq(approvals.id, call.approvalId), eq(approvals.workspaceId, actor.workspaceId),

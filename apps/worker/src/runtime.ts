@@ -3,9 +3,9 @@ import { DomainError,newId,transitionOperation,type ID,type Evidence,type StepAt
 import { connectDatabase,QeyNoxStore,attempts,operations,events } from '@qeynox/persistence';
 import { HermesAdapter,hermesCapabilities,hermesSettingsFromEnv,hermesFailureFacts } from '@qeynox/engine';
 import { AgentProfileStore,CapabilityRegistry } from '@qeynox/roles';
-import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv,createRuntimeProbeMonitor,runtimeExecutionBlocker,recoverBusinessPackMission,businessPackStepRole,assertBusinessPackProfile,capturedPackSources,businessPackStepInstructions,acceptBusinessPackDeliverable,recordBusinessPackClaims,rawOutputDigest,DocumentVaultService,createS3ArtifactStoreFromEnv,documentMaintenanceConfiguration,storageFailureCode,embeddingsFromEnv,prepareMissionDocuments,recordMissionDocumentCitations,missionDocumentQuery } from '@qeynox/application';
+import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv,createRuntimeProbeMonitor,runtimeExecutionBlocker,recoverBusinessPackMission,businessPackStepRole,assertBusinessPackProfile,assertBusinessPackProvider,capturedPackSources,businessPackStepInstructions,acceptBusinessPackDeliverable,recordBusinessPackClaims,rawOutputDigest,DocumentVaultService,createS3ArtifactStoreFromEnv,documentMaintenanceConfiguration,storageFailureCode,embeddingsFromEnv,prepareMissionDocuments,recordMissionDocumentCitations,missionDocumentQuery } from '@qeynox/application';
 import { NotificationStore } from '@qeynox/persistence';
-import { createConfiguredToolRegistry } from '@qeynox/tools';
+import { createRuntimeToolRegistry } from '@qeynox/tools';
 import { PgOutboxDispatcher,type ExecutionRequest,type OrchestratorPort } from '@qeynox/orchestration';
 import { evaluateQaRuntimeBypass } from './qa-runtime-bypass';
 import { SerialPoller } from './serial-poller';
@@ -22,7 +22,7 @@ export async function createWorkerDependencies(){
  }});
  // Startup snapshot for inspection/QA. Mission execution must reload the actual
  // operator configuration: an ACTIVE capability can change while the worker is running.
- const tools=await createConfiguredToolRegistry(conn.db);
+ const tools=await createRuntimeToolRegistry(conn.db);
  const registry=new EngineRegistry();
  // MISSION A21.07: the worker verifies the runtime with its OWN bounded live probes (Hermes and Hatchet,
  // separately). No environment boolean and no default evidence string can mark it verified; a restarted
@@ -72,7 +72,7 @@ export async function createWorkerDependencies(){
     // never executed as a generic one. Generic missions get null and keep the path below unchanged.
     const packMission=recoverBusinessPackMission(await store.getGoal(owner,request.operationId));
     const packRole=packMission?businessPackStepRole(packMission,planSteps,step):null;
-    if(packMission)assertBusinessPackProfile(profile);
+    if(packMission){assertBusinessPackProfile(profile);assertBusinessPackProvider(packMission.pack,cap);if(profile.allowedTools.some(ref=>!cap.allowedTools.includes(ref)))throw new DomainError('DENIED','Pack profile exceeds its read-only provider contract');}
     // MISSION A01 / A21.07: tenant execution requires an OPERATIONAL runtime proven by this worker's own
     // fresh probes (selectOperational). P08: QEYNOX_QA_ALLOW_UNVERIFIED=true is honoured ONLY in an
     // explicitly isolated QA run (marker + non-deployed env + loopback qeynox_qa_* database + loopback
@@ -90,7 +90,12 @@ export async function createWorkerDependencies(){
     }
     // Reload active providers per attempt; never execute with a stale, startup-only ToolRegistry.
     // Unknown or disallowed provider configurations fail closed inside this attempt.
-    const currentTools=await createConfiguredToolRegistry(conn.db);
+    const currentTools=await createRuntimeToolRegistry(conn.db);
+    for(const ref of cap.allowedTools){
+      const match=/^([^:]+):([^@]+)@(.+)$/.exec(ref);
+      if(!match||!profile.allowedTools.includes(ref))throw new DomainError('NOT_CONFIGURED','Required provider tool is absent from the profile');
+      if(!currentTools.lookup(match[1]!,match[2]!,match[3]!).definition.allowedCapabilities.includes(cap.id))throw new DomainError('DENIED','Provider does not permit this capability');
+    }
     const executor=new BrokeredAgentExecutor(store,engine,currentTools);
     const genericContext={operationTitle:row.payload.title,stepTitle:step.title,capabilityPurpose:cap.purpose,priorOutputs:prior};
     // P09: pack steps carry the pack's business instructions; the final step gets the <pack>@1 output
@@ -227,7 +232,7 @@ export async function createWorkerDependencies(){
   stopBackground,
   close:()=>{closePromise??=(async()=>{try{await stopBackground();}finally{await conn.close();}})();return closePromise;},
   toolRegistry:tools, // startup snapshot retained for existing QA callers
-  loadToolRegistry:()=>createConfiguredToolRegistry(conn.db),
+  loadToolRegistry:()=>createRuntimeToolRegistry(conn.db),
  };
  } catch(error:unknown) { await conn.close(); throw error; }
 }

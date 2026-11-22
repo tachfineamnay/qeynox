@@ -1,7 +1,9 @@
-import { Controller, Get, Inject, Param, Post, Query, Req, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Post, Query, Req, Res, HttpStatus, Header } from '@nestjs/common';
 import { z } from 'zod';
 import { DomainError, type Principal } from '@qeynox/domain';
-import { ConnectionHubService } from '@qeynox/application';
+import { QeyNoxStore } from '@qeynox/persistence';
+import { QEYNOX_STORE } from '../database/database.module';
+import { businessProviderStatus, ConnectionHubService } from '@qeynox/application';
 import { CONNECTIONS_HUB } from './connections.tokens';
 import { PublicRoute } from '../auth/public-route';
 
@@ -35,11 +37,18 @@ function principal(request: Request): Principal {
  */
 @Controller('v1/connections')
 export class ConnectionsController {
-  constructor(@Inject(CONNECTIONS_HUB) private readonly hub: ConnectionHubService) {}
+  constructor(@Inject(CONNECTIONS_HUB) private readonly hub: ConnectionHubService, @Inject(QEYNOX_STORE) private readonly store: QeyNoxStore) {}
 
   @Get()
   list(@Req() request: Request) {
     return this.hub.list(principal(request));
+  }
+
+  @Get('business-providers')
+  @Header('Cache-Control', 'private, no-store')
+  businessProviders(@Req() request: Request) {
+    principal(request);
+    return businessProviderStatus(this.store);
   }
 
   @Get('audit')

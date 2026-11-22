@@ -99,6 +99,13 @@ export function diagnostics(role, env, image) {
   }
   const conditional = (enabled, keys) => { if (enabled) for (const key of keys) if (!env[key]?.trim()) fail(key, 'REQUIRED_FOR_ENABLED_FEATURE'); };
   conditional(['api', 'worker'].includes(role) && env.QEYNOX_BRAVE_SEARCH_ENABLED === 'true', ['QEYNOX_BRAVE_SEARCH_API_KEY', 'QEYNOX_EGRESS_ALLOWED_HOSTS']);
+  if (['api', 'worker'].includes(role)) {
+    const hosts = new Set((env.QEYNOX_EGRESS_ALLOWED_HOSTS ?? '').split(',').map(host => host.trim().toLowerCase()).filter(Boolean));
+    for (const [switchKey, host] of [['QEYNOX_WORLD_BANK_ENABLED', 'api.worldbank.org'], ['QEYNOX_BRAVE_SEARCH_ENABLED', 'api.search.brave.com']]) {
+      if (env[switchKey] === 'true' && env.QEYNOX_NETWORK_POLICY_ATTESTED !== 'true') fail(switchKey, 'PROVIDER_EGRESS_NOT_ATTESTED');
+      if (env[switchKey] === 'true' && !hosts.has(host)) fail(switchKey, 'PROVIDER_HOST_NOT_ALLOWED');
+    }
+  }
   conditional(['api', 'worker'].includes(role) && env.QEYNOX_EMBEDDINGS_ENABLED === 'true', ['QEYNOX_EMBEDDINGS_ENDPOINT', 'QEYNOX_EMBEDDINGS_API_KEY', 'QEYNOX_EMBEDDINGS_MODEL', 'QEYNOX_EMBEDDINGS_ALLOWED_HOSTS']);
   const oauth = ['QEYNOX_GOOGLE_WORKSPACE_CLIENT_ID', 'QEYNOX_GOOGLE_WORKSPACE_CLIENT_SECRET', 'QEYNOX_GOOGLE_WORKSPACE_REDIRECT_URI'];
   conditional(role === 'api' && oauth.some(key => env[key]), [...oauth, 'QEYNOX_CONNECTION_CREDENTIAL_KEY']);

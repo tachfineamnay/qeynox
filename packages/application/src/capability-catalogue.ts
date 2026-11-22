@@ -15,6 +15,8 @@ export interface CapabilityCatalogueEntry {
   readonly maximumSteps: number;
   readonly maximumToolCalls: number;
   readonly externalActions: boolean;
+  readonly providerStatus?: 'BLOCKED' | 'CONFIGURED_NOT_LIVE_VERIFIED' | 'NOT_REQUIRED';
+  readonly providerBlockers?: readonly { tool: string; reason: string }[];
   readonly providerReady: boolean;
   readonly missingProviders: readonly string[];
   readonly profileReady: boolean;
@@ -90,6 +92,8 @@ export class CapabilityCatalogueService {
           maximumToolCalls: definition.maximumToolCalls,
           externalActions: definition.allowedTools.length > 0,
           providerReady,
+          providerStatus: index?.providerStatus ?? 'BLOCKED',
+          providerBlockers: index?.providerBlockers ?? [],
           missingProviders: index?.missingProviders ?? [],
           profileReady,
           policyReady,

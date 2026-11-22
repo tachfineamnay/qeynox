@@ -5,17 +5,18 @@ export interface ConnectorCall {
  connectorId:string;toolName:string;version:string;input:unknown;idempotencyKey:string;approvalId?:ID;intentId:ID;
 }
 export interface Provenance {
- provider:string;retrievedAt:string;sourceUri?:string;publishedAt?:string;requestDigest:string;responseDigest:string;notes?:string;
+ provider:string;retrievedAt:string;sourceUri?:string;publishedAt?:string;requestDigest:string;responseDigest:string;rawResponseDigest?:string;freshnessTtlSeconds?:number;notes?:string;
 }
-export interface ToolResult {value:unknown;provenance:Provenance}
+export interface ToolSource { readonly uri: string; readonly title: string }
+export interface ToolResult {value:unknown;provenance:Provenance;sources?:readonly ToolSource[]}
 export interface ToolContext {principal:Principal;operationId:ID;stepAttemptId:ID;signal:AbortSignal}
 export interface ToolDefinition {
  name:string;version:string;mode:'READ'|'WRITE';requiredScopes:readonly string[];
- allowedCapabilities:readonly ID[];input:ZodType;output:ZodType;timeoutMs:number;maxCostUnits:number;
+ allowedCapabilities:readonly ID[];input:ZodType;output:ZodType;timeoutMs:number;maxCostUnits:number;requiresPositiveCostCeiling?:boolean;
 }
 export interface ToolConnector {
  id:string;version:string;definitions():readonly ToolDefinition[];
- invoke(name:string,version:string,input:unknown,context:ToolContext):Promise<{value:unknown;sourceUri?:string;publishedAt?:string}>;
+ invoke(name:string,version:string,input:unknown,context:ToolContext):Promise<{value:unknown;sourceUri?:string;publishedAt?:string;retrievedAt?:string;rawResponseDigest?:string;sources?:readonly ToolSource[]}>;
 }
 export interface PermissionContext {
  principal:Principal;operationId:ID;planRevisionId:ID;stepAttemptId:ID;

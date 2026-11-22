@@ -1,3 +1,4 @@
+import { PlatformProvidersController } from './platform-providers.controller';
 import { PlatformStorageController } from './platform-storage.controller';
 import { randomBytes } from 'node:crypto';
 import { Module } from '@nestjs/common';
@@ -45,7 +46,7 @@ import {
 
 @Module({
   imports: [AuthModule],
-  controllers: [PlatformStorageController, PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController, PlatformOperationsController, PlatformCatalogueController, PlatformConfigurationController, PlatformBetaAccessController, PlatformRegistrationInvitationsController],
+  controllers: [PlatformProvidersController, PlatformStorageController, PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController, PlatformOperationsController, PlatformCatalogueController, PlatformConfigurationController, PlatformBetaAccessController, PlatformRegistrationInvitationsController],
   providers: [
     {
       provide: PLATFORM_STORE,

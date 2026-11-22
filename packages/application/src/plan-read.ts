@@ -1,6 +1,7 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { CapabilityDefinition, ID, OperationStatus, Principal, WorkStep } from '@qeynox/domain';
 import { QeyNoxStore, BetaAccessStore, approvals, attempts, budgetPolicies, commercialOrders, offers, operationBudgets } from '@qeynox/persistence';
+import { providerCostCeilingIssues } from '@qeynox/tools';
 import { capabilityAvailability, type CapabilityAvailability } from './capability-availability';
 import { failClosedRuntime, summarizeRuntimeComponent, type OperationalState, type RuntimeComponent, type RuntimeComponentSummary, type RuntimeReadinessSource } from './runtime-readiness';
 import { commercePolicyFromEnvironment, type CommercePolicy } from './commerce-mode';
@@ -11,6 +12,8 @@ export interface PlanCapabilityView {
   id: string; slot: number; name: string; purpose: string;
   scope: readonly string[]; maximumSteps: number; maximumToolCalls: number;
   externalActions: boolean;
+  providerStatus?: 'BLOCKED' | 'CONFIGURED_NOT_LIVE_VERIFIED' | 'NOT_REQUIRED';
+  providerBlockers?: readonly { tool: string; reason: string }[];
   providerReady: boolean; missingProviders: readonly string[]; profileReady: boolean;
   policyReady: boolean; missingPolicies: readonly string[];
   operationalState: OperationalState; isExecutable: boolean;
@@ -99,6 +102,8 @@ function capabilityView(definition: CapabilityDefinition, index: CapabilityAvail
     maximumToolCalls: definition.maximumToolCalls,
     externalActions: definition.allowedTools.length > 0,
     providerReady: index?.providerReady ?? false,
+    providerStatus: index?.providerStatus ?? 'BLOCKED',
+    providerBlockers: index?.providerBlockers ?? [],
     missingProviders: index?.missingProviders ?? [],
     profileReady: index?.profileReady ?? false,
     policyReady: index?.policyReady ?? false,
@@ -341,6 +346,10 @@ export class PlanReadService {
     if (!operationBudget && !policyPayload) {
       blockers.push({ code: 'BUDGET_NOT_CONFIGURED', category: 'BUDGET', detail: 'No active workspace budget policy' });
     }
+    const requiredProviderKeys = ['hermes', ...planSteps.flatMap(step => active.get(step.capabilityId)?.allowedTools ?? [])];
+    const ceilings = (operationBudget?.policy as { unitMaxMinor?: unknown } | undefined)?.unitMaxMinor ?? (policyPayload as { unitMaxMinor?: unknown } | undefined)?.unitMaxMinor;
+    const missingCostCeilings = providerCostCeilingIssues(ceilings, requiredProviderKeys);
+    if (missingCostCeilings.length) blockers.push({ code: 'BUDGET_NOT_CONFIGURED', category: 'BUDGET', detail: 'Missing or invalid provider cost ceilings: ' + missingCostCeilings.join(', ') });
     if (operationBudget) {
       if (operationBudget.maxMoneyMinor > 0 && operationBudget.spentMinor >= operationBudget.maxMoneyMinor) {
         blockers.push({ code: 'BUDGET_EXHAUSTED', category: 'BUDGET', detail: 'Operation spending ceiling reached' });
@@ -361,7 +370,7 @@ export class PlanReadService {
     const offerConfiguration = coveringOffer?.configuration as { label?: unknown; isExplicitlyFree?: unknown } | undefined;
     const offerLabel = typeof offerConfiguration?.label === 'string' ? offerConfiguration.label : null;
     const offerFree = offerConfiguration?.isExplicitlyFree === true;
-    const budgetOk = Boolean(operationBudget || policyPayload);
+    const budgetOk = Boolean(operationBudget || policyPayload) && missingCostCeilings.length === 0;
 
     // Compute operational state: OPERATIONAL only when all prerequisites + verifiedLive + authorized.
     let operationalState: OperationalState;

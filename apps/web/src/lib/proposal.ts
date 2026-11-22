@@ -29,6 +29,8 @@ export const proposalCapabilityNoteSchema = z.object({
   name: z.string(),
   operationalState: z.string(),
   isExecutable: z.boolean(),
+  providerStatus: z.string().optional(),
+  providerBlockers: z.array(z.object({ tool: z.string(), reason: z.string() })).optional(),
   missingProviders: z.array(z.string()),
   missingPolicies: z.array(z.string()),
 });

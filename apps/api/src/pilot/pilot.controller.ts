@@ -65,6 +65,8 @@ export class PilotController {
       isExecutable: capability.isExecutable,
       missingProviders: capability.missingProviders as string[],
       missingPolicies: capability.missingPolicies as string[],
+      providerStatus: capability.providerStatus,
+      providerBlockers: capability.providerBlockers,
     }]));
     return this.proposals.proposePlan(actor, { id: operation.id, title: operation.title, status: operation.status },
       goal ? { statement: goal.statement, constraints: goal.constraints } : null, input, readiness);
