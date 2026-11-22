@@ -1,4 +1,5 @@
 'use server';
+import { storageTransferGrant } from './storage-transfer-grant';
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -70,7 +71,7 @@ export async function artifactAction(
           `${base}/${encodeURIComponent(documentId)}/artifacts/${encodeURIComponent(artifactId)}`,
         ),
       );
-    const url = safeUrl(grant.url);
+    const url = safeUrl(await storageTransferGrant(grant.url));
     if (!url) return { code: 'INVALID_RESPONSE', artifactId, sha256, format };
     return { code: 'OK', artifactId, url, sha256, format };
   } catch (error) {

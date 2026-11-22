@@ -1,5 +1,23 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-22 — MISSION P16: release integration (source/local validation only)
+
+Four role-specific fail-closed env contracts, immutable image SHA/version stamps and live health
+identity, private app topology/Control `/admin` routing, direct-Node worker lifecycle + bounded
+heartbeat, GET-only scoped inventory and operator readiness tooling are implemented. Document
+upload/download and result artifact grants now use an authenticated, encrypted, session/workspace/
+method-bound Web relay; S3/Hermes public router declarations are removed in desired manifests.
+Existing stateful UUIDs/volumes/financial history and current32 SQL/ledger semantics are preserved.
+`BETA_FREE` / `INVITE_ONLY` are mandatory; Stripe secrets and startup migration flags are rejected.
+
+Local checks: frozen dependency install; release safety tests **7/7**; full app typecheck **5 tasks**
+plus release-tool typecheck; production source build **4 tasks**; YAML parse checks.
+See [P16 verification](../../infra/P16_VERIFICATION.md) and [release runbook](../../infra/COOLIFY_RELEASE.md).
+**BLOCKED:** current live Coolify inspection (no connector/credentials), Docker image build/runtime
+validation (Docker absent), populated DB migration rehearsal and private S3/Hermes/Hatchet/Redis/
+worker signal integration. No live inventory, deploy, restart, migration, rollback or certification
+claimed. Historical recorded IDs are not current-state evidence.
+
 ## 2026-11-21 — MISSION P14: exclusive e-mail delivery ownership (PR, branch `arena/0fb9bb4d-qeynox`, off `b21cff2`)
 
 **Defect.** `claimDue()` incremented `attempt_count` but left the row a due PENDING row after commit, so

@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     mem_limit: 1536m
     cpus: 1.0
-    expose: ['8642', '9119']
+    expose: ['8642']
     environment:
       HERMES_HOME: /opt/data
       # Hardening ready to apply, NOT applied here: the mount source must exist on the host
@@ -17,13 +17,8 @@ services:
       API_SERVER_PORT: '8642'
       API_SERVER_KEY: ${HERMES_API_KEY:?required}
       HERMES_ENABLE_PROJECT_PLUGINS: 'false'
-      # Web UI (dashboard) on its own port, behind its own password gate. The agent API
-      # stays on 8642 and is never routed: the public router below targets 9119 only.
-      HERMES_DASHBOARD: '1'
-      HERMES_DASHBOARD_HOST: 0.0.0.0
-      HERMES_DASHBOARD_PORT: '9119'
-      HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${HERMES_DASHBOARD_USER:?required}
-      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_DASHBOARD_PASSWORD:?required}
+      # No public dashboard/API; preserve the existing persistent home volume.
+      HERMES_DASHBOARD: '0'
       HERMES_REDACT_SECRETS: 'true'
     volumes:
       - 'hermes-home:/opt/data'
@@ -31,17 +26,7 @@ services:
     networks:
       coolify:
         aliases: [qeynox-hermes]
-    # Public route to the dashboard port only. No rule matches /v1/* because Traefik
-    # forwards every path to 9119, where the agent API does not exist.
-    labels:
-      - 'traefik.enable=true'
-      - 'traefik.docker.network=coolify'
-      - 'traefik.http.routers.qeyhermes-dash.rule=Host(`yassir.qeynox.io`)'
-      - 'traefik.http.routers.qeyhermes-dash.entrypoints=https'
-      - 'traefik.http.routers.qeyhermes-dash.tls=true'
-      - 'traefik.http.routers.qeyhermes-dash.tls.certresolver=letsencrypt'
-      - 'traefik.http.routers.qeyhermes-dash.service=qeyhermes-dash'
-      - 'traefik.http.services.qeyhermes-dash.loadbalancer.server.port=9119'
+    labels: ['traefik.enable=false']
     security_opt: ['no-new-privileges:true']
     # The image starts as root and its s6-overlay bootstrap needs exactly these
     # four capabilities; every other capability stays dropped and privileged is

@@ -1,3 +1,7 @@
+> **P16 release override:** Use [COOLIFY_RELEASE.md](COOLIFY_RELEASE.md) for the current
+> immutable-release/private-routing/beta-policy contract. This document is historical;
+> recorded resource state is not a fresh live inventory. Do not deploy from stale instructions.
+
 # VPS / Coolify foundation (SOURCE ONLY)
 
 No infrastructure has been deployed. This compose file provides application and QeyNox-owned PostgreSQL services only. The Hatchet and Hermes runtimes must be installed using their **verified official self-host procedures** and connected over a scoped private network. Do not guess a Hatchet image, required migrations, topology, TLS port, login or secrets.

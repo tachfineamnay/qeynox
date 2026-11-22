@@ -16,3 +16,6 @@ pnpm-debug.log
 
 # Local pnpm content-addressable store (never committed)
 .pnpm-store/
+
+# Generated inside the image from reviewed release build arguments.
+.qeynox-release.json

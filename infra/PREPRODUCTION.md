@@ -1,3 +1,7 @@
+> **P16 release override:** Use [COOLIFY_RELEASE.md](COOLIFY_RELEASE.md) for the current
+> immutable-release/private-routing/beta-policy contract. This document is historical;
+> recorded resource state is not a fresh live inventory. Do not deploy from stale instructions.
+
 # Independent preproduction resources
 
 Only project gm3bynlnlsrkikanyzvxfew7 / environment girv53ul8pmfikflpxf9j2re is authorized.

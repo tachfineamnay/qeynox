@@ -1,4 +1,5 @@
 'use server';
+import { storageTransferGrant } from './storage-transfer-grant';
 import { z } from 'zod';
 import { idSchema } from '@qeynox/contracts';
 import { api, ApiError } from './api';
@@ -46,7 +47,7 @@ export async function change(previous: ChangeState, form: FormData): Promise<Cha
       }
       try {
         const grant = z.object({ url: z.string() }).parse(await api(`${base}/artifacts/${artifactId}`));
-        const url = safeUrl(grant.url);
+        const url = safeUrl(await storageTransferGrant(grant.url));
         if (!url) return { code: 'INVALID_RESPONSE', artifactId };
         return { code: 'OK', artifactId, url, sha256 };
       } catch (error) { return { code: error instanceof ApiError ? error.code : 'UNAVAILABLE', artifactId, sha256 }; }

@@ -1,4 +1,5 @@
 'use server';
+import { storageTransferGrant } from './storage-transfer-grant';
 import { z } from 'zod';
 import { idSchema } from '@qeynox/contracts';
 import { api, ApiError } from './api';
@@ -10,7 +11,7 @@ import { beginUploadSchema, searchResultSchema, type SearchResult } from './docu
  * Upload is a three-step dance the browser drives through these actions:
  *   1. beginUploadAction({ name, contentType, sizeBytes, sha256, purpose, retentionDays })
  *      — the server declares the upload and returns a presigned single-PUT URL;
- *   2. the browser PUTs the bytes directly to object storage (never through the API);
+ *   2. the browser PUTs bytes through the authenticated Web relay to private object storage;
  *   3. completeUploadAction(documentId) — the server verifies size + SHA-256 + type before ingesting.
  *
  * Nothing here fabricates state: every response comes from the API, and failures surface the
@@ -35,7 +36,7 @@ export async function beginUploadAction(input: {
       sha256: input.sha256, purpose: input.purpose, retentionDays: input.retentionDays,
     });
     const begun = beginUploadSchema.parse(await api('/v1/documents/begin', 'POST', parsed));
-    return { code: 'OK', documentId: begun.documentId, uploadUrl: begun.uploadUrl };
+    return { code: 'OK', documentId: begun.documentId, uploadUrl: await storageTransferGrant(begun.uploadUrl, 'PUT') };
   } catch (error) {
     return { code: error instanceof ApiError ? error.code : 'INVALID_INPUT', error: error instanceof Error ? error.message : undefined };
   }
