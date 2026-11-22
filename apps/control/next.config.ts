@@ -7,6 +7,7 @@ import type { NextConfig } from 'next';
  * app's /_next namespace stay untouched.
  */
 const config: NextConfig = {
+  deploymentId: process.env.QEYNOX_RELEASE_SHA,
   basePath: '/admin',
   poweredByHeader: false,
   async redirects() {

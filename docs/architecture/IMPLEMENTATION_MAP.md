@@ -1,5 +1,13 @@
 # QeyNox 2027 — source implementation map
 
+**2026-11-22 P16 release integration:** role env/identity/startup/health contracts, private topology,
+Control `/admin`, direct worker entrypoint/heartbeat, authenticated private-storage Web relay,
+GET-only inventory, operator readiness and current32 migration/rollback configuration are source
+implemented. Local release tests 7/7, typecheck and production source builds pass. **Not deployed
+or runtime-certified**: Coolify credentials/live inventory, Docker image validation, populated DB
+rehearsal and real private dependencies remain blocked/unverified. See
+[P16_VERIFICATION.md](../../infra/P16_VERIFICATION.md).
+
 **2026-11-17 Flow 2.0 Web release preparation:** Local Web typecheck/build, Flow fixture suites, updated HTTP smoke, browser event-motion checks and isolated Web image startup/fixture-exclusion checks passed; scope and exact limitations are recorded in [FLOW2_STATUS.md](../flow/FLOW2_STATUS.md). No merge, push or deployment was performed. External runtime, live customer journey, identity/storage/provider gates and independent production certification remain open.
 
 **2026-11-15 targeted repair:** Agent findings require human review before SUPPORTED, including when structural policy checks alone would otherwise promote them. Local verification and outstanding mission 10 gates are recorded in PROGRESS.md. Existing links do not prove semantic attribution; Hermes is restarting/unhealthy in preproduction and the real end-to-end path remains unverified.

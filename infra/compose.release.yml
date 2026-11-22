@@ -1,0 +1,86 @@
+# Desired application topology ONLY. Do not deploy alongside the existing native Coolify apps.
+# Reconcile these settings IN PLACE after inventory review; never recreate the stateful resources.
+x-release: &release
+  NODE_ENV: production
+  QEYNOX_DEPLOYMENT_ENV: ${QEYNOX_DEPLOYMENT_ENV:?required}
+  QEYNOX_RELEASE_SHA: ${QEYNOX_RELEASE_SHA:?full reviewed 40-character commit required}
+  QEYNOX_RELEASE_VERSION: ${QEYNOX_RELEASE_VERSION:?immutable release version required}
+  QEYNOX_COMMERCE_MODE: BETA_FREE
+  QEYNOX_REGISTRATION_MODE: INVITE_ONLY
+x-process: &process
+  restart: unless-stopped
+  init: true
+  stop_signal: SIGTERM
+  stop_grace_period: 300s
+  security_opt: [no-new-privileges:true]
+  logging:
+    options: {max-size: '10m', max-file: '3'}
+services:
+  api:
+    <<: *process
+    image: ${QEYNOX_IMAGE_PREFIX:?required}/api:${QEYNOX_RELEASE_SHA:?required}
+    env_file: ["${QEYNOX_API_ENV_FILE:?private role env file required}"]
+    environment:
+      <<: *release
+      PORT: '4000'
+    expose: ['4000']
+    networks:
+      private:
+        aliases: [qeynox-api]
+    labels: {traefik.enable: 'false'}
+  worker:
+    <<: *process
+    image: ${QEYNOX_IMAGE_PREFIX:?required}/worker:${QEYNOX_RELEASE_SHA:?required}
+    env_file: ["${QEYNOX_WORKER_ENV_FILE:?private role env file required}"]
+    environment: *release
+    depends_on:
+      api: {condition: service_healthy}
+    networks: [private]
+    labels: {traefik.enable: 'false'}
+  web:
+    <<: *process
+    image: ${QEYNOX_IMAGE_PREFIX:?required}/web:${QEYNOX_RELEASE_SHA:?required}
+    env_file: ["${QEYNOX_WEB_ENV_FILE:?private role env file required}"]
+    environment: *release
+    expose: ['3000']
+    depends_on:
+      api: {condition: service_healthy}
+    networks: [private, edge]
+    labels:
+      traefik.enable: 'true'
+      traefik.docker.network: ${QEYNOX_EDGE_NETWORK:?existing proxy network required}
+      traefik.http.routers.qeynox-web-release.rule: Host(`${QEYNOX_PUBLIC_HOST:?required}`)
+      traefik.http.routers.qeynox-web-release.entrypoints: https
+      traefik.http.routers.qeynox-web-release.priority: '10'
+      traefik.http.routers.qeynox-web-release.tls: 'true'
+      traefik.http.routers.qeynox-web-release.tls.certresolver: ${QEYNOX_TLS_CERTRESOLVER:-letsencrypt}
+      traefik.http.routers.qeynox-web-release.service: qeynox-web-release
+      traefik.http.services.qeynox-web-release.loadbalancer.server.port: '3000'
+  control:
+    <<: *process
+    image: ${QEYNOX_IMAGE_PREFIX:?required}/control:${QEYNOX_RELEASE_SHA:?required}
+    env_file: ["${QEYNOX_CONTROL_ENV_FILE:?private role env file required}"]
+    environment: *release
+    expose: ['3001']
+    depends_on:
+      api: {condition: service_healthy}
+    networks: [private, edge]
+    labels:
+      traefik.enable: 'true'
+      traefik.docker.network: ${QEYNOX_EDGE_NETWORK:?existing proxy network required}
+      traefik.http.routers.qeynox-control-release.rule: Host(`${QEYNOX_PUBLIC_HOST:?required}`) && (Path(`/admin`) || PathPrefix(`/admin/`))
+      traefik.http.routers.qeynox-control-release.entrypoints: https
+      traefik.http.routers.qeynox-control-release.priority: '300'
+      traefik.http.routers.qeynox-control-release.tls: 'true'
+      traefik.http.routers.qeynox-control-release.tls.certresolver: ${QEYNOX_TLS_CERTRESOLVER:-letsencrypt}
+      traefik.http.routers.qeynox-control-release.service: qeynox-control-release
+      traefik.http.services.qeynox-control-release.loadbalancer.server.port: '3001'
+networks:
+  private:
+    external: true
+    name: ${QEYNOX_PRIVATE_NETWORK:?verified existing private network required}
+  edge:
+    external: true
+    name: ${QEYNOX_EDGE_NETWORK:?existing proxy network required}
+# Deliberately NO stateful services, volumes, published ports or migration startup jobs.
+# Existing PostgreSQL/Redis/S3/Hatchet/Hermes must pass entrypoint dependency checks.

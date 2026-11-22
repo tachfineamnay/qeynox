@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "notice": "Desired release contract, NOT a Coolify API write payload. Recorded IDs are historical, not a fresh live inspection. Never create duplicate resources from this file.",
+  "scope": {
+    "project_uuid": "gm3bynlnlsrkikanyzvxfew7",
+    "environment_uuid": "girv53ul8pmfikflpxf9j2re",
+    "environment_name": "preproduction",
+    "recorded_server_uuid": "l7k1ng0ir694dr1ftyipqnby",
+    "recorded_destination_uuid": "vim4ypxtuvsidpfanzu6qfqa"
+  },
+  "applications": {
+    "web": {
+      "recorded_uuid": "gu5pde4uim045cfyhbzvatyn",
+      "resource_name": "qeynox-web",
+      "git_repository": "tachfineamnay/qeynox",
+      "git_branch": "main",
+      "git_commit_sha": "${QEYNOX_RELEASE_SHA}",
+      "base_directory": "/",
+      "dockerfile_location": "/infra/Dockerfile.web",
+      "instant_deploy": false,
+      "public": true,
+      "container_port": 3000,
+      "health_path": "/health",
+      "health_kind": "docker-release-json",
+      "init": true,
+      "stop_signal": "SIGTERM",
+      "stop_grace_period_seconds": 300,
+      "network_alias": "qeynox-web",
+      "build_arguments": [
+        "QEYNOX_RELEASE_SHA",
+        "QEYNOX_RELEASE_VERSION"
+      ]
+    },
+    "api": {
+      "recorded_uuid": "d8owo32umum050d4w7k2wvzp",
+      "resource_name": "qeynox-api",
+      "git_repository": "tachfineamnay/qeynox",
+      "git_branch": "main",
+      "git_commit_sha": "${QEYNOX_RELEASE_SHA}",
+      "base_directory": "/",
+      "dockerfile_location": "/infra/Dockerfile.api",
+      "instant_deploy": false,
+      "public": false,
+      "container_port": 4000,
+      "health_path": "/health",
+      "health_kind": "docker-release-json",
+      "init": true,
+      "stop_signal": "SIGTERM",
+      "stop_grace_period_seconds": 300,
+      "network_alias": "qeynox-api",
+      "build_arguments": [
+        "QEYNOX_RELEASE_SHA",
+        "QEYNOX_RELEASE_VERSION"
+      ]
+    },
+    "worker": {
+      "recorded_uuid": "urabqgudjsqnycnicygon1vv",
+      "resource_name": "qeynox-worker",
+      "git_repository": "tachfineamnay/qeynox",
+      "git_branch": "main",
+      "git_commit_sha": "${QEYNOX_RELEASE_SHA}",
+      "base_directory": "/",
+      "dockerfile_location": "/infra/Dockerfile.worker",
+      "instant_deploy": false,
+      "public": false,
+      "container_port": null,
+      "health_path": null,
+      "health_kind": "docker-heartbeat",
+      "init": true,
+      "stop_signal": "SIGTERM",
+      "stop_grace_period_seconds": 300,
+      "network_alias": "qeynox-worker",
+      "build_arguments": [
+        "QEYNOX_RELEASE_SHA",
+        "QEYNOX_RELEASE_VERSION"
+      ]
+    },
+    "control": {
+      "recorded_uuid": null,
+      "resource_name": "qeynox-control",
+      "git_repository": "tachfineamnay/qeynox",
+      "git_branch": "main",
+      "git_commit_sha": "${QEYNOX_RELEASE_SHA}",
+      "base_directory": "/",
+      "dockerfile_location": "/infra/Dockerfile.control",
+      "instant_deploy": false,
+      "public": true,
+      "container_port": 3001,
+      "health_path": "/admin/health",
+      "health_kind": "docker-release-json",
+      "init": true,
+      "stop_signal": "SIGTERM",
+      "stop_grace_period_seconds": 300,
+      "network_alias": "qeynox-control",
+      "build_arguments": [
+        "QEYNOX_RELEASE_SHA",
+        "QEYNOX_RELEASE_VERSION"
+      ]
+    }
+  },
+  "dependencies": {
+    "postgres": {
+      "recorded_uuid": "cris5cemg9ja3g3ur5tyiypg",
+      "kind": "existing-native-postgresql",
+      "aliases": [
+        "cris5cemg9ja3g3ur5tyiypg",
+        "qeynox-postgres"
+      ],
+      "private_ports": [
+        5432
+      ],
+      "health": "pg_isready; authenticate with scoped app role separately",
+      "preserve": [
+        "database",
+        "credentials",
+        "volume",
+        "financial history"
+      ],
+      "public_ports": [],
+      "traefik_enable": false,
+      "action": "inspect-and-reconcile-in-place-only"
+    },
+    "redis": {
+      "recorded_uuid": "lnclv7rbyekp5ks5iokxbxvj",
+      "kind": "existing-native-redis",
+      "aliases": [
+        "lnclv7rbyekp5ks5iokxbxvj",
+        "qeynox-redis"
+      ],
+      "private_ports": [
+        6379
+      ],
+      "health": "authenticated PING",
+      "configuration": {
+        "appendonly": "yes",
+        "maxmemory": "128mb",
+        "maxmemory-policy": "noeviction"
+      },
+      "preserve": [
+        "password",
+        "AOF volume"
+      ],
+      "public_ports": [],
+      "traefik_enable": false,
+      "action": "inspect-and-reconcile-in-place-only"
+    },
+    "hatchet-db": {
+      "recorded_uuid": "9zbn2burfbghxjz25cpb45xv",
+      "kind": "existing-native-postgresql",
+      "private_ports": [
+        5432
+      ],
+      "preserve": [
+        "database",
+        "credentials",
+        "volume"
+      ],
+      "public_ports": [],
+      "traefik_enable": false,
+      "action": "inspect-and-reconcile-in-place-only"
+    },
+    "storage": {
+      "recorded_uuid": "4uufasc903is4vb504v3bw9e",
+      "manifest": "infra/services/storage.yml",
+      "private_ports": [
+        9000
+      ],
+      "health": "/minio/health/live",
+      "required_secrets": [
+        "S3_ROOT_USER",
+        "S3_ROOT_PASSWORD",
+        "S3_KMS_SECRET_KEY"
+      ],
+      "preserve": [
+        "s3-data volume",
+        "buckets",
+        "object versions",
+        "KMS key",
+        "scoped app credential"
+      ],
+      "public_ports": [],
+      "traefik_enable": false,
+      "action": "inspect-and-reconcile-in-place-only"
+    },
+    "hatchet": {
+      "recorded_uuid": "povviyiod3fxzrbhe4hzhmn1",
+      "manifest": "infra/services/hatchet.yml",
+      "private_ports": [
+        8888,
+        7077
+      ],
+      "required_secrets": [
+        "HATCHET_DATABASE_URL",
+        "HATCHET_ADMIN_EMAIL",
+        "HATCHET_ADMIN_PASSWORD",
+        "HATCHET_TENANT_ID"
+      ],
+      "preserve": [
+        "hatchet-config volume",
+        "tenant",
+        "signing keys",
+        "token",
+        "workflow registrations"
+      ],
+      "public_ports": [],
+      "traefik_enable": false,
+      "action": "inspect-and-reconcile-in-place-only"
+    },
+    "hermes": {
+      "recorded_uuid": "i57klnidhv6rqawzvqf5a7tz",
+      "manifest": "infra/services/hermes.yml",
+      "private_ports": [
+        8642
+      ],
+      "required_secrets": [
+        "HERMES_API_KEY"
+      ],
+      "additional_requirements": [
+        "reviewed model/provider credentials in existing home/config",
+        "native-tool isolation",
+        "egress firewall"
+      ],
+      "preserve": [
+        "hermes-home volume",
+        "model/provider credentials",
+        "config.yaml",
+        "profiles"
+      ],
+      "public_ports": [],
+      "traefik_enable": false,
+      "action": "inspect-and-reconcile-in-place-only"
+    }
+  },
+  "migration": {
+    "command": "pnpm db:release",
+    "automatic": false,
+    "discovery": "packages/persistence/migrations",
+    "requires_zero_pending_for_candidate": true
+  }
+}

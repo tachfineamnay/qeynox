@@ -2,6 +2,7 @@
 services:
   qeynox-hatchet:
     image: ghcr.io/hatchet-dev/hatchet/hatchet-lite:v0.114.2
+    labels: ['traefik.enable=false']
     restart: unless-stopped
     mem_limit: 1536m
     cpus: 1.0

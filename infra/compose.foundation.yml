@@ -1,3 +1,5 @@
+# HISTORICAL bootstrap topology, NOT the current release entrypoint.
+# Existing resources must be preserved; use compose.release.yml and COOLIFY_RELEASE.md.
 # Source-only Coolify foundation. External Hatchet and Hermes instances must be provided
 # with verified private URLs, images and environment. Never publish admin/data endpoints.
 services:
@@ -21,6 +23,8 @@ services:
       dockerfile: infra/Dockerfile.api
     restart: unless-stopped
     environment:
+      QEYNOX_COMMERCE_MODE: BETA_FREE
+      QEYNOX_REGISTRATION_MODE: INVITE_ONLY
       PORT: "4000"
       DATABASE_URL: ${DATABASE_URL:?required}
       HATCHET_CLIENT_TOKEN: ${HATCHET_CLIENT_TOKEN:?required}
@@ -37,6 +41,8 @@ services:
       dockerfile: infra/Dockerfile.worker
     restart: unless-stopped
     environment:
+      QEYNOX_COMMERCE_MODE: BETA_FREE
+      QEYNOX_REGISTRATION_MODE: INVITE_ONLY
       DATABASE_URL: ${DATABASE_URL:?required}
       HATCHET_CLIENT_TOKEN: ${HATCHET_CLIENT_TOKEN:?required}
       HERMES_API_BASE_URL: ${HERMES_API_BASE_URL:?required}

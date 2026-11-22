@@ -1,3 +1,7 @@
+> **P16 release override:** Use [COOLIFY_RELEASE.md](COOLIFY_RELEASE.md) for the current
+> immutable-release/private-routing/beta-policy contract. This document is historical;
+> recorded resource state is not a fresh live inventory. Do not deploy from stale instructions.
+
 # QeyNox Control — release preparation (Mission 09)
 
 Prepared, not deployed. Creating this configuration is **not** an authorization to deploy. No Coolify

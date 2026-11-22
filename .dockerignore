@@ -34,3 +34,6 @@ node_modules/
 # Local Web QA fixtures and screenshots are not inputs to container builds.
 apps/web/scripts/
 docs/flow/evidence/
+
+# Generated inside the image from reviewed release build arguments.
+.qeynox-release.json

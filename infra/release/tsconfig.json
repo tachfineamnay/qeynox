@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "../..", "lib": ["es2022", "dom", "dom.iterable"], "allowJs": true, "checkJs": false },
+  "include": ["*.ts", "*.mjs"]
+}

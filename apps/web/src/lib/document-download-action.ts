@@ -1,4 +1,5 @@
 'use server';
+import { storageTransferGrant } from './storage-transfer-grant';
 import { z } from 'zod';
 import { idSchema } from '@qeynox/contracts';
 import { api, ApiError } from './api';
@@ -8,5 +9,5 @@ export async function downloadGrantAction(documentId: string): Promise<{ url: st
   const grant = z.object({ url: z.string().url(), expiresInSeconds: z.number().int() }).parse(
     await api('/v1/documents/' + idSchema.parse(documentId) + '/download'),
   );
-  return { url: grant.url };
+  return { url: await storageTransferGrant(grant.url) };
 }

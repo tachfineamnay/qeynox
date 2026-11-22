@@ -12,7 +12,7 @@
     "dev:api": "pnpm --filter @qeynox/api dev",
     "dev:worker": "pnpm --filter @qeynox/worker dev",
     "build": "turbo run build",
-    "typecheck": "turbo run typecheck",
+    "typecheck": "turbo run typecheck && pnpm typecheck:release",
     "qa:task02": "pnpm --filter @qeynox/api qa:task02",
     "qa:backend": "pnpm --filter @qeynox/api qa:backend",
     "qa:agent-runtime": "pnpm --filter @qeynox/worker qa:agent-runtime",
@@ -62,7 +62,13 @@
     "qa:hardening-followup": "pnpm --filter @qeynox/worker qa:hardening-followup",
     "qa:tool-authorization": "pnpm --filter @qeynox/worker qa:tool-authorization",
     "qa:worker-lifecycle": "pnpm --filter @qeynox/worker qa:worker-lifecycle",
-    "db:release": "pnpm --filter @qeynox/persistence db:release"
+    "db:release": "pnpm --filter @qeynox/persistence db:release",
+    "release:inspect": "node infra/release/inspect-coolify.mjs",
+    "release:render": "node infra/release/render.mjs",
+    "release:check": "node infra/release/config-check.mjs",
+    "release:verify": "tsx infra/release/verify.ts",
+    "release:test": "tsx --test infra/release/release.test.ts",
+    "typecheck:release": "tsc --noEmit -p infra/release/tsconfig.json"
   },
   "devDependencies": {
     "typescript": "5.9.3",

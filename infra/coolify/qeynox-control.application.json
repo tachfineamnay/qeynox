@@ -1,47 +1,94 @@
 {
-  "$comment": "Prepared, NOT created and NOT deployed. Apply only after an explicit operator instruction and after the candidate branch has been pushed to the same GitHub repository.",
+  "$comment": "P16 configuration only. Verify current inventory; preserve the existing resource if present. No write/deploy performed.",
   "application": {
     "name": "qeynox-control",
-    "description": "QeyNox Control platform administration desk (Next.js basePath /admin)",
+    "description": "P16 desired Control settings. Reconcile existing resource by verified inventory; do not blindly create.",
     "project_uuid": "gm3bynlnlsrkikanyzvxfew7",
     "environment_name": "preproduction",
     "environment_uuid": "girv53ul8pmfikflpxf9j2re",
     "server_uuid": "l7k1ng0ir694dr1ftyipqnby",
     "destination_uuid": "vim4ypxtuvsidpfanzu6qfqa",
     "git_repository": "tachfineamnay/qeynox",
-    "git_branch": "feat/workspaces-organizations",
+    "git_branch": "main",
     "build_pack": "dockerfile",
     "dockerfile_location": "/infra/Dockerfile.control",
     "base_directory": "/",
     "ports_exposes": "3001",
-    "domains": ["https://qeynox.io/admin"],
+    "domains": [
+      "https://qeynox.io/admin"
+    ],
     "health_check_enabled": true,
-    "health_check_path": "/admin/en",
+    "health_check_path": "/admin/health",
     "health_check_port": "3001",
     "health_check_method": "GET",
     "health_check_scheme": "http",
     "health_check_return_code": 200,
     "instant_deploy": false,
-    "custom_network_aliases": ["qeynox-control"],
+    "custom_network_aliases": [
+      "qeynox-control"
+    ],
     "env_keys": [
-      { "key": "NODE_ENV", "is_runtime": true, "is_buildtime": false },
-      { "key": "QEYNOX_DEPLOYMENT_ENV", "is_runtime": true, "is_buildtime": false },
-      { "key": "QEYNOX_PLATFORM_API_URL", "is_runtime": true, "is_buildtime": false },
-      { "key": "QEYNOX_PLATFORM_API_PRIVATE_ORIGIN", "is_runtime": true, "is_buildtime": false },
-      { "key": "QEYNOX_PUBLIC_URL", "is_runtime": true, "is_buildtime": false }
+      {
+        "key": "NODE_ENV",
+        "is_runtime": true,
+        "is_buildtime": false
+      },
+      {
+        "key": "QEYNOX_DEPLOYMENT_ENV",
+        "is_runtime": true,
+        "is_buildtime": false
+      },
+      {
+        "key": "QEYNOX_PLATFORM_API_URL",
+        "is_runtime": true,
+        "is_buildtime": false
+      },
+      {
+        "key": "QEYNOX_PLATFORM_API_PRIVATE_ORIGIN",
+        "is_runtime": true,
+        "is_buildtime": false
+      },
+      {
+        "key": "QEYNOX_PUBLIC_URL",
+        "is_runtime": true,
+        "is_buildtime": false
+      },
+      {
+        "key": "QEYNOX_RELEASE_SHA",
+        "is_runtime": true,
+        "is_buildtime": true
+      },
+      {
+        "key": "QEYNOX_RELEASE_VERSION",
+        "is_runtime": true,
+        "is_buildtime": true
+      },
+      {
+        "key": "QEYNOX_COMMERCE_MODE",
+        "is_runtime": true,
+        "is_buildtime": false
+      },
+      {
+        "key": "QEYNOX_REGISTRATION_MODE",
+        "is_runtime": true,
+        "is_buildtime": false
+      }
     ],
     "env_values_to_set_in_coolify": {
       "NODE_ENV": "production",
       "QEYNOX_DEPLOYMENT_ENV": "preproduction",
       "QEYNOX_PLATFORM_API_URL": "http://qeynox-api:4000",
       "QEYNOX_PLATFORM_API_PRIVATE_ORIGIN": "http://qeynox-api:4000",
-      "QEYNOX_PUBLIC_URL": "https://qeynox.io"
+      "QEYNOX_PUBLIC_URL": "https://qeynox.io",
+      "QEYNOX_COMMERCE_MODE": "BETA_FREE",
+      "QEYNOX_REGISTRATION_MODE": "INVITE_ONLY"
     },
     "blockers": [
-      "The deployed revision must be explicitly selected and verified before creating this resource.",
-      "The Control container must resolve and reach qeynox-api on the private network; this has not been verified for Control.",
-      "Coolify path-domain support for https://qeynox.io/admin must be verified; otherwise add the documented Traefik PathPrefix router on the same host without touching the existing qeynox-web router.",
-      "No deployment, no instant_deploy, no restart and no production change is authorized by this file."
-    ]
+      "Current live Control UUID and scope must be inspected before any change.",
+      "Use the shared release SHA/version build arguments and runtime variables from infra/coolify/release.json.",
+      "Apply exact /admin or /admin/ prefix routing without stripping the path; no broad Host-only Control router.",
+      "No deployment, creation or restart is authorized by this file."
+    ],
+    "git_commit_sha": "${QEYNOX_RELEASE_SHA}"
   }
 }
