@@ -69,6 +69,7 @@ export class BudgetService {
   }));
  }
  async settle(actor:Principal,reservationId:ID,details:{costMinor?:number;origin:'PROVIDER_REPORTED'|'ESTIMATED'|'UNKNOWN';tokensIn?:number;tokensOut?:number}):Promise<void>{
+  for(const count of [details.tokensIn,details.tokensOut])if(count!==undefined&&(!Number.isSafeInteger(count)||count<0||count>2_147_483_647))throw new DomainError('INVALID_INPUT','Usage tokens must be nonnegative 32-bit integers');
   return this.store.db.transaction(async tx=>{
    const [reservation]=await tx.select().from(usageReservations).where(and(eq(usageReservations.id,reservationId),eq(usageReservations.workspaceId,actor.workspaceId))).for('update').limit(1);
    if(!reservation||reservation.state!=='RESERVED')throw new DomainError('CONFLICT','Reservation is not open');

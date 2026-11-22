@@ -37,3 +37,10 @@ docs/flow/evidence/
 
 # Generated inside the image from reviewed release build arguments.
 .qeynox-release.json
+
+# Vertex service-account material belongs on the deployment host, never in source/images.
+secrets/
+gcp/
+**/vertex-sa*.json
+**/*service-account*.json
+**/application_default_credentials.json

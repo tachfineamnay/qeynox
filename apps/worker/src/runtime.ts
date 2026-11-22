@@ -1,7 +1,7 @@
 import { and,eq } from 'drizzle-orm';
 import { DomainError,newId,transitionOperation,type ID,type Evidence,type StepAttempt } from '@qeynox/domain';
 import { connectDatabase,QeyNoxStore,attempts,operations,events } from '@qeynox/persistence';
-import { HermesAdapter,hermesCapabilities } from '@qeynox/engine';
+import { HermesAdapter,hermesCapabilities,hermesSettingsFromEnv,hermesFailureFacts } from '@qeynox/engine';
 import { AgentProfileStore,CapabilityRegistry } from '@qeynox/roles';
 import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv,createRuntimeProbeMonitor,runtimeExecutionBlocker,recoverBusinessPackMission,businessPackStepRole,assertBusinessPackProfile,capturedPackSources,businessPackStepInstructions,acceptBusinessPackDeliverable,recordBusinessPackClaims,rawOutputDigest,DocumentVaultService,S3ArtifactStore,embeddingsFromEnv,prepareMissionDocuments,recordMissionDocumentCitations,missionDocumentQuery } from '@qeynox/application';
 import { NotificationStore } from '@qeynox/persistence';
@@ -16,8 +16,10 @@ export async function createWorkerDependencies(){
  const conn=connectDatabase(connectedDatabaseUrl),store=new QeyNoxStore(conn.db);
  try {
  const profiles=new AgentProfileStore(conn.db),progression=new StepProgression(store);
- const hermesProvider=process.env.HERMES_PROVIDER;
- const engine=new HermesAdapter({baseUrl:process.env.HERMES_API_BASE_URL,privateOrigin:process.env.HERMES_PRIVATE_ORIGIN,apiKey:process.env.HERMES_API_KEY,model:process.env.HERMES_MODEL??'hermes-agent',provider:hermesProvider==='vertex'||hermesProvider==='gemini'||hermesProvider==='custom'?hermesProvider:undefined,timeoutMs:Number(process.env.HERMES_REQUEST_TIMEOUT_MS??60000),nativeToolsIsolated:process.env.HERMES_NATIVE_TOOLS_ISOLATED==='true',egressAttested:process.env.QEYNOX_NETWORK_POLICY_ATTESTED==='true'});
+ const engine=new HermesAdapter({...hermesSettingsFromEnv(process.env),onDiagnostic:event=>{
+   // Structured allowlisted facts only: no prompt, answer, provider body or credential in logs.
+   console.info('QEYNOX_ENGINE',JSON.stringify({phase:event.phase,correlationId:event.correlationId,model:event.model,provider:event.provider,httpStatus:event.httpStatus,finishReason:event.finishReason,usageReported:event.usageReported,durationMs:event.durationMs,errorCode:event.errorCode}));
+ }});
  // Startup snapshot for inspection/QA. Mission execution must reload the actual
  // operator configuration: an ACTIVE capability can change while the worker is running.
  const tools=await createConfiguredToolRegistry(conn.db);
@@ -155,6 +157,7 @@ export async function createWorkerDependencies(){
     // code, and the attempt is not marked as a clean failure because we cannot prove it failed.
     const errorCode=error instanceof DomainError?error.code:'UNEXPECTED_EXECUTION_ERROR';
     const unknownOutcome=errorCode==='UNKNOWN_OUTCOME';
+    const engineFailure=hermesFailureFacts(error);
     const failed:StepAttempt={...start,state:'FAILED',finishedAt:now,version:start.version+1,errorCode};
     const attemptFailed=await conn.db.transaction(async tx=>{
       const [currentAttempt]=await tx.select().from(attempts).where(eq(attempts.id,attempt.id)).for('update').limit(1);
@@ -172,12 +175,12 @@ export async function createWorkerDependencies(){
         const next=transitionOperation(currentOp.payload,'FAILED',now,currentOp.version);
         await tx.update(operations).set({status:'FAILED',version:next.version,payload:{...next,lastErrorCode:errorCode},lastActivityAt:now}).where(and(eq(operations.id,row.id),eq(operations.version,currentOp.version)));
       }
-      const event={id:newId(),workspaceId:row.workspaceId as ID,operationId:row.id as ID,kind:unknownOutcome?'STEP_OUTCOME_UNKNOWN':'STEP_FAILED',data:{attemptId:attempt.id,errorCode},occurredAt:now,eventVersion:1};
+      const event={id:newId(),workspaceId:row.workspaceId as ID,operationId:row.id as ID,kind:unknownOutcome?'STEP_OUTCOME_UNKNOWN':'STEP_FAILED',data:{attemptId:attempt.id,errorCode,...engineFailure},occurredAt:now,eventVersion:1};
       await tx.insert(events).values({id:event.id,workspaceId:event.workspaceId,operationId:event.operationId,kind:event.kind,occurredAt:now,payload:event});
       return true;
     });
     if(!attemptFailed){
-      await store.writeEvent({workspaceId:row.workspaceId as ID,operationId:row.id as ID,kind:'POST_STEP_FAILURE',data:{attemptId:attempt.id,errorCode},occurredAt:now});
+      await store.writeEvent({workspaceId:row.workspaceId as ID,operationId:row.id as ID,kind:'POST_STEP_FAILURE',data:{attemptId:attempt.id,errorCode,...engineFailure},occurredAt:now});
     }
     throw error;
    }

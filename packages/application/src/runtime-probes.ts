@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { hermesEndpoint, probeHermes, redactSecrets } from '@qeynox/engine';
+import { hermesEndpoint, probeHermes, redactSecrets, validVertexModel, validHermesTimeout } from '@qeynox/engine';
 import { probeHatchet, resolveHatchetEndpoints } from '@qeynox/orchestration';
 import {
   combineRuntimeReadiness, evaluateRuntimeComponent, failClosedRuntime,
@@ -258,28 +258,33 @@ export function hermesProbeDefinition(env: NodeJS.ProcessEnv = process.env): Run
     const baseUrl = (env.HERMES_API_BASE_URL ?? '').trim();
     const apiKey = (env.HERMES_API_KEY ?? '').trim();
     const privateOrigin = env.HERMES_PRIVATE_ORIGIN?.trim() || undefined;
-    const model = (env.HERMES_MODEL ?? '').trim() || 'hermes-agent';
+    const provider = env.HERMES_PROVIDER?.trim() ?? '';
+    const model = (env.HERMES_MODEL ?? '').trim() || (provider === 'vertex' ? '' : 'hermes-agent');
+    const timeoutMs = Number(env.HERMES_REQUEST_TIMEOUT_MS ?? 60_000);
     let origin: string | null = null;
     if (baseUrl) {
       try { origin = new URL(hermesEndpoint(baseUrl, privateOrigin)).origin; } catch { origin = null; }
     }
-    return { baseUrl, apiKey, privateOrigin, model, origin };
+    return { baseUrl, apiKey, privateOrigin, model, origin, provider, timeoutMs };
   };
   return {
     component: 'hermes',
     configuration() {
-      const { baseUrl, apiKey, privateOrigin, model, origin } = read();
+      const { baseUrl, apiKey, privateOrigin, model, origin, provider, timeoutMs } = read();
       const missing: string[] = [];
       if (!baseUrl) missing.push('HERMES_API_BASE_URL');
       else if (!origin) missing.push('HERMES_API_BASE_URL (origin not authorized: use https, a local host or HERMES_PRIVATE_ORIGIN)');
       if (!apiKey) missing.push('HERMES_API_KEY');
+      if (provider && !['vertex', 'gemini', 'custom'].includes(provider)) missing.push('HERMES_PROVIDER (unsupported)');
+      if (provider === 'vertex' && !validVertexModel(model)) missing.push('HERMES_MODEL (explicit google/gemini model required)');
+      if (!validHermesTimeout(timeoutMs)) missing.push('HERMES_REQUEST_TIMEOUT_MS (250..120000 integer required)');
       // Operator attestations remain REQUIRED, but they are preconditions only: they never verify.
       const isolated = env.HERMES_NATIVE_TOOLS_ISOLATED === 'true';
       const egress = env.QEYNOX_NETWORK_POLICY_ATTESTED === 'true';
       if (!isolated) missing.push('HERMES_NATIVE_TOOLS_ISOLATED=true');
       if (!egress) missing.push('QEYNOX_NETWORK_POLICY_ATTESTED=true');
       const target = origin && apiKey
-        ? { endpoint: origin, fingerprint: digest(['hermes', origin, privateOrigin ?? '', model, createHash('sha256').update(apiKey).digest('hex')]) }
+        ? { endpoint: origin, fingerprint: digest(['hermes', origin, privateOrigin ?? '', provider, model, String(timeoutMs), createHash('sha256').update(apiKey).digest('hex')]) }
         : null;
       return { missing, attested: isolated && egress, target };
     },
@@ -295,7 +300,7 @@ export function hermesProbeDefinition(env: NodeJS.ProcessEnv = process.env): Run
       if (report.nativeToolsIsolated !== true) {
         return { ok: false, failure: 'ISOLATION_NOT_EVIDENCED', detail: report.nativeToolsIsolated === null ? 'the toolset inventory could not be read' : 'the API server still exposes an enabled toolset' };
       }
-      if (report.activeModelAdvertised === false) return { ok: false, failure: 'MODEL_NOT_ADVERTISED', detail: 'the configured model is not advertised by /v1/models' };
+      if (report.activeModelAdvertised !== true) return { ok: false, failure: 'MODEL_NOT_ADVERTISED', detail: 'the configured model is not advertised by /v1/models' };
       return { ok: true, identity: { endpoint: report.endpointOrigin ?? 'unknown', deployment: report.platform, version: report.runtimeVersion } };
     },
     secrets() {

@@ -23,7 +23,7 @@ export interface EngineOutcome {
 export interface EngineAvailability {
   readonly available: boolean;
   /** Stable machine-readable reason; 'READY' only when a call could actually be dispatched. */
-  readonly reason: 'READY' | 'NO_ENDPOINT' | 'NO_CREDENTIAL' | 'NO_ATTESTATION' | 'INVALID_TIMEOUT' | 'UNKNOWN';
+  readonly reason: 'READY' | 'NO_ENDPOINT' | 'NO_CREDENTIAL' | 'NO_ATTESTATION' | 'INVALID_TIMEOUT' | 'INVALID_MODEL' | 'INVALID_ENDPOINT' | 'UNKNOWN';
 }
 export interface EnginePort {
   invoke(request: EngineRequest, options?: {signal?:AbortSignal}):Promise<EngineOutcome>;

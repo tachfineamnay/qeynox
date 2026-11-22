@@ -216,9 +216,10 @@
         "HERMES_API_KEY"
       ],
       "additional_requirements": [
-        "reviewed model/provider credentials in existing home/config",
-        "native-tool isolation",
-        "egress firewall"
+        "reviewed generated Vertex model/provider config; existing config retained beneath read-only bind",
+        "google-auth dependency in reviewed image; OAuth refresh owned solely by Hermes",
+        "native API toolsets explicitly disabled, MCP empty, fallback providers disabled",
+        "live inventory/isolation/egress/inference certification deferred to P22"
       ],
       "preserve": [
         "hermes-home volume",
@@ -228,7 +229,26 @@
       ],
       "public_ports": [],
       "traefik_enable": false,
-      "action": "inspect-and-reconcile-in-place-only"
+      "action": "inspect-and-reconcile-in-place-only",
+      "required_hermes_only_mounts": [
+        {
+          "source": "${QEYNOX_HERMES_CONFIG_FILE}",
+          "target": "/opt/data/config.yaml",
+          "read_only": true,
+          "create_host_path": false
+        },
+        {
+          "source": "${QEYNOX_VERTEX_CREDENTIAL_FILE}",
+          "target": "/run/secrets/qeynox-vertex-service-account.json",
+          "read_only": true,
+          "create_host_path": false
+        }
+      ],
+      "required_operator_configuration": [
+        "QEYNOX_HERMES_VERTEX_PROJECT",
+        "QEYNOX_HERMES_VERTEX_REGION",
+        "QEYNOX_HERMES_VERTEX_MODEL"
+      ]
     }
   },
   "migration": {

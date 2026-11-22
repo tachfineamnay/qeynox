@@ -29,6 +29,15 @@ export function diagnostics(role, env, image) {
     if (env[key] && env[key] !== 'false') fail(key, 'FORBIDDEN_RUNTIME_OVERRIDE');
   }
   for (const key of Object.keys(env)) if (/STRIPE.*(SECRET|KEY)|^NEXT_PUBLIC_.*(SECRET|TOKEN|KEY|DATABASE|REDIS|HERMES)/i.test(key) && env[key]) fail(key, 'FORBIDDEN_CREDENTIAL');
+  for (const [key, value] of Object.entries(env)) {
+    if (value && (/^(?:GOOGLE_APPLICATION_CREDENTIALS|GOOGLE_API_KEY|GEMINI_API_KEY|VERTEX_.*|QEYNOX_VERTEX_CREDENTIAL_FILE)$/.test(key) || /-----BEGIN (?:RSA )?PRIVATE KEY-----|"type"\s*:\s*"service_account"/.test(value))) fail(key, 'VERTEX_CREDENTIAL_HERMES_ONLY');
+  }
+  if (['api', 'worker'].includes(role)) {
+    if (env.HERMES_PROVIDER && !['vertex', 'gemini', 'custom'].includes(env.HERMES_PROVIDER)) fail('HERMES_PROVIDER', 'UNSUPPORTED_PROVIDER');
+    if (env.HERMES_PROVIDER === 'vertex' && !/^google\/gemini-[a-z0-9][a-z0-9.-]{0,119}$/.test(env.HERMES_MODEL ?? '')) fail('HERMES_MODEL', 'EXPLICIT_VERTEX_MODEL_REQUIRED');
+    const timeout = Number(env.HERMES_REQUEST_TIMEOUT_MS ?? 60000);
+    if (!Number.isSafeInteger(timeout) || timeout < 250 || timeout > 120000) fail('HERMES_REQUEST_TIMEOUT_MS', 'BOUNDED_TIMEOUT_REQUIRED');
+  }
   const privateUrl = (key, hosts, protocols, port, path = '/') => {
     if (!env[key]) return;
     try {

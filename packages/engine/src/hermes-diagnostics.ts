@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { DomainError } from '@qeynox/domain';
 import { hermesEndpoint } from './hermes-origin';
-import { parseErrorEnvelope, redactSecrets } from './hermes-contract';
+import { redactSecrets } from './hermes-contract';
 
 /**
  * Read-only runtime diagnostics for the Hermes deployment.
@@ -77,8 +78,9 @@ export async function probeHermes(config: HermesEndpointConfig & { model?: strin
     return emptyReport(['HERMES_API_BASE_URL is not an authorized origin']);
   }
   const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-
-  const signal = config.signal;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 15_000) return emptyReport(['Hermes probe deadline must be between 1 and 15000 milliseconds']);
+  const deadline = AbortSignal.timeout(timeoutMs);
+  const signal = config.signal ? AbortSignal.any([deadline, config.signal]) : deadline;
   const health = await get(healthUrl, undefined, timeoutMs, signal);
   if (health.kind !== 'ok') {
     return {
@@ -88,8 +90,9 @@ export async function probeHermes(config: HermesEndpointConfig & { model?: strin
   }
   const healthBody = health.json as { status?: unknown; platform?: unknown; version?: unknown } | null;
   const status = typeof healthBody?.status === 'string' ? healthBody.status : null;
-  const platform = typeof healthBody?.platform === 'string' ? healthBody.platform : null;
-  const runtimeVersion = typeof healthBody?.version === 'string' ? healthBody.version : null;
+  const sanitize = (text: string) => redactSecrets(config.apiKey ? text.split(config.apiKey).join('[REDACTED]') : text, 200);
+  const platform = typeof healthBody?.platform === 'string' ? sanitize(healthBody.platform) : null;
+  const runtimeVersion = typeof healthBody?.version === 'string' ? sanitize(healthBody.version) : null;
   if (status !== 'ok') failures.push('health endpoint did not report status "ok"');
 
   if (!config.apiKey) {
@@ -106,11 +109,14 @@ export async function probeHermes(config: HermesEndpointConfig & { model?: strin
   let authenticated = false;
   let authRejected = false;
   if (models.kind === 'ok') {
-    authenticated = true;
     const body = models.json as { data?: ReadonlyArray<{ id?: unknown }> } | null;
-    modelIds = Array.isArray(body?.data)
-      ? body.data.flatMap(entry => (typeof entry?.id === 'string' ? [entry.id] : []))
-      : [];
+    modelIds = Array.isArray(body?.data) && body.data.length > 0 && body.data.every(entry => typeof entry?.id === 'string' && entry.id.trim().length > 0)
+      ? body.data.map(entry => String(entry.id)) : null;
+    // A successful inventory alone cannot prove authentication is enforced.
+    const challenge = await get(modelsUrl, 'qeynox-rejected-key-' + randomUUID(), timeoutMs, signal);
+    authenticated = challenge.kind === 'status' && (challenge.status === 401 || challenge.status === 403);
+    if (!authenticated) failures.push('Hermes authentication enforcement was not evidenced by the rejected-key challenge');
+    if (!modelIds) failures.push('model inventory was not in the documented shape or advertised no model');
   } else if (models.kind === 'status' && (models.status === 401 || models.status === 403)) {
     authRejected = true;
     failures.push('Hermes rejected the API key (HTTP ' + models.status + ')');
@@ -124,9 +130,9 @@ export async function probeHermes(config: HermesEndpointConfig & { model?: strin
   let nativeToolsIsolated: boolean | null = null;
   if (toolsets.kind === 'ok') {
     const body = toolsets.json as { data?: ReadonlyArray<Record<string, unknown>> } | null;
-    if (Array.isArray(body?.data)) {
+    if (Array.isArray(body?.data) && body.data.length > 0 && body.data.every(entry => entry && typeof entry === 'object' && typeof entry.name === 'string' && entry.name.length > 0 && typeof entry.enabled === 'boolean' && typeof entry.configured === 'boolean' && Array.isArray(entry.tools) && entry.tools.every((tool: unknown) => typeof tool === 'string'))) {
       toolsetState = body.data.map(entry => ({
-        name: typeof entry.name === 'string' ? entry.name : 'unknown',
+        name: typeof entry.name === 'string' ? sanitize(entry.name) : 'unknown',
         enabled: entry.enabled === true,
         configured: entry.configured === true,
         toolCount: Array.isArray(entry.tools) ? entry.tools.length : 0,
@@ -137,6 +143,7 @@ export async function probeHermes(config: HermesEndpointConfig & { model?: strin
       failures.push('toolset inventory was not in the documented shape');
     }
   } else {
+    if (toolsets.kind === 'status' && (toolsets.status === 401 || toolsets.status === 403)) authRejected = true;
     failures.push(describeFailure('toolset inventory', toolsets));
   }
 
@@ -148,8 +155,8 @@ export async function probeHermes(config: HermesEndpointConfig & { model?: strin
     platform,
     authenticated,
     authRejected,
-    models: modelIds,
-    activeModel,
+    models: modelIds?.map(sanitize) ?? null,
+    activeModel: activeModel ? sanitize(activeModel) : undefined,
     activeModelAdvertised: modelIds && activeModel ? modelIds.includes(activeModel) : null,
     nativeToolsIsolated,
     toolsets: toolsetState,
@@ -198,16 +205,14 @@ async function get(url: string, apiKey: string | undefined, timeoutMs: number, s
     if (!response.ok) return { kind: 'status', status: response.status, json };
     return { kind: 'ok', status: response.status, json };
   } catch (error: unknown) {
-    return { kind: 'error', detail: redactSecrets(error instanceof Error ? error.message : String(error), 200) };
+    return { kind: 'error', detail: signal?.aborted ? 'probe deadline expired or was cancelled' : 'private endpoint request failed' };
   }
 }
 
 function describeFailure(label: string, result: ProbeResult): string {
   if (result.kind === 'error') return label + ' probe failed: ' + result.detail;
   if (result.kind === 'status') {
-    const envelope = parseErrorEnvelope(result.json);
-    const code = envelope?.code ?? envelope?.type ?? 'HTTP_' + result.status;
-    return label + ' returned HTTP ' + result.status + ' (' + code + ')';
+    return label + ' returned HTTP ' + result.status;
   }
   return label + ' probe returned an unexpected result';
 }

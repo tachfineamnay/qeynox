@@ -9,9 +9,14 @@ services:
     expose: ['8642']
     environment:
       HERMES_HOME: /opt/data
-      # Hardening ready to apply, NOT applied here: the mount source must exist on the host
-      # before docker compose renders the bind mount. Proven config: hermes-config.yaml.
-      # HERMES_CONFIG: /etc/hermes/config.yaml
+      # Both loaders (gateway and agent) read the mounted HERMES_HOME/config.yaml.
+      # Do not rely only on HERMES_CONFIG: the gateway loader uses HERMES_HOME directly.
+      HERMES_CONFIG: /opt/data/config.yaml
+      VERTEX_CREDENTIALS_PATH: /run/secrets/qeynox-vertex-service-account.json
+      VERTEX_PROJECT_ID: ${QEYNOX_HERMES_VERTEX_PROJECT:?required}
+      VERTEX_REGION: ${QEYNOX_HERMES_VERTEX_REGION:?required}
+      API_SERVER_MODEL_NAME: ${QEYNOX_HERMES_VERTEX_MODEL:?required}
+      GATEWAY_MULTIPLEX_PROFILES: 'false'
       API_SERVER_ENABLED: 'true'
       API_SERVER_HOST: 0.0.0.0
       API_SERVER_PORT: '8642'
@@ -22,7 +27,17 @@ services:
       HERMES_REDACT_SECRETS: 'true'
     volumes:
       - 'hermes-home:/opt/data'
-      # - './etc/hermes/config.yaml:/etc/hermes/config.yaml:ro'
+      # Preserve the home volume and its underlying config. These file binds mask, not rewrite, it.
+      - type: bind
+        source: ${QEYNOX_HERMES_CONFIG_FILE:?reviewed generated Vertex config file required}
+        target: /opt/data/config.yaml
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${QEYNOX_VERTEX_CREDENTIAL_FILE:?existing host service-account JSON file required}
+        target: /run/secrets/qeynox-vertex-service-account.json
+        read_only: true
+        bind: {create_host_path: false}
     networks:
       coolify:
         aliases: [qeynox-hermes]
@@ -42,7 +57,40 @@ services:
     cap_drop: [ALL]
     cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE]
     healthcheck:
-      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health',timeout=5)"]
+      # Local configuration + liveness ONLY. Does not mint OAuth tokens or claim Vertex auth/inference.
+      # A missing google-auth/requests dependency fails health; no lazy package install here.
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import json, os, stat, sys, urllib.request
+          try:
+              import google.auth.transport.requests
+              from google.oauth2 import service_account
+              path = os.environ['VERTEX_CREDENTIALS_PATH']
+              mode = os.stat(path).st_mode
+              if not stat.S_ISREG(mode) or mode & 0o077:
+                  raise ValueError('credential mode')
+              service_account.Credentials.from_service_account_file(path, scopes=['https://www.googleapis.com/auth/cloud-platform'])
+              with open('/opt/data/config.yaml') as source:
+                  config = json.load(source)
+              model = os.environ['API_SERVER_MODEL_NAME']
+              if config['model'] != {'provider': 'vertex', 'default': model}:
+                  raise ValueError('model configuration')
+              if config['vertex'] != {'project_id': os.environ['VERTEX_PROJECT_ID'], 'region': os.environ['VERTEX_REGION']}:
+                  raise ValueError('Vertex project or region')
+              if config['platform_toolsets']['api_server'] != [] or config.get('mcp_servers') != {} or config.get('fallback_model') != []:
+                  raise ValueError('native tool configuration')
+              if config['platforms']['api_server']['extra']['model_routes'] != {model: {'provider': 'vertex', 'model': model}}:
+                  raise ValueError('model route')
+              with urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=5) as response:
+                  health = json.load(response)
+              if health.get('status') != 'ok' or health.get('platform') != 'hermes-agent':
+                  raise ValueError('runtime liveness')
+          except Exception:
+              print('HERMES_VERTEX_LIVENESS_BLOCKED: inspect dependency, mount permissions, reviewed config and private health', file=sys.stderr)
+              sys.exit(1)
       interval: 30s
       timeout: 10s
       retries: 5

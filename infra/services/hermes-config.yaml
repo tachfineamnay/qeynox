@@ -1,20 +1,12 @@
-# QeyNox preproduction — Hermes API server surface.
-#
-# APPLIED to the live preproduction volume on 2026-11-16 by adding
-#   platform_toolsets:
-#     api_server: []
-# to /opt/data/config.yaml (the supported config surface) and recreating the container.
-# Everything else in that file is unchanged; a backup was written next to it as
-# /opt/data/config.yaml.qeynox-backup. The volume was not reset and no profile was touched.
-#
-# Verified on the running container: GET http://127.0.0.1:8642/v1/toolsets
-#   -> HTTP 200, 28 known toolsets, enabled: []
-# Before the change the same endpoint reported 14 enabled toolsets
-# (web, browser, terminal, file, code_execution, vision, image_gen, bfl, skills,
-#  todo, memory, session_search, delegation, cronjob).
-#
-# Hermes reads this file by mtime, so no restart is required to apply a change.
-# The compose mount below is kept for a future image/volume layout; it is NOT used today
-# because the bind-mount source must exist on the Coolify host first.
-platform_toolsets:
-  api_server: []
+{
+  "platform_toolsets": { "api_server": [] },
+  "mcp_servers": {},
+  "fallback_model": [],
+  "gateway": { "multiplex_profiles": false },
+  "platforms": {
+    "api_server": {
+      "enabled": true,
+      "extra": { "direct_model_requests": false, "model_routes": {} }
+    }
+  }
+}
