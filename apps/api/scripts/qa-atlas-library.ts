@@ -134,6 +134,30 @@ async function startLocalS3Fixture(): Promise<{
       return;
     }
     if (req.method === 'GET') {
+      // P22 BIS: emulate the real S3 ListObjectsV2 API. The storage layer's authoritative
+      // missing-object probe (head → 404 → bucket list check) requires it; without this the
+      // fixture could not behave like the S3/MinIO the production client is written against.
+      if (rawUrl.searchParams.get('list-type') === '2') {
+        const prefix = rawUrl.searchParams.get('prefix') ?? '';
+        const requestedMax = Number(rawUrl.searchParams.get('max-keys') ?? '1000');
+        const maxKeys = Number.isFinite(requestedMax) && requestedMax >= 0 ? requestedMax : 1000;
+        const bucketPrefix = objectPath + '/';
+        const matched = [...objects.keys()]
+          .filter(key => key.startsWith(bucketPrefix + prefix))
+          .sort()
+          .slice(0, maxKeys);
+        const contents = matched
+          .map(key => `<Contents><Key>${key.slice(bucketPrefix.length)}</Key><Size>${objects.get(key)!.content.byteLength}</Size></Contents>`)
+          .join('');
+        const xml =
+          '<?xml version="1.0" encoding="UTF-8"?>' +
+          '<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">' +
+          `<Name>${objectPath}</Name><Prefix>${prefix}</Prefix><KeyCount>${matched.length}</KeyCount>` +
+          `<MaxKeys>${maxKeys}</MaxKeys><IsTruncated>false</IsTruncated>${contents}</ListBucketResult>`;
+        res.writeHead(200, { 'Content-Type': 'application/xml' });
+        res.end(xml);
+        return;
+      }
       const found = objects.get(objectPath);
       if (!found) {
         res.writeHead(404);
@@ -1183,6 +1207,10 @@ async function main(): Promise<void> {
     const addr2 = appWithS3.getHttpServer().address() as AddressInfo;
     const baseUrl2 = `http://127.0.0.1:${addr2.port}`;
 
+    // P22 BIS: capture the exact bytes and digest of each successful export. The reconciliation
+    // seed below must be byte-identical to what the export produced, not a lookup by content type.
+    let exportedJsonBytes: Buffer | undefined;
+    let exportedJsonSha: string | undefined;
     for (const fmt of ['pdf', 'html', 'json'] as const) {
       const expRes = await httpJson(
         baseUrl2,
@@ -1216,7 +1244,15 @@ async function main(): Promise<void> {
         sha256Hex(downloaded) === expBody.sha256,
         `Downloaded ${fmt} bytes over presigned S3 URL match SHA-256 digest`,
       );
+      if (fmt === 'json') {
+        exportedJsonBytes = downloaded;
+        exportedJsonSha = expBody.sha256;
+      }
     }
+    check(
+      Boolean(exportedJsonBytes && exportedJsonSha && exportedJsonBytes.byteLength > 0 && exportedJsonSha === sha256Hex(exportedJsonBytes)),
+      'exact JSON export bytes and digest captured for the reconciliation seed',
+    );
 
     // Verify stored PDF bytes in S3 start with %PDF-1.
     const pdfEntry = [...s3Fixture.objects.values()].find(o => o.contentType === 'application/pdf');
@@ -1225,17 +1261,15 @@ async function main(): Promise<void> {
       'Stored S3 PDF artifact is a real PDF document',
     );
 
-    // Insert a PENDING_UPLOAD row backed by S3 bytes and verify honest disclosure + reconciliation
-    const v3JsonBytes = [...s3Fixture.objects.values()].find(o =>
-      o.contentType.startsWith('application/json'),
-    )!;
-    check(Boolean(v3JsonBytes), 'JSON artifact bytes recorded');
+    // Insert a PENDING_UPLOAD row backed by the EXACT bytes, digest and document version of the
+    // successful JSON export (P22 BIS): reconciliation re-derives exportJson(document) and
+    // digest-compares, so the seed must be byte-identical to what the export produced.
     const pendingRowId = newId();
     const pendingKey = `workspaces/${wsAlphaId}/operations/${op1.id}/results/${op1v4Id}/${pendingRowId}.json`;
     s3Fixture.objects.set(`qeynox-qa-atlas/${pendingKey}`, {
-      content: v3JsonBytes.content,
-      contentType: v3JsonBytes.contentType,
-      sha256: v3JsonBytes.sha256,
+      content: exportedJsonBytes!,
+      contentType: 'application/json',
+      sha256: exportedJsonSha!,
     });
     await connection.db.insert(artifactObjects).values({
       id: pendingRowId,
@@ -1243,9 +1277,9 @@ async function main(): Promise<void> {
       workspaceId: wsAlphaId,
       operationId: op1.id,
       key: pendingKey,
-      sha256: v3JsonBytes.sha256,
-      contentType: v3JsonBytes.contentType,
-      size: v3JsonBytes.content.byteLength,
+      sha256: exportedJsonSha!,
+      contentType: 'application/json',
+      size: exportedJsonBytes!.byteLength,
       state: 'PENDING_UPLOAD',
       createdAt: '2026-11-18T12:30:00.000Z',
     });
@@ -1279,13 +1313,10 @@ async function main(): Promise<void> {
       pending: string[];
       conflicts: string[];
     };
-    check(
-      reconcileRes.status === 201 &&
-        reconcileBody.recovered.includes(pendingRowId) &&
-        reconcileBody.recovered.length === 2 &&
-        reconcileBody.conflicts.length === 0,
-      'POST /reconcile recovers both S3-backed and re-uploaded write-ahead PENDING_UPLOAD artifacts',
-    );
+    check(reconcileRes.status === 201, 'POST /reconcile responds 201');
+    check(reconcileBody.recovered.includes(pendingRowId), 'reconcile recovers the seeded S3-backed PENDING_UPLOAD artifact (recovered=' + JSON.stringify(reconcileBody.recovered) + ', conflicts=' + JSON.stringify(reconcileBody.conflicts) + ')');
+    check(reconcileBody.recovered.length === 2, 'reconcile recovers exactly 2 artifacts (recovered=' + JSON.stringify(reconcileBody.recovered) + ', pending=' + JSON.stringify(reconcileBody.pending) + ', conflicts=' + JSON.stringify(reconcileBody.conflicts) + ')');
+    check(reconcileBody.conflicts.length === 0, 'reconcile reports no conflicts (conflicts=' + JSON.stringify(reconcileBody.conflicts) + ')');
 
     const afterReconcilePage = atlasLibraryPageSchema.parse(
       (
@@ -1298,6 +1329,76 @@ async function main(): Promise<void> {
     check(
       afterReconcilePage.items[0]?.pendingExportCount === 0,
       'After reconciliation, pendingExportCount drops to 0',
+    );
+
+    // ── P22 BIS · negative case: mismatched bytes are rejected, never promoted ──────────────────
+    // A PENDING_UPLOAD row whose recorded bytes/digest do not match the deterministic re-export
+    // is a conflict: it stays PENDING_UPLOAD and its stored object is never overwritten.
+    const mismatchRowId = newId();
+    const mismatchKey = `workspaces/${wsAlphaId}/operations/${op1.id}/results/${op1v4Id}/${mismatchRowId}.json`;
+    const mismatchBytes = Buffer.from('QeyNox QA mismatched artifact bytes ' + randomUUID());
+    const mismatchSha = sha256Hex(mismatchBytes);
+    s3Fixture.objects.set(`qeynox-qa-atlas/${mismatchKey}`, {
+      content: mismatchBytes,
+      contentType: 'application/json',
+      sha256: mismatchSha,
+    });
+    await connection.db.insert(artifactObjects).values({
+      id: mismatchRowId,
+      documentId: op1v4Id,
+      workspaceId: wsAlphaId,
+      operationId: op1.id,
+      key: mismatchKey,
+      sha256: mismatchSha,
+      contentType: 'application/json',
+      size: mismatchBytes.byteLength,
+      state: 'PENDING_UPLOAD',
+      createdAt: '2026-11-18T12:31:00.000Z',
+    });
+    const mismatchReconcileRes = await httpJson(
+      baseUrl2,
+      `/v1/operations/${op1.id}/documents/reconcile`,
+      {
+        method: 'POST',
+        token: ownerSession.token,
+        workspaceId: wsAlphaId,
+      },
+    );
+    const mismatchReconcileBody = mismatchReconcileRes.body as {
+      recovered: string[];
+      pending: string[];
+      conflicts: string[];
+    };
+    check(
+      mismatchReconcileRes.status === 201 &&
+        mismatchReconcileBody.conflicts.includes(mismatchRowId) &&
+        !mismatchReconcileBody.recovered.includes(mismatchRowId),
+      'reconcile rejects a mismatched-bytes PENDING_UPLOAD as a conflict and never promotes it',
+    );
+    const [mismatchRowAfter] = await connection.db
+      .select()
+      .from(artifactObjects)
+      .where(eq(artifactObjects.id, mismatchRowId));
+    check(
+      mismatchRowAfter?.state === 'PENDING_UPLOAD',
+      'the mismatched-bytes row stays PENDING_UPLOAD after reconciliation',
+    );
+    const mismatchObjectAfter = s3Fixture.objects.get(`qeynox-qa-atlas/${mismatchKey}`);
+    check(
+      Boolean(mismatchObjectAfter) && mismatchObjectAfter!.sha256 === mismatchSha && mismatchObjectAfter!.content.equals(mismatchBytes),
+      'the mismatched stored object bytes are never overwritten by reconciliation',
+    );
+    const postNegativePage = atlasLibraryPageSchema.parse(
+      (
+        await httpJson(baseUrl2, '/v1/results?state=DELIVERABLE', {
+          token: ownerSession.token,
+          workspaceId: wsAlphaId,
+        })
+      ).body,
+    );
+    check(
+      postNegativePage.items[0]?.pendingExportCount === 1,
+      'pendingExportCount reflects only the rejected mismatched row (1)',
     );
 
     // ── Controlled Result Sharing: Gates, Expiry, Sanitization & Revocation ──

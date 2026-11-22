@@ -117,8 +117,18 @@ test('broker rejects malformed budgets before ledger reservation or provider exe
     }
   }
   assert.equal(reservations, 0);
-  await assert.rejects(broker.invoke(call, permission), /Reached ledger/, 'valid zero-cost call reaches the ledger');
-  assert.equal(reservations, 1);
+  // P22 BIS: a raw pre-provider ledger failure is sanitized by the broker — the caller gets the
+  // classified domain error with its diagnostic context, never the raw internal error text.
+  const ledgerFailure = await broker.invoke(call, permission).then(
+    () => { throw new Error('EXPECTED the valid zero-cost call to fail at the ledger stub'); },
+    (error: unknown) => error,
+  );
+  assert(ledgerFailure instanceof DomainError, 'a pre-provider ledger failure surfaces as a DomainError');
+  assert.equal((ledgerFailure as DomainError).code, 'UNEXPECTED_EXECUTION_ERROR', 'error classification preserved for a raw internal failure');
+  assert.equal((ledgerFailure as DomainError).message, 'Tool failed before provider admission', 'sanitized pre-provider message replaces raw internal text');
+  assert.equal((ledgerFailure as DomainError).context?.toolInvocation, 'NOT_STARTED', 'diagnostic context records NOT_STARTED');
+  assert(!String((ledgerFailure as DomainError).message).includes('Reached ledger'), 'no raw internal ledger error leaks to the caller');
+  assert.equal(reservations, 1, 'the valid zero-cost call still reached the ledger before provider execution');
 });
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {

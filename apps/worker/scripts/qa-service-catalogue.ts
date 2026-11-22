@@ -193,8 +193,12 @@ async function partTwo(): Promise<'PASSED' | 'BLOCKED'> {
     const member: Principal = { userId: memberId as ID, workspaceId: workspaceId as ID, roles: ['MEMBER'] };
 
     process.env.QEYNOX_OPERATOR_USER_IDS = ownerId;
+    // P22 BIS: provider readiness is configured explicitly inside the isolated QA environment —
+    // World Bank switch, egress attestation and host allowlist — never inherited from ambient shell
+    // state, so the availability computation below is deterministic.
     process.env.QEYNOX_WORLD_BANK_ENABLED = 'true';
     process.env.QEYNOX_NETWORK_POLICY_ATTESTED = 'true';
+    process.env.QEYNOX_EGRESS_ALLOWED_HOSTS = 'api.worldbank.org';
 
     // --- 1. An empty deployment serves an honest empty catalogue ------------------------------
     const emptyCatalogue = new ServiceCatalogueService(store, undefined, null);

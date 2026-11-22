@@ -89,7 +89,9 @@ async function startFixture(mode: 'ok' | 'slow' | 'refuse'): Promise<Fixture> {
           usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
         }));
       };
-      if (mode === 'slow') setTimeout(respond, 400); else respond();
+      // The slow fixture must outlast the smallest supported Hermes timeout (250 ms) so the real
+      // TIMEOUT path is exercised instead of a fast reply or an unsupported timeout value.
+      if (mode === 'slow') setTimeout(respond, 1200); else respond();
     });
   });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -455,7 +457,10 @@ async function main(): Promise<void> {
     pass('budget exhaustion ends in an explicit terminal state with the policy cause recorded');
 
     // ══ 9. Timed-out workflow leaves an explicit, recoverable state ═══════════════════════════════
-    process.env.HERMES_REQUEST_TIMEOUT_MS = '50';
+    // P22 BIS: 50 ms is rejected by the Hermes settings contract (250..120000 ms), which made the
+    // adapter fail with NOT_CONFIGURED instead of reaching the real TIMEOUT path. Use the smallest
+    // supported timeout against a fixture that replies only after it has expired.
+    process.env.HERMES_REQUEST_TIMEOUT_MS = '250';
     process.env.HERMES_API_BASE_URL = 'http://127.0.0.1:' + slow.port;
     handler = await rebuildWorker();
     const timedOut = await scenario('timeout', 1);

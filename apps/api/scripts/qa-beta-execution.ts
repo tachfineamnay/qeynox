@@ -162,11 +162,16 @@ async function main(): Promise<void> {
   process.env.QEYNOX_ALLOW_REGISTRATION = 'true';
   process.env.QEYNOX_SERVICE_CATALOG_PATH = suiteBundlePath;
   process.env.QEYNOX_WORLD_BANK_ENABLED = 'true';
-  process.env.QEYNOX_BRAVE_SEARCH_ENABLED = 'false';
-  delete process.env.QEYNOX_BRAVE_SEARCH_API_KEY;
+  // P22 BIS: the Brave fixture provider is configured explicitly (switch + QA fixture credential)
+  // so every pack's required provider resolves deterministically inside this isolated run. The
+  // fixture credential is never used for a live call — Brave traffic below goes through the
+  // injected local fixture connector, never the public Brave API.
+  process.env.QEYNOX_BRAVE_SEARCH_ENABLED = 'true';
+  process.env.QEYNOX_BRAVE_SEARCH_API_KEY = 'qa-fixture-brave-credential-not-a-secret';
   delete process.env.QEYNOX_STRIPE_SECRET_KEY;
   delete process.env.QEYNOX_STRIPE_WEBHOOK_SECRET;
   process.env.QEYNOX_NETWORK_POLICY_ATTESTED = 'true';
+  process.env.QEYNOX_EGRESS_ALLOWED_HOSTS = 'api.worldbank.org,api.search.brave.com';
   delete process.env.QEYNOX_COMMERCE_MODE;
   let connection: ReturnType<typeof connectDatabase> | undefined;
   let app: INestApplication | undefined;
@@ -328,6 +333,15 @@ async function main(): Promise<void> {
     }
     assert(JSON.stringify(await paymentFootprint()) === JSON.stringify({ p: 0, r: 0, e: 0 }), 'no payment, refund or payment-event row exists after 8 acceptances');
     pass('BETA_FREE + ACTIVE grant: 8 packs quoted and accepted over HTTP at published prices; 6 priced orders BETA_AUTHORIZED with a bound beta authorization (0 due), 2 free offers AUTHORIZED unchanged; read models truthful');
+
+    // ── P22 BIS · provider readiness truthfulness ───────────────────────────────────────────────
+    // With the required providers disabled the suite must never claim all 8 packs can start:
+    // flipping the Brave switch off has to surface a PROVIDER_NOT_CONFIGURED blocker.
+    process.env.QEYNOX_BRAVE_SEARCH_ENABLED = 'false';
+    const disabledProviderMission = missionsA.get('strategy')!;
+    const disabledProviderReadiness = await new PlanReadService(store, () => OPERATIONAL_RUNTIME, resolveCommercePolicy('BETA_FREE')).readiness(tenantA.principal, disabledProviderMission.operationId);
+    assert(disabledProviderReadiness.canStart === false && disabledProviderReadiness.blockers.some(blocker => blocker.code === 'PROVIDER_NOT_CONFIGURED'), 'a disabled required provider blocks readiness instead of claiming all 8 packs startable');
+    process.env.QEYNOX_BRAVE_SEARCH_ENABLED = 'true';
 
     // ── Group 3 · all 8 packs executed and delivered without Stripe ──────────────────────────────
     const allCapabilities = [...capabilityByPack.values()] as ID[];
