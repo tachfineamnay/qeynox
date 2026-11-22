@@ -1,3 +1,4 @@
+import { prepareQaPackStep } from './qa-pack-step';
 /**
  * MISSION A21.03 — FREE BETA EXECUTION AUTHORIZATION QA (disposable real PostgreSQL + real HTTP API).
  *
@@ -412,7 +413,20 @@ async function main(): Promise<void> {
         if (!pending.length) break;
         for (const current of pending) {
           await db.update(attempts).set({ state: 'RUNNING', payload: { ...current.payload, state: 'RUNNING', startedAt: new Date().toISOString(), version: current.payload.version + 1 } }).where(eq(attempts.id, current.id));
-          state = await progression.complete(current.id as ID, { text: JSON.stringify(validated), sourceId, evidenceId, quality: 'UNVERIFIED' }, 'UNVERIFIED');
+          const finalStep = await prepareQaPackStep(store, actor, current.payload, validated);
+          if (finalStep.businessDeliverable) {
+            assert(finalStep.claimIds.length > 0, pack + ': validated final output registered domain claims');
+            for (const claimId of finalStep.claimIds) {
+              // The QA corpus deliberately supplies corroborating captures (two distinct sources for
+              // strategy/content). Link those through ClaimsService; never weaken minimumSources.
+              for (const link of recorded) await claimsService.attach(actor, claimId, link.sourceId, 'SUPPORTS', link.evidenceId, link.digest);
+              const finalPolicy = await claimsService.assessActive(actor, claimId);
+              assert(finalPolicy.status === 'NEEDS_HUMAN_REVIEW', pack + ': final domain evidence still requires human review');
+              const reviewedFinal = await claimsService.assess(actor, { claimId, capabilityId: capabilityByPack.get(pack) as ID, policyVersion: 1, reason: 'QA human review of final domain claim and captured evidence', reviewerDecision: 'SUPPORTED' });
+              assert(reviewedFinal.status === 'SUPPORTED', pack + ': final domain claim requires explicit human assessment');
+            }
+          }
+          state = await progression.complete(current.id as ID, { text: JSON.stringify(validated), sourceId, evidenceId, quality: 'UNVERIFIED', ...(finalStep.businessDeliverable ? { businessDeliverable: finalStep.businessDeliverable } : {}) }, 'UNVERIFIED');
         }
       }
       assert(state === 'AWAITING_REVIEW', pack + ': every plan step completed into AWAITING_REVIEW');

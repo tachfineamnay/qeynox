@@ -1,0 +1,210 @@
+First complete-matrix attempt: new lifecycle test exposed an overly wide Process signal port.
+Corrected by defining WorkerSignalsPort with void returns, without casts or suppressions.
+Final root checks are in validation-finale.txt.
+
+
+> qeynox@0.1.0 typecheck /home/user/qeynox
+> turbo run typecheck
+
+turbo 2.5.8
+
+• Packages in scope: @qeynox/api, @qeynox/application, @qeynox/contracts, @qeynox/control, @qeynox/domain, @qeynox/engine, @qeynox/orchestration, @qeynox/persistence, @qeynox/roles, @qeynox/tools, @qeynox/web, @qeynox/worker
+• Running typecheck in 12 packages
+• Remote caching disabled
+@qeynox/control:typecheck: cache hit, replaying logs 30e438e6a799ce01
+@qeynox/control:typecheck:
+@qeynox/control:typecheck: > @qeynox/control@0.1.0 typecheck /home/user/qeynox/apps/control
+@qeynox/control:typecheck: > next typegen && tsc --noEmit
+@qeynox/control:typecheck:
+@qeynox/control:typecheck: Generating route types...
+@qeynox/control:typecheck: ✓ Types generated successfully
+@qeynox/web:typecheck: cache hit, replaying logs d763273eac22dd4c
+@qeynox/web:typecheck:
+@qeynox/web:typecheck: > @qeynox/web@0.1.0 typecheck /home/user/qeynox/apps/web
+@qeynox/web:typecheck: > next typegen && tsc --noEmit
+@qeynox/web:typecheck:
+@qeynox/web:typecheck: Generating route types...
+@qeynox/web:typecheck: ✓ Types generated successfully
+@qeynox/api:typecheck: cache hit, replaying logs 8983e514344c9c02
+@qeynox/api:typecheck:
+@qeynox/api:typecheck: > @qeynox/api@0.1.0 typecheck /home/user/qeynox/apps/api
+@qeynox/api:typecheck: > tsc --noEmit -p tsconfig.json
+@qeynox/api:typecheck:
+@qeynox/worker:typecheck: cache miss, executing f6daac9b250260f9
+@qeynox/worker:typecheck:
+@qeynox/worker:typecheck: > @qeynox/worker@0.1.0 typecheck /home/user/qeynox/apps/worker
+@qeynox/worker:typecheck: > tsc --noEmit -p tsconfig.json
+@qeynox/worker:typecheck:
+@qeynox/worker:typecheck: scripts/qa-worker-lifecycle.ts(25,8): error TS2345: Argument of type 'EventEmitter<DefaultEventMap>' is not assignable to parameter of type 'Pick<Process, "on" | "off">'.
+@qeynox/worker:typecheck:   The types returned by 'on(...)' are incompatible between these types.
+@qeynox/worker:typecheck:     Type 'EventEmitter<DefaultEventMap>' is missing the following properties from type 'Process': stdout, stderr, stdin, argv, and 48 more.
+@qeynox/worker:typecheck: scripts/qa-worker-lifecycle.ts(47,6): error TS2345: Argument of type 'EventEmitter<DefaultEventMap>' is not assignable to parameter of type 'Pick<Process, "on" | "off">'.
+@qeynox/worker:typecheck:   The types returned by 'on(...)' are incompatible between these types.
+@qeynox/worker:typecheck:     Type 'EventEmitter<DefaultEventMap>' is missing the following properties from type 'Process': stdout, stderr, stdin, argv, and 48 more.
+@qeynox/worker:typecheck: scripts/qa-worker-lifecycle.ts(56,88): error TS2345: Argument of type 'EventEmitter<DefaultEventMap>' is not assignable to parameter of type 'Pick<Process, "on" | "off">'.
+@qeynox/worker:typecheck:   The types returned by 'on(...)' are incompatible between these types.
+@qeynox/worker:typecheck:     Type 'EventEmitter<DefaultEventMap>' is missing the following properties from type 'Process': stdout, stderr, stdin, argv, and 48 more.
+@qeynox/worker:typecheck: scripts/qa-worker-lifecycle.ts(66,6): error TS2345: Argument of type 'EventEmitter<DefaultEventMap>' is not assignable to parameter of type 'Pick<Process, "on" | "off">'.
+@qeynox/worker:typecheck:   The types returned by 'on(...)' are incompatible between these types.
+@qeynox/worker:typecheck:     Type 'EventEmitter<DefaultEventMap>' is missing the following properties from type 'Process': stdout, stderr, stdin, argv, and 48 more.
+@qeynox/worker:typecheck:  ELIFECYCLE  Command failed with exit code 2.
+@qeynox/worker:typecheck: ERROR: command finished with error: command (/home/user/qeynox/apps/worker) /usr/local/bin/pnpm run typecheck exited (2)
+@qeynox/worker#typecheck: command (/home/user/qeynox/apps/worker) /usr/local/bin/pnpm run typecheck exited (2)
+
+ Tasks:    3 successful, 4 total
+Cached:    3 cached, 4 total
+  Time:    10.111s
+Failed:    @qeynox/worker#typecheck
+
+ ERROR  run failed: command  exited (2)
+ ELIFECYCLE  Command failed with exit code 2.
+
+
+> qeynox@0.1.0 build /home/user/qeynox
+> turbo run build
+
+turbo 2.5.8
+
+• Packages in scope: @qeynox/api, @qeynox/application, @qeynox/contracts, @qeynox/control, @qeynox/domain, @qeynox/engine, @qeynox/orchestration, @qeynox/persistence, @qeynox/roles, @qeynox/tools, @qeynox/web, @qeynox/worker
+• Running build in 12 packages
+• Remote caching disabled
+@qeynox/control:build: cache hit, replaying logs d67b058e34f4d07f
+@qeynox/control:build:
+@qeynox/control:build: > @qeynox/control@0.1.0 build /home/user/qeynox/apps/control
+@qeynox/control:build: > next build
+@qeynox/control:build:
+@qeynox/control:build: ▲ Next.js 16.4.6 (Turbopack)
+@qeynox/control:build: ✓ Running next.config.ts took 67ms
+@qeynox/control:build:
+@qeynox/control:build:   Creating an optimized production build ...
+@qeynox/control:build: ✓ Compiled successfully in 16.6s
+@qeynox/control:build:   Running TypeScript ...
+@qeynox/control:build:   Finished TypeScript in 12.4s ...
+@qeynox/control:build:   Collecting page data using 1 worker ...
+@qeynox/control:build:   Generating static pages using 1 worker (0/2) ...
+@qeynox/control:build: ✓ Generating static pages using 1 worker (2/2) in 306ms
+@qeynox/control:build:   Finalizing page optimization ...
+@qeynox/control:build:
+@qeynox/control:build: Route (app)
+@qeynox/control:build: ┌ ○ /_not-found
+@qeynox/control:build: ├ ƒ /[lang]
+@qeynox/control:build: ├ ƒ /[lang]/account
+@qeynox/control:build: ├ ƒ /[lang]/admins
+@qeynox/control:build: ├ ƒ /[lang]/audit
+@qeynox/control:build: ├ ƒ /[lang]/beta
+@qeynox/control:build: ├ ƒ /[lang]/beta/[id]
+@qeynox/control:build: ├ ƒ /[lang]/configuration
+@qeynox/control:build: ├ ƒ /[lang]/operations
+@qeynox/control:build: ├ ƒ /[lang]/operations/[id]
+@qeynox/control:build: ├ ƒ /[lang]/operations/health
+@qeynox/control:build: ├ ƒ /[lang]/operations/releases
+@qeynox/control:build: ├ ƒ /[lang]/organizations
+@qeynox/control:build: ├ ƒ /[lang]/organizations/[id]
+@qeynox/control:build: ├ ƒ /[lang]/settings
+@qeynox/control:build: ├ ƒ /[lang]/support
+@qeynox/control:build: ├ ƒ /[lang]/support/[id]
+@qeynox/control:build: ├ ƒ /[lang]/users
+@qeynox/control:build: └ ƒ /[lang]/users/[id]
+@qeynox/control:build:
+@qeynox/control:build:
+@qeynox/control:build: ○  (Static)   prerendered as static content
+@qeynox/control:build: ƒ  (Dynamic)  server-rendered on demand
+@qeynox/control:build:
+@qeynox/worker:build: cache miss, executing 619e2bf2d220cf60
+@qeynox/api:build: cache miss, executing 0de1084e901354c9
+@qeynox/web:build: cache hit, replaying logs b94fa44848ebf91a
+@qeynox/web:build:
+@qeynox/web:build: > @qeynox/web@0.1.0 build /home/user/qeynox/apps/web
+@qeynox/web:build: > next build
+@qeynox/web:build:
+@qeynox/web:build: ▲ Next.js 16.4.6 (Turbopack)
+@qeynox/web:build: ✓ Running next.config.ts took 79ms
+@qeynox/web:build: Attention: Next.js now collects completely anonymous telemetry regarding usage.
+@qeynox/web:build: This information is used to shape Next.js' roadmap and prioritize features.
+@qeynox/web:build: You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+@qeynox/web:build: https://nextjs.org/telemetry
+@qeynox/web:build:
+@qeynox/web:build:
+@qeynox/web:build:   Creating an optimized production build ...
+@qeynox/web:build: ✓ Compiled successfully in 27.2s
+@qeynox/web:build:   Running TypeScript ...
+@qeynox/web:build:   Finished TypeScript in 13.7s ...
+@qeynox/web:build:   Collecting page data using 1 worker ...
+@qeynox/web:build:   Generating static pages using 1 worker (0/4) ...
+@qeynox/web:build:   Generating static pages using 1 worker (1/4)
+@qeynox/web:build:   Generating static pages using 1 worker (2/4)
+@qeynox/web:build:   Generating static pages using 1 worker (3/4)
+@qeynox/web:build: ✓ Generating static pages using 1 worker (4/4) in 109ms
+@qeynox/web:build:   Finalizing page optimization ...
+@qeynox/web:build:
+@qeynox/web:build: Route (app)
+@qeynox/web:build: ┌ ○ /_not-found
+@qeynox/web:build: ├ ƒ /[lang]
+@qeynox/web:build: ├ ƒ /[lang]/account
+@qeynox/web:build: ├ ƒ /[lang]/account/recover
+@qeynox/web:build: ├ ƒ /[lang]/account/register
+@qeynox/web:build: ├ ƒ /[lang]/account/reset
+@qeynox/web:build: ├ ƒ /[lang]/account/settings
+@qeynox/web:build: ├ ƒ /[lang]/account/verify
+@qeynox/web:build: ├ ƒ /[lang]/capabilities
+@qeynox/web:build: ├ ƒ /[lang]/connections
+@qeynox/web:build: ├ ƒ /[lang]/contact
+@qeynox/web:build: ├ ƒ /[lang]/documents
+@qeynox/web:build: ├ ƒ /[lang]/how-it-works
+@qeynox/web:build: ├ ƒ /[lang]/legal/cookies
+@qeynox/web:build: ├ ƒ /[lang]/legal/notice
+@qeynox/web:build: ├ ƒ /[lang]/legal/privacy
+@qeynox/web:build: ├ ƒ /[lang]/legal/terms
+@qeynox/web:build: ├ ƒ /[lang]/manifesto
+@qeynox/web:build: ├ ƒ /[lang]/missions
+@qeynox/web:build: ├ ƒ /[lang]/missions/[id]
+@qeynox/web:build: ├ ƒ /[lang]/missions/[id]/results/[documentId]
+@qeynox/web:build: ├ ƒ /[lang]/mydash
+@qeynox/web:build: ├ ƒ /[lang]/notifications
+@qeynox/web:build: ├ ƒ /[lang]/results
+@qeynox/web:build: ├ ƒ /[lang]/results/[documentId]
+@qeynox/web:build: ├ ƒ /[lang]/results/shared/[token]
+@qeynox/web:build: ├ ƒ /[lang]/services
+@qeynox/web:build: ├ ƒ /[lang]/services/[offerId]
+@qeynox/web:build: ├ ƒ /[lang]/soul
+@qeynox/web:build: ├ ƒ /[lang]/support
+@qeynox/web:build: ├ ƒ /[lang]/support/[id]
+@qeynox/web:build: ├ ƒ /[lang]/workspaces
+@qeynox/web:build: ├ ○ /robots.txt
+@qeynox/web:build: └ ○ /sitemap.xml
+@qeynox/web:build:
+@qeynox/web:build:
+@qeynox/web:build: ○  (Static)   prerendered as static content
+@qeynox/web:build: ƒ  (Dynamic)  server-rendered on demand
+@qeynox/web:build:
+@qeynox/worker:build:
+@qeynox/worker:build: > @qeynox/worker@0.1.0 build /home/user/qeynox/apps/worker
+@qeynox/worker:build: > tsc -p tsconfig.json
+@qeynox/worker:build:
+@qeynox/api:build:
+@qeynox/api:build: > @qeynox/api@0.1.0 build /home/user/qeynox/apps/api
+@qeynox/api:build: > tsc -p tsconfig.json
+@qeynox/api:build:
+@qeynox/worker:build: scripts/qa-worker-lifecycle.ts(25,8): error TS2345: Argument of type 'EventEmitter<DefaultEventMap>' is not assignable to parameter of type 'Pick<Process, "on" | "off">'.
+@qeynox/worker:build:   The types returned by 'on(...)' are incompatible between these types.
+@qeynox/worker:build:     Type 'EventEmitter<DefaultEventMap>' is missing the following properties from type 'Process': stdout, stderr, stdin, argv, and 48 more.
+@qeynox/worker:build: scripts/qa-worker-lifecycle.ts(47,6): error TS2345: Argument of type 'EventEmitter<DefaultEventMap>' is not assignable to parameter of type 'Pick<Process, "on" | "off">'.
+@qeynox/worker:build:   The types returned by 'on(...)' are incompatible between these types.
+@qeynox/worker:build:     Type 'EventEmitter<DefaultEventMap>' is missing the following properties from type 'Process': stdout, stderr, stdin, argv, and 48 more.
+@qeynox/worker:build: scripts/qa-worker-lifecycle.ts(56,88): error TS2345: Argument of type 'EventEmitter<DefaultEventMap>' is not assignable to parameter of type 'Pick<Process, "on" | "off">'.
+@qeynox/worker:build:   The types returned by 'on(...)' are incompatible between these types.
+@qeynox/worker:build:     Type 'EventEmitter<DefaultEventMap>' is missing the following properties from type 'Process': stdout, stderr, stdin, argv, and 48 more.
+@qeynox/worker:build: scripts/qa-worker-lifecycle.ts(66,6): error TS2345: Argument of type 'EventEmitter<DefaultEventMap>' is not assignable to parameter of type 'Pick<Process, "on" | "off">'.
+@qeynox/worker:build:   The types returned by 'on(...)' are incompatible between these types.
+@qeynox/worker:build:     Type 'EventEmitter<DefaultEventMap>' is missing the following properties from type 'Process': stdout, stderr, stdin, argv, and 48 more.
+@qeynox/worker:build:  ELIFECYCLE  Command failed with exit code 2.
+@qeynox/worker:build: ERROR: command finished with error: command (/home/user/qeynox/apps/worker) /usr/local/bin/pnpm run build exited (2)
+@qeynox/worker#build: command (/home/user/qeynox/apps/worker) /usr/local/bin/pnpm run build exited (2)
+
+ Tasks:    2 successful, 4 total
+Cached:    2 cached, 4 total
+  Time:    18.793s
+Failed:    @qeynox/worker#build
+
+ ERROR  run failed: command  exited (2)
+ ELIFECYCLE  Command failed with exit code 2.

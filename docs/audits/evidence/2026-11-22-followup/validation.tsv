@@ -1,0 +1,50 @@
+command	baseline_status	baseline_exit	final_status	final_exit	boundary
+typecheck	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+build	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:task02	FAIL	1	PASS	0	See raw transcript for fixture and integration boundaries
+qa:backend	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:agent-runtime	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:connectors	BLOCKED	1	BLOCKED	1	World Bank TLS/network
+qa:raas	BLOCKED	1	BLOCKED	1	World Bank TLS/network
+qa:storage	BLOCKED	0	BLOCKED	0	S3 absent (exit 0 is not PASS)
+qa:egress	BLOCKED	1	BLOCKED	1	World Bank TLS/network
+qa:platform-authorization	FAIL	1	PASS	0	See raw transcript for fixture and integration boundaries
+qa:platform-admin	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:platform-users	FAIL	1	PASS	0	See raw transcript for fixture and integration boundaries
+qa:platform-organizations	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:platform-configuration	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:chatwoot	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:support-isolation	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:support-private	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:support-concurrency	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:support-reconciliation	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:hermes-contract	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:hermes-live	BLOCKED	3	BLOCKED	3	Hermes QA endpoint/key absent
+qa:hermes-live-selftest	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:runtime-readiness	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:runtime-verification	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:a03-service	BLOCKED	3	BLOCKED	3	World Bank TLS/network
+qa:service-catalogue	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:connector-hub	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:identity	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:soul-intelligence	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:pilot-planner	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:mission-lifecycle	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:atlas-results	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:stripe-payments	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:payment-freeze	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:beta-access	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:beta-execution	FAIL	1	PASS	0	See raw transcript for fixture and integration boundaries
+qa:verification-resend	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:registration	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:beta-journey	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:brave-search	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:workspace-management	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:documents	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:notifications	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:business-packs	FAIL	1	PASS	0	See raw transcript for fixture and integration boundaries
+qa:atlas-library	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:security-regressions	PASS	0	PASS	0	See raw transcript for fixture and integration boundaries
+qa:hardening-followup	NOT_RUN	not-run	PASS	0	See raw transcript for fixture and integration boundaries
+qa:tool-authorization	NOT_RUN	not-run	PASS	0	See raw transcript for fixture and integration boundaries
+qa:worker-lifecycle	NOT_RUN	not-run	PASS	0	See raw transcript for fixture and integration boundaries

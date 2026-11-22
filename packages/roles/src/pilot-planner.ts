@@ -299,6 +299,8 @@ export interface PlanProposalPort {
 /** Shared, bounded idempotency cache for proposal attempts. Module scope so it survives requests. */
 export const proposalAttemptCache = new Map<string, PlanProposalResult>();
 
+export type ProposalCapabilitiesPort = (actor: Principal) => Promise<CapabilityRegistry>;
+
 export class PlanProposalService implements PlanProposalPort {
   private readonly now: () => Date;
   private readonly timeoutMs: number;
@@ -307,7 +309,7 @@ export class PlanProposalService implements PlanProposalPort {
   constructor(
     private readonly engine: EnginePort,
     private readonly profileFor: (actor: Principal) => Promise<AgentProfile>,
-    private readonly capabilities: CapabilityRegistry,
+    private readonly capabilities: CapabilityRegistry | ProposalCapabilitiesPort,
     options: PlanProposalOptions = {},
   ) {
     this.now = options.now ?? (() => new Date());
@@ -327,15 +329,12 @@ export class PlanProposalService implements PlanProposalPort {
       throw new DomainError('INVALID_INPUT', 'An attempt key of 8 to 120 characters is required for idempotent proposals');
     }
     const budget = await this.peekBudget(actor);
-    const catalogue = buildCapabilityCatalogue(this.capabilities);
+    // One fresh snapshot per proposal, never a database read during dependency injection.
+    const capabilities = typeof this.capabilities === 'function' ? await this.capabilities(actor) : this.capabilities;
+    const catalogue = buildCapabilityCatalogue(capabilities);
     if (catalogue.length === 0) {
       return this.fallback('NO_CAPABILITIES', false, budget);
     }
-
-    // Scoped by workspace AND user AND operation: an attempt key can never replay across missions.
-    const cacheKey = actor.workspaceId + ':' + actor.userId + ':' + operation.id + ':' + input.attemptKey;
-    const prior = this.cache.get(cacheKey);
-    if (prior) return prior;
 
     const answers = (input.answers ?? []).slice(0, 10);
     let profile: AgentProfile;
@@ -344,6 +343,16 @@ export class PlanProposalService implements PlanProposalPort {
     } catch (error: unknown) {
       return this.fallbackFromError(error, budget);
     }
+
+    // Configuration and prompt changes invalidate a cached result; unchanged retries stay free.
+    // Include readiness/budget so a cache hit cannot revive stale operational or monetary claims.
+    const fingerprint = createHash('sha256').update(JSON.stringify({
+      operation, goal, input, catalogue, capabilityConfiguration: capabilities.list(), budget, profile,
+      readiness: readiness ? [...readiness.entries()].sort(([left], [right]) => left.localeCompare(right)) : [],
+    })).digest('hex');
+    const cacheKey = JSON.stringify([actor.workspaceId, actor.userId, operation.id, input.attemptKey, fingerprint]);
+    const prior = this.cache.get(cacheKey);
+    if (prior) return prior;
 
     let outcome: EngineOutcome;
     const controller = new AbortController();
@@ -376,7 +385,7 @@ export class PlanProposalService implements PlanProposalPort {
       if (timer) clearTimeout(timer);
     }
 
-    const result = this.interpret(outcome, input, catalogue, budget, readiness);
+    const result = this.interpret(outcome, input, catalogue, capabilities, budget, readiness);
     this.remember(cacheKey, result);
     return result;
   }
@@ -385,6 +394,7 @@ export class PlanProposalService implements PlanProposalPort {
     outcome: EngineOutcome,
     input: PlanProposalRequestInput,
     catalogue: ReturnType<typeof buildCapabilityCatalogue>,
+    capabilities: CapabilityRegistry,
     budget: ProposalBudgetBoundary,
     readiness?: ReadonlyMap<string, ProposalReadiness>,
   ): PlanProposalResult {
@@ -397,7 +407,7 @@ export class PlanProposalService implements PlanProposalPort {
 
     const parsed = planProposalOutputSchema.safeParse(extractPlanJson(content));
     if (!parsed.success) return this.fallback('INVALID_PROPOSAL', true, budget);
-    const validated = validatePlanProposal(parsed.data, this.capabilities);
+    const validated = validatePlanProposal(parsed.data, capabilities);
     if (!validated.ok) return this.fallback('INVALID_PROPOSAL', true, budget);
 
     const usedIds = [...new Set(validated.value.steps.map(step => step.capabilityId))];

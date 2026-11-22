@@ -1,3 +1,4 @@
+import { runManagedWorker } from './worker-lifecycle';
 import { HatchetClient } from '@hatchet-dev/typescript-sdk/v1';
 import { DomainError } from '@qeynox/domain';
 import type { ExecutionRequest,ExternalExecution,OrchestratorPort } from './port';
@@ -69,10 +70,9 @@ export function createHatchetInspector(): HatchetRunInspector|undefined {
   if(!process.env.HATCHET_CLIENT_TOKEN)return undefined;
   try {return new HatchetRunInspector(HatchetClient.init());} catch {return undefined;}
 }
-export async function startQeyNoxWorker(deps:{handler:StepHandler;startDispatcher:(orchestrator:OrchestratorPort)=>Promise<void>}) {
+export async function startQeyNoxWorker(deps:{handler:StepHandler;startDispatcher:(orchestrator:OrchestratorPort)=>Promise<void>;stopBackground:()=>Promise<void>}) {
   const runtime=createHatchetRuntime(deps.handler);
-  const worker=await runtime.client.worker(WORKER_NAME,{workflows:[runtime.task],slots:10});
+  const worker=await runtime.client.worker(WORKER_NAME,{workflows:[runtime.task],slots:10,handleKill:false});
   // The dispatcher must poll committed outbox intent while the worker is long-running.
-  await deps.startDispatcher(new HatchetAdapter(runtime));
-  await worker.start();
+  await runManagedWorker(worker,{start:()=>deps.startDispatcher(new HatchetAdapter(runtime)),stop:()=>deps.stopBackground()});
 }

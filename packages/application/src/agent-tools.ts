@@ -3,7 +3,7 @@ import { and,eq } from 'drizzle-orm';
 import { DomainError,isConsentActive,newId,type ID,type Principal,type Evidence,type Source } from '@qeynox/domain';
 import { QeyNoxStore,approvals,identityMemberships,sourceSnapshots } from '@qeynox/persistence';
 import type { EnginePort,AgentProfile,EngineOutcome,EngineRequest } from '@qeynox/engine';
-import { ToolBroker,ToolRegistry,PgToolLedger,configuredProviderRateLimiter,type ConnectorCall,type PermissionContext } from '@qeynox/tools';
+import { ToolBroker,ToolRegistry,PgToolLedger,PgToolAuthorization,configuredProviderRateLimiter,type ConnectorCall,type PermissionContext } from '@qeynox/tools';
 import { BudgetService } from './budgets';
 import type { CapabilityDefinition } from '@qeynox/domain';
 
@@ -17,7 +17,7 @@ export interface BrokeredRunResult { readonly outcome:EngineOutcome; readonly ob
 export class BrokeredAgentExecutor {
  private readonly broker:ToolBroker;
  constructor(private readonly store:QeyNoxStore,private readonly engine:EnginePort,registry:ToolRegistry){
-   this.broker=new ToolBroker(registry,new PgToolLedger(store.db),configuredProviderRateLimiter());
+   this.broker=new ToolBroker(registry,new PgToolLedger(store.db),configuredProviderRateLimiter(),new PgToolAuthorization(store.db));
  }
  async run(request:EngineRequest,capability:CapabilityDefinition):Promise<BrokeredRunResult>{
    const [operation,attempt]=await Promise.all([

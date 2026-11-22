@@ -1,3 +1,4 @@
+import { prepareQaPackStep } from './qa-pack-step';
 /**
  * MISSION A16 — Eight Business Capability Packs QA (pure contract matrix + isolated PostgreSQL + real HTTP).
  *
@@ -1198,9 +1199,17 @@ try {
         payload: { ...currentAttempt.payload, state: 'RUNNING', startedAt: new Date().toISOString(), version: currentAttempt.payload.version + 1 },
       })
       .where(eq(attempts.id, currentAttempt.id));
+    const finalStep = await prepareQaPackStep(store, actorA, currentAttempt.payload, validatedOpsDeliverable);
+    if (finalStep.businessDeliverable) {
+      check(finalStep.claimIds.length > 0, 'final Operations output registers domain claims');
+      for (const claimId of finalStep.claimIds) {
+        const reviewedFinal = await claimsService.assess(actorA, { claimId, capabilityId: 'capability-slot-6-v1' as ID, policyVersion: 1, reason: 'QA human review of final domain claim and captured evidence', reviewerDecision: 'SUPPORTED' });
+        check(reviewedFinal.status === 'SUPPORTED', 'final Operations claim is human-reviewed');
+      }
+    }
     lastProgressionState = await progression.complete(
       currentAttempt.id as ID,
-      { text: JSON.stringify(validatedOpsDeliverable), sourceId, evidenceId, quality: 'UNVERIFIED' },
+      { text: JSON.stringify(validatedOpsDeliverable), sourceId, evidenceId, quality: 'UNVERIFIED', ...(finalStep.businessDeliverable ? { businessDeliverable: finalStep.businessDeliverable } : {}) },
       'UNVERIFIED',
     );
   }

@@ -58,7 +58,10 @@
     "qa:notifications": "pnpm --filter @qeynox/api qa:notifications",
     "qa:business-packs": "pnpm --filter @qeynox/api qa:business-packs",
     "qa:atlas-library": "pnpm --filter @qeynox/api qa:atlas-library",
-    "qa:security-regressions": "pnpm --filter @qeynox/worker qa:security-regressions"
+    "qa:security-regressions": "pnpm --filter @qeynox/worker qa:security-regressions",
+    "qa:hardening-followup": "pnpm --filter @qeynox/worker qa:hardening-followup",
+    "qa:tool-authorization": "pnpm --filter @qeynox/worker qa:tool-authorization",
+    "qa:worker-lifecycle": "pnpm --filter @qeynox/worker qa:worker-lifecycle"
   },
   "devDependencies": {
     "typescript": "5.9.3",

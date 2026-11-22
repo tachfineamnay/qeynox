@@ -1,4 +1,4 @@
-import { boolean, check, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { boolean, check, index, integer, jsonb, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { identityUsers } from './identity-schema';
 
@@ -21,11 +21,10 @@ export const notifications = pgTable('notifications', {
   body: text('body').notNull(),
   operationId: text('operation_id'),
   linkPath: text('link_path'),
-  deduplicationKey: text('deduplication_key').notNull(),
+  deduplicationKey: text('deduplication_key').notNull().unique(),
   readAt: timestamp('read_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => [
-  uniqueIndex('notifications_dedup_unique').on(t.deduplicationKey),
   index('notifications_user_created_idx').on(t.userId, t.createdAt.desc(), t.id.desc()),
   index('notifications_user_unread_idx').on(t.userId, t.createdAt.desc(), t.id.desc()).where(sql`${t.readAt} IS NULL`),
   check('notifications_kind_check', sql`${t.kind} IN ('APPROVALS', 'EXECUTION_FAILURES', 'RESULTS')`),
@@ -53,7 +52,7 @@ export const emailDeliveries = pgTable('email_deliveries', {
   templateVars: jsonb('template_vars').$type<Record<string, string>>(),
   locale: text('locale'),
   retryable: boolean('retryable').notNull().default(true),
-  deduplicationKey: text('deduplication_key').notNull(),
+  deduplicationKey: text('deduplication_key').notNull().unique(),
   notificationId: text('notification_id').references(() => notifications.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -65,7 +64,6 @@ export const emailDeliveries = pgTable('email_deliveries', {
   firstAttemptAt: timestamp('first_attempt_at', { withTimezone: true }),
   outcomeUncertain: boolean('outcome_uncertain').notNull().default(false),
 }, t => [
-  uniqueIndex('email_deliveries_dedup_unique').on(t.deduplicationKey),
   index('email_deliveries_lease_idx').on(t.leaseExpiresAt).where(sql`${t.status} = 'PENDING' AND ${t.leaseToken} IS NOT NULL`),
   index('email_deliveries_due_idx').on(t.status, t.nextRetryAt),
   index('email_deliveries_user_idx').on(t.userId, t.createdAt.desc()),
