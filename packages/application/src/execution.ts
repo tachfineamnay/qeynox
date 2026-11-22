@@ -1,6 +1,7 @@
 import { and,eq } from 'drizzle-orm';
 import { DomainError,newId,type ID,type Principal,type StepAttempt,type Operation } from '@qeynox/domain';
 import { QeyNoxStore,BetaAccessStore,attempts,outbox,events,operations,commandIds,planSeals } from '@qeynox/persistence';
+import { providerCostCeilingIssues, createRuntimeToolRegistry } from '@qeynox/tools';
 import { PlanSealer } from './plan-seal';
 import { CommerceService } from './commerce';
 import { BudgetService } from './budgets';
@@ -28,9 +29,21 @@ export class OperationExecutionService {
   if(runtimeBlock)throw new DomainError(runtimeBlock.code,runtimeBlock.message);
   // A21.03: a refused free-beta authorization is recorded in the beta ledger like any launch denial.
   await withBetaDenialLedger(this.beta,{workspaceId:actor.workspaceId,actorUserId:actor.userId,operationId,kind:'LAUNCH_DENIED'},()=>this.commerce.assertExecutionAllowed(actor,operationId,revisionId));
-  await new BudgetService(this.store).ensureBudget(actor,operationId);
-  const planSeal=await this.sealer.prepare(operationId,op.currentRevisionId);
   const planSteps=await this.store.getSteps(op.currentRevisionId);
+  const tools=await createRuntimeToolRegistry(this.store.db);
+  const required=new Set<string>(['hermes']);
+  for(const step of planSteps){
+    const capability=await this.store.getCapability(step.capabilityId);
+    if(!capability||capability.status!=='ACTIVE')throw new DomainError('NOT_CONFIGURED','Plan capability is unavailable');
+    for(const ref of capability.allowedTools){
+      const match=/^([^:]+):([^@]+)@(.+)$/.exec(ref);
+      if(!match||!tools.lookup(match[1]!,match[2]!,match[3]!).definition.allowedCapabilities.includes(capability.id))throw new DomainError('NOT_CONFIGURED','Plan provider is unavailable');
+      required.add(ref);
+    }
+  }
+  const policy=await new BudgetService(this.store).ensureBudget(actor,operationId);
+  if(providerCostCeilingIssues(policy.unitMaxMinor,[...required]).length)throw new DomainError('NOT_CONFIGURED','Plan provider cost ceilings are absent or invalid');
+  const planSeal=await this.sealer.prepare(operationId,op.currentRevisionId);
   const first=planSteps.filter(s=>s.dependsOn.length===0).sort((a,b)=>a.ordinal-b.ordinal)[0];
   if(!first)throw new DomainError('INVALID_STATE','Plan has no entry step');
   const previous=await this.store.db.select().from(attempts).where(eq(attempts.stepId,first.id));

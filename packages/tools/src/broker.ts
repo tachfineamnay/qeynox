@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { DomainError,type ToolInvocationIntent } from '@qeynox/domain';
-import type { ConnectorCall,PermissionContext,ToolLedgerPort,ToolResult } from './types';
+import type { ConnectorCall,PermissionContext,ToolLedgerPort,ToolResult,ToolSource } from './types';
 import type { ToolAuthorizationPort } from './authorization';
 import { ToolRegistry } from './registry';
 import { ProviderRateLimiter } from './rate-limit';
@@ -15,7 +15,7 @@ export class ToolBroker {
    const {connector,definition}=this.registry.lookup(call.connectorId,call.toolName,call.version);
    if(!permission.allowedConnectorTools.includes(keyOf(call))||!definition.allowedCapabilities.includes(call.capabilityId))throw new DomainError('DENIED','Tool outside profile/capability allowlist');
    if(definition.requiredScopes.some(scope=>!permission.consentScopes.includes(scope)))throw new DomainError('DENIED','Missing consent for tool');
-   if(!Number.isSafeInteger(permission.remainingToolCalls)||permission.remainingToolCalls<1||!Number.isSafeInteger(permission.remainingCostUnits)||permission.remainingCostUnits<0||permission.remainingCostUnits<definition.maxCostUnits)throw new DomainError('DENIED','Tool budget unavailable');
+   if(!Number.isSafeInteger(permission.remainingToolCalls)||permission.remainingToolCalls<1||!Number.isSafeInteger(permission.remainingCostUnits)||permission.remainingCostUnits<0||permission.remainingCostUnits<definition.maxCostUnits||(definition.requiresPositiveCostCeiling&&permission.remainingCostUnits===0))throw new DomainError('DENIED','Tool budget unavailable');
    const input=definition.input.parse(call.input);
    const hash=digest(input);
    if(definition.mode==='WRITE'){
@@ -30,16 +30,32 @@ export class ToolBroker {
    const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),definition.timeoutMs);
    let invoked=false;
    try{
-     // Quota and ledger operations can wait: re-read runtime authority after both have finished.
-     await this.authorization?.assertCurrent(call,permission,definition);
-     if(ac.signal.aborted)throw new DomainError('DENIED','Tool authorization deadline exceeded');
-     invoked=true;
-     const raw=await connector.invoke(call.toolName,call.version,input,{principal:permission.principal,operationId:call.operationId,stepAttemptId:call.stepAttemptId,signal:ac.signal});
+     // Bound authority waits and invocation even if an adapter ignores AbortSignal. A late result
+     // can never reach output validation/ledger completion or become a source after this deadline.
+     let abort: (()=>void)|undefined;
+     const deadline=new Promise<never>((_,reject)=>{
+       abort=()=>reject(new DomainError('UNAVAILABLE','Tool deadline exceeded',{providerFailure:'TIMEOUT'}));
+       if(ac.signal.aborted)abort();else ac.signal.addEventListener('abort',abort,{once:true});
+     });
+     const work=async()=>{
+       await this.authorization?.assertCurrent(call,permission,definition);
+       if(ac.signal.aborted)throw new DomainError('UNAVAILABLE','Tool deadline exceeded',{providerFailure:'TIMEOUT'});
+       invoked=true;
+       return connector.invoke(call.toolName,call.version,input,{principal:permission.principal,operationId:call.operationId,stepAttemptId:call.stepAttemptId,signal:ac.signal});
+     };
+     let raw:Awaited<ReturnType<typeof connector.invoke>>;
+     try{raw=await Promise.race([work(),deadline]);}
+     finally{if(abort)ac.signal.removeEventListener('abort',abort);}
      const value=definition.output.parse(raw.value);
      const responseDigest=digest(value);
-     const provenance={provider:connector.id,retrievedAt:new Date().toISOString(),sourceUri:raw.sourceUri,publishedAt:raw.publishedAt,requestDigest:hash,responseDigest};
+     const declaredSources:readonly ToolSource[]=raw.sources??(raw.sourceUri?[{uri:raw.sourceUri,title:call.toolName}]:[]);
+     const sources=[...new Map(declaredSources.map(source=>[source.uri,source])).values()];
+     if(declaredSources.length>20||sources.some(source=>!safeSource(source.uri)||typeof source.title!=='string'||source.title.length>500)||raw.sourceUri&&!safeSource(raw.sourceUri))throw new DomainError('INVALID_STATE','Invalid provider source metadata');
+     if(raw.rawResponseDigest!==undefined&&!/^[a-f0-9]{64}$/.test(raw.rawResponseDigest))throw new DomainError('INVALID_STATE','Invalid provider response digest');
+     if(raw.retrievedAt!==undefined&&(!Number.isFinite(Date.parse(raw.retrievedAt))||Date.parse(raw.retrievedAt)>Date.now()+60000))throw new DomainError('INVALID_STATE','Invalid provider retrieval time');
+     const provenance={provider:connector.id,retrievedAt:raw.retrievedAt??new Date().toISOString(),sourceUri:raw.sourceUri,publishedAt:raw.publishedAt,requestDigest:hash,responseDigest,rawResponseDigest:raw.rawResponseDigest,freshnessTtlSeconds:manifest.freshness.ttlSeconds,notes:connector.id==='brave-search'?'Search discovery snippets only; target pages were not fetched. Digests bind the provider response, not individual page contents.':undefined};
      await this.ledger.complete(call.intentId,responseDigest,provenance);
-     return {value,provenance};
+     return {value,provenance,sources};
    }catch(error:unknown){
      await this.ledger.fail(call.intentId,error instanceof DomainError?error.code:'TOOL_EXECUTION_FAILED',invoked&&definition.mode==='WRITE');
      throw error;
@@ -47,3 +63,7 @@ export class ToolBroker {
  }
 }
 
+
+function safeSource(value:string):boolean {
+ try{const url=new URL(value);return ['https:','http:'].includes(url.protocol)&&!url.username&&!url.password;}catch{return false;}
+}

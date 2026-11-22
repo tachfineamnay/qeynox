@@ -261,6 +261,7 @@ export function businessPackStepInstructions(
       'Never state guaranteed outcomes (ROI, revenue, rankings, conversions).',
       'Keep provider-observed facts, caller assumptions and your own interpretation in their designated fields.',
       'Do not invent sources, figures, people or contact details. Omit what the evidence does not support.',
+      'Brave Search sources are discovery snippets, not fetched or verified page content. A response digest binds the search response, not an independent copy of each cited page. Disclose this evidence limitation.',
     ],
   };
   return {

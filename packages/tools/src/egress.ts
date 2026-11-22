@@ -111,61 +111,72 @@ export interface ProviderHttpResponse { status: number; headers: IncomingHttpHea
  */
 export async function secureProviderRequest(url: URL, policy: EgressPolicy, options: ProviderRequestOptions = {}): Promise<ProviderHttpResponse> {
   policy.assertAllowed(url);
-  const pinned = await resolvePinnedProviderAddress(url.hostname, options.resolver);
+  const timeoutMs = options.timeoutMs ?? 15_000;
   const maxBytes = options.maxBytes ?? 500_000;
-  return new Promise<ProviderHttpResponse>((resolve, reject) => {
-    let settled = false;
-    const finalize = (error?: DomainError, result?: ProviderHttpResponse) => {
-      if (settled) return;
-      settled = true;
-      if (error) reject(error); else resolve(result!);
-    };
-    const request = httpsRequest({
-      protocol: 'https:',
-      hostname: url.hostname,
-      port: 443,
-      path: url.pathname + url.search,
-      method: options.method ?? 'GET',
-      servername: url.hostname,
-      headers: options.body === undefined
-        ? { accept: 'application/json', ...options.headers }
-        : { accept: 'application/json', ...options.headers, 'content-length': Buffer.byteLength(options.body) },
-      lookup: ((_hostname: string, details: unknown, callback: (error: NodeJS.ErrnoException | null, address: unknown, family?: number) => void) => {
-        // Node may request all resolved addresses for Happy Eyeballs; always return the single pinned address.
-        const wantsAll = Boolean(details && typeof details === 'object' && (details as { all?: boolean }).all);
-        if (wantsAll) callback(null, [{ address: pinned.address, family: pinned.family }]);
-        else callback(null, pinned.address, pinned.family);
-      }) as never,
-      signal: options.signal,
-      timeout: options.timeoutMs ?? 15_000,
-    }, response => {
-      const status = response.statusCode ?? 0;
-      if (isRedirectStatus(status)) {
-        response.resume();
-        finalize(new DomainError('DENIED', 'Provider redirect is not permitted'));
-        return;
-      }
-      const chunks: Buffer[] = [];
-      let size = 0;
-      response.on('data', (chunk: Buffer) => {
-        size += chunk.length;
-        if (size > maxBytes) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 60_000 || !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 10 * 1024 * 1024) throw new DomainError('INVALID_INPUT', 'Invalid provider transport bounds');
+  const controller = new AbortController();
+  const signal = options.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutError = () => new DomainError('UNAVAILABLE', 'Provider deadline or cancellation', { providerFailure: 'TIMEOUT' });
+  try {
+    // DNS cannot always be cancelled by the OS; race it and never open a socket after the deadline.
+    let abortDns: (() => void) | undefined;
+    const dnsDeadline = new Promise<never>((_, reject) => {
+      abortDns = () => reject(timeoutError());
+      if (signal.aborted) abortDns(); else signal.addEventListener('abort', abortDns, { once: true });
+    });
+    let pinned: ResolvedAddress;
+    try { pinned = await Promise.race([resolvePinnedProviderAddress(url.hostname, options.resolver), dnsDeadline]); }
+    finally { if (abortDns) signal.removeEventListener('abort', abortDns); }
+    if (signal.aborted) throw timeoutError();
+    return await new Promise<ProviderHttpResponse>((resolve, reject) => {
+      let settled = false;
+      const onAbort = () => finalize(timeoutError());
+      const finalize = (error?: DomainError, result?: ProviderHttpResponse) => {
+        if (settled) return;
+        settled = true;
+        signal.removeEventListener('abort', onAbort);
+        if (error) reject(error); else resolve(result!);
+      };
+      signal.addEventListener('abort', onAbort, { once: true });
+      const request = httpsRequest({
+        protocol: 'https:', hostname: url.hostname, port: 443,
+        path: url.pathname + url.search, method: options.method ?? 'GET', servername: url.hostname,
+        headers: options.body === undefined
+          ? { accept: 'application/json', ...options.headers }
+          : { accept: 'application/json', ...options.headers, 'content-length': Buffer.byteLength(options.body) },
+        lookup: ((_hostname: string, details: unknown, callback: (error: NodeJS.ErrnoException | null, address: unknown, family?: number) => void) => {
+          const wantsAll = Boolean(details && typeof details === 'object' && (details as { all?: boolean }).all);
+          if (wantsAll) callback(null, [{ address: pinned.address, family: pinned.family }]);
+          else callback(null, pinned.address, pinned.family);
+        }) as never,
+        signal, timeout: timeoutMs,
+      }, response => {
+        const status = response.statusCode ?? 0;
+        if (isRedirectStatus(status)) {
           response.destroy();
-          finalize(new DomainError('INVALID_STATE', 'Provider payload too large'));
+          finalize(new DomainError('DENIED', 'Provider redirect is not permitted'));
           return;
         }
-        chunks.push(chunk);
+        const chunks: Buffer[] = [];
+        let size = 0;
+        response.on('data', (chunk: Buffer) => {
+          size += chunk.length;
+          if (size > maxBytes) {
+            response.destroy();
+            finalize(new DomainError('INVALID_STATE', 'Provider payload too large', { providerFailure: 'INVALID_RESPONSE' }));
+            return;
+          }
+          chunks.push(chunk);
+        });
+        response.on('end', () => finalize(undefined, { status, headers: response.headers, body: Buffer.concat(chunks).toString('utf8') }));
+        response.on('aborted', () => finalize(new DomainError('UNAVAILABLE', 'Provider response interrupted')));
+        response.on('error', () => finalize(new DomainError('UNAVAILABLE', 'Provider response failed')));
       });
-      response.on('end', () => finalize(undefined, { status, headers: response.headers, body: Buffer.concat(chunks).toString('utf8') }));
-      response.on('error', error => finalize(new DomainError('INVALID_STATE', 'Provider response failed: ' + (error instanceof Error ? error.message : 'unknown'))));
+      request.on('timeout', () => { request.destroy(); finalize(timeoutError()); });
+      request.on('error', () => finalize(signal.aborted ? timeoutError() : new DomainError('UNAVAILABLE', 'Provider connection failed')));
+      if (options.body !== undefined) request.write(options.body);
+      request.end();
     });
-    request.on('timeout', () => { request.destroy(); finalize(new DomainError('INVALID_STATE', 'Provider request timed out')); });
-    request.on('error', error => finalize(new DomainError('INVALID_STATE', 'Provider connection failed: ' + (error instanceof Error ? error.message : 'unknown'))));
-    if (options.body !== undefined) request.write(options.body);
-    request.end();
-  });
+  } finally { clearTimeout(timer); controller.abort(); }
 }
-
-
-
-

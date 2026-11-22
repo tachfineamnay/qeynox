@@ -54,6 +54,8 @@ export interface PlanProposalRequestInput {
 export interface ProposalReadiness {
   readonly operationalState?: string;
   readonly isExecutable?: boolean;
+  readonly providerStatus?: string;
+  readonly providerBlockers?: readonly { tool: string; reason: string }[];
   readonly missingProviders?: readonly string[];
   readonly missingPolicies?: readonly string[];
 }
@@ -73,6 +75,8 @@ export interface ProposalCapabilityNote {
   readonly name: string;
   readonly operationalState: string;
   readonly isExecutable: boolean;
+  readonly providerStatus?: string;
+  readonly providerBlockers?: readonly { tool: string; reason: string }[];
   readonly missingProviders: readonly string[];
   readonly missingPolicies: readonly string[];
 }
@@ -151,6 +155,7 @@ export interface PlanPromptInput {
   readonly goal: PlanGoal | null;
   readonly answers: readonly { readonly question: string; readonly answer: string }[];
   readonly catalogue: ReturnType<typeof buildCapabilityCatalogue>;
+  readonly readiness?: ReadonlyMap<string, ProposalReadiness>;
 }
 
 /**
@@ -166,6 +171,7 @@ export function buildPlanPrompt(input: PlanPromptInput): string {
     '  scope: ' + entry.scope.join('; '),
     '  maximumSteps: ' + String(entry.maximumSteps) + ' · maximumToolCalls: ' + String(entry.maximumToolCalls),
     '  reviewedTools: ' + (entry.hasReviewedTools ? 'yes' : 'no'),
+    '  readiness: ' + JSON.stringify(input.readiness?.get(entry.id) ?? { operationalState: 'UNVERIFIED', isExecutable: false }),
   ].join('\n')).join('\n');
   const answers = input.answers.length
     ? input.answers.map(a => '- ' + a.question + ' → ' + a.answer).join('\n')
@@ -197,6 +203,7 @@ export function buildPlanPrompt(input: PlanPromptInput): string {
     '- Do not promise business or financial success. State assumptions explicitly in "assumptions".',
     '- Each step must say what it hands over in expectedDeliverable (one line, concrete).',
     '- Do not claim to have used a tool, browsed the web or read any source.',
+    '- Provider configuration is not live certification. Disclose BLOCKED or unverified provider constraints; never replace a missing connector with invented data or an external write.',
   ].join('\n');
 }
 
@@ -371,7 +378,7 @@ export class PlanProposalService implements PlanProposalPort {
           operationId: operation.id,
           stepAttemptId: ('pilot-proposal-' + createHash('sha256').update(cacheKey).digest('hex').slice(0, 24)) as ID,
           profile,
-          userMessage: buildPlanPrompt({ locale: input.locale, operationTitle: operation.title, goal, answers, catalogue }),
+          userMessage: buildPlanPrompt({ locale: input.locale, operationTitle: operation.title, goal, answers, catalogue, readiness }),
           // No consented facts and no document content: a plan never needs the memory store.
           context: {},
           correlationId: createHash('sha256').update(cacheKey).digest('hex').slice(0, 32),
@@ -420,6 +427,8 @@ export class PlanProposalService implements PlanProposalPort {
         name: view.name,
         operationalState: ready?.operationalState ?? 'UNVERIFIED',
         isExecutable: ready?.isExecutable ?? false,
+        providerStatus: ready?.providerStatus,
+        providerBlockers: ready?.providerBlockers,
         missingProviders: ready?.missingProviders ?? [],
         missingPolicies: ready?.missingPolicies ?? [],
       };

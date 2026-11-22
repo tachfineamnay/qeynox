@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { DomainError, type ID } from '@qeynox/domain';
 import type { ToolConnector, ToolDefinition, ToolContext } from '../types';
@@ -39,7 +40,7 @@ const request = z.object({
   country: z.string().trim().regex(/^[A-Za-z]{2}$/).transform(value => value.toUpperCase()).optional(),
   searchLang: z.string().trim().regex(/^[A-Za-z]{2}$/).transform(value => value.toLowerCase()).optional(),
   freshness: z.string().trim().regex(/^(pd|pw|pm|py|\d{4}-\d{2}-\d{2}to\d{4}-\d{2}-\d{2})$/, 'freshness must be pd|pw|pm|py or YYYY-MM-DDtoYYYY-MM-DD').optional(),
-});
+}).strict();
 
 const resultRow = z.object({
   title: z.string(),
@@ -104,7 +105,7 @@ export class BraveSearchConnector implements ToolConnector {
       requiredScopes: ['web:search'],
       allowedCapabilities: this.capabilities,
       input: request, output,
-      timeoutMs: 10000, maxCostUnits: 0,
+      timeoutMs: 10000, maxCostUnits: 0, requiresPositiveCostCeiling: true,
     }];
   }
   async invoke(name: string, version: string, input: unknown, context: ToolContext) {
@@ -145,6 +146,11 @@ export class BraveSearchConnector implements ToolConnector {
     const parsed = responseBody.safeParse(json);
     if (!parsed.success) throw new DomainError('INVALID_STATE', 'Brave Search returned an unexpected payload shape');
     const rows = parsed.data.web?.results ?? [];
+    if (!rows.length) throw new DomainError('NOT_FOUND', 'Search returned no usable sources');
+    for (const row of rows) {
+      const uri = new URL(row.url);
+      if (!['https:', 'http:'].includes(uri.protocol) || uri.username || uri.password) throw new DomainError('INVALID_STATE', 'Search returned an unsafe source URI');
+    }
     const result = {
       provider: 'brave-search' as const,
       query: values.query,
@@ -158,7 +164,7 @@ export class BraveSearchConnector implements ToolConnector {
       sourceUri: url.toString(),
       retrievedAt: new Date().toISOString(),
     };
-    return { value: output.parse(result), sourceUri: url.toString() };
+    return { value: output.parse(result), sourceUri: url.toString(), retrievedAt: result.retrievedAt, rawResponseDigest: createHash('sha256').update(response.body).digest('hex'), sources: rows.map(row => ({ uri: row.url, title: row.title.slice(0, 500) })) };
   }
 }
 
@@ -168,7 +174,7 @@ export const braveSearchManifest: ConnectorManifest = {
   provider: 'Brave',
   regions: ['GLOBAL'], operations: ['WEB_RESEARCH'],
   termsUrl: 'https://api-dashboard.search.brave.com/app/documentation/web-search/get-started',
-  licenseNotes: 'Commercial subscription required: the operator must hold an active Brave Search API plan (as of 2026-11 the Search plan is about US$5 per 1,000 requests, plan pricing is the provider\'s to change) and comply with the Brave Search API Terms of Service. Results may not be republished to build a competing search index; attribution obligations depend on the plan tier — verify at subscription time. Query text leaves this deployment to Brave.',
+  licenseNotes: 'Search snippets are discovery evidence, not fetched page content or verified facts. Commercial subscription required: the operator must hold an active Brave Search API plan (as of 2026-11 the Search plan is about US$5 per 1,000 requests, plan pricing is the provider\'s to change) and comply with the Brave Search API Terms of Service. Results may not be republished to build a competing search index; attribution obligations depend on the plan tier — verify at subscription time. Query text leaves this deployment to Brave.',
   freshness: { ttlSeconds: 3600, publishedAtSource: 'UNKNOWN' },
   rateLimit: { maxPerMinute: 30 },
   mode: 'READ_ONLY',

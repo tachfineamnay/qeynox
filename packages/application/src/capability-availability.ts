@@ -1,12 +1,15 @@
 import { eq } from 'drizzle-orm';
 import type { CapabilityDefinition } from '@qeynox/domain';
-import { QeyNoxStore, agentProfiles, toolConfigurations, verificationPolicies } from '@qeynox/persistence';
+import { QeyNoxStore, agentProfiles, verificationPolicies } from '@qeynox/persistence';
 import type { OperationalState, RuntimeReadiness } from './runtime-readiness';
+import { resolveConfiguredProviders, type ProviderRegistrationStatus } from '@qeynox/tools';
 import { failClosedRuntime } from './runtime-readiness';
 
 /** Real execution availability of one configured business capability. */
 export interface CapabilityAvailability {
   readonly providerReady: boolean;
+  readonly providerStatus: 'BLOCKED' | 'CONFIGURED_NOT_LIVE_VERIFIED' | 'NOT_REQUIRED';
+  readonly providerBlockers: readonly { tool: string; reason: string }[];
   readonly missingProviders: readonly string[];
   readonly profileReady: boolean;
   /** Active verification policy exists for this capability. */
@@ -47,7 +50,8 @@ export function computeCapabilityOperationalState(input: {
 
 /**
  * A capability is executable only when its reviewed tool references are backed by ACTIVE tool
- * configurations, its slot has an ACTIVE business agent profile, and it has an ACTIVE verification
+ * configurations that resolve to a reviewed, deployment-enabled adapter with egress/credentials, its slot
+ * has an ACTIVE business profile allowing the tools, and it has a compatible ACTIVE verification
  * policy. All are read from operator configuration records; this never reports an absent
  * prerequisite as available.
  *
@@ -62,30 +66,34 @@ export async function capabilityAvailability(
   runtimeSource?: () => RuntimeReadiness,
 ): Promise<CapabilityAvailabilityIndex> {
   const runtime = (runtimeSource ?? failClosedRuntime)();
-  const [toolRows, profileRows, policyRows] = await Promise.all([
-    store.db.select().from(toolConfigurations).where(eq(toolConfigurations.status, 'ACTIVE')),
+  const [resolved, profileRows, policyRows] = await Promise.all([
+    resolveConfiguredProviders(store.db),
     store.db.select().from(agentProfiles).where(eq(agentProfiles.active, true)),
     store.db.select().from(verificationPolicies).where(eq(verificationPolicies.status, 'ACTIVE')),
   ]);
-  const enabledToolRefs = new Set<string>();
-  for (const row of toolRows) {
-    const manifest = (row.payload as { manifest?: { tools?: readonly { name: string; version: string }[] } }).manifest;
-    for (const tool of manifest?.tools ?? []) enabledToolRefs.add(row.connectorId + ':' + tool.name + '@' + tool.version);
-  }
-  const activeProfileKeys = new Set(profileRows.map(row => row.roleKey));
-  const activePolicyCapabilityIds = new Set(policyRows.map(row => row.capabilityId));
+  const enabledToolRefs = new Set(resolved.registry.available());
+  const byProvider = new Map<string, ProviderRegistrationStatus>(resolved.providers.map(provider => [provider.connectorId, provider]));
+  const activeProfiles = new Map(profileRows.map(row => [row.roleKey, row]));
+  const activePolicies = new Map(policyRows.map(row => [row.capabilityId, row]));
 
   const byCapabilityId = new Map<string, CapabilityAvailability>();
   const missingProfiles = new Set<string>();
   const missingProviders = new Set<string>();
   const missingPolicies = new Set<string>();
   for (const definition of definitions) {
-    const missing = definition.allowedTools.filter(ref => !enabledToolRefs.has(ref));
+    const missing = definition.allowedTools.filter(ref => {
+      if (!enabledToolRefs.has(ref)) return true;
+      const match = /^([^:]+):([^@]+)@(.+)$/.exec(ref);
+      return !match || !resolved.registry.lookup(match[1]!, match[2]!, match[3]!).definition.allowedCapabilities.includes(definition.id);
+    });
     const profileKey = 'business:' + definition.slot;
-    const profileReady = activeProfileKeys.has(profileKey);
+    const profile = activeProfiles.get(profileKey);
+    const profileTools = profile?.payload.allowedTools;
+    const profileReady = Boolean(profile && Array.isArray(profileTools) && definition.allowedTools.every(ref => profileTools.includes(ref)));
     if (!profileReady) missingProfiles.add(profileKey);
     for (const ref of missing) missingProviders.add(ref);
-    const policyReady = activePolicyCapabilityIds.has(definition.id);
+    const policy = activePolicies.get(definition.id);
+    const policyReady = Boolean(policy && Date.parse(policy.validFrom) <= Date.now() && definition.allowedTools.every(ref => policy.approvedProviders.includes(ref.split(':')[0]!)));
     if (!policyReady) missingPolicies.add(definition.id);
     const providerReady = missing.length === 0;
     const operationalState = computeCapabilityOperationalState({
@@ -96,6 +104,8 @@ export async function capabilityAvailability(
     });
     byCapabilityId.set(definition.id, {
       providerReady,
+      providerStatus: !providerReady ? 'BLOCKED' : definition.allowedTools.length ? 'CONFIGURED_NOT_LIVE_VERIFIED' : 'NOT_REQUIRED',
+      providerBlockers: missing.map(tool => ({ tool, reason: byProvider.get(tool.split(':')[0]!)?.reason ?? 'NO_REVIEWED_TOOL_OR_CAPABILITY' })),
       missingProviders: missing,
       profileReady,
       policyReady,

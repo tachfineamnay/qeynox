@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { DomainError,type ID } from '@qeynox/domain';
 import type { ToolConnector,ToolDefinition,ToolContext } from '../types';
@@ -8,7 +9,7 @@ const request=z.object({
  country:z.string().regex(/^[A-Za-z]{2,3}$/).transform(x=>x.toUpperCase()),
  indicator:z.string().regex(/^[A-Za-z0-9.]{3,40}$/).transform(x=>x.toUpperCase()),
  mostRecent:z.number().int().min(1).max(5).default(3),
-});
+}).strict();
 const row=z.object({
  country:z.object({id:z.string(),value:z.string()}),
  indicator:z.object({id:z.string(),value:z.string()}),
@@ -32,11 +33,21 @@ export class WorldBankConnector implements ToolConnector {
   url.searchParams.set('format','json');url.searchParams.set('mrnev',String(values.mostRecent));url.searchParams.set('per_page','5');
   this.egress.assertAllowed(url);
   const response=await secureProviderRequest(url,this.egress,{signal:context.signal,headers:{accept:'application/json'},maxBytes:500000,timeoutMs:10000});
-  if(response.status<200||response.status>=300)throw new DomainError('INVALID_STATE','World Bank responded HTTP '+response.status);
+  if(response.status===401||response.status===403)throw new DomainError('NOT_CONFIGURED','World Bank access rejected');
+  if(response.status===429)throw new DomainError('BUDGET_EXHAUSTED','World Bank rate limit exceeded');
+  if(response.status>=500)throw new DomainError('UNAVAILABLE','World Bank is unavailable');
+  if(response.status<200||response.status>=300)throw new DomainError('INVALID_STATE','World Bank request rejected');
   const text=response.body;
-  const body=payload.parse(JSON.parse(text)), observations=z.array(row).parse(body[1]);
+  let json:unknown;
+  try{json=JSON.parse(text);}catch{throw new DomainError('INVALID_STATE','World Bank returned malformed JSON');}
+  const body=payload.safeParse(json);
+  const parsed=body.success?z.array(row).safeParse(body.data[1]):undefined;
+  if(!parsed?.success)throw new DomainError('INVALID_STATE','World Bank returned an unexpected payload');
+  const observations=parsed.data;
+  if(!observations.some(observation=>observation.value!==null))throw new DomainError('NOT_FOUND','World Bank returned no usable observations');
+  if(observations.some(observation=>observation.indicator.id.toUpperCase()!==values.indicator||![observation.country.id,observation.countryiso3code].some(country=>country?.toUpperCase()===values.country)))throw new DomainError('INVALID_STATE','World Bank response scope mismatch');
   const result={provider:'world-bank' as const,country:values.country,indicator:values.indicator,observations,sourceUri:url.toString(),retrievedAt:new Date().toISOString()};
-  return {value:output.parse(result),sourceUri:url.toString()};
+  return {value:output.parse(result),sourceUri:url.toString(),retrievedAt:result.retrievedAt,rawResponseDigest:createHash('sha256').update(text).digest('hex')};
  }
 }
 export const worldBankManifest:ConnectorManifest={

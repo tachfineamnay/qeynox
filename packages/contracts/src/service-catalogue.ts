@@ -122,6 +122,8 @@ export const serviceCapabilitySchema = z.object({
   maximumSteps: z.number().int().positive(),
   maximumToolCalls: z.number().int().nonnegative(),
   operationalState: z.enum(['BLOCKED', 'UNVERIFIED', 'CONFIGURED', 'OPERATIONAL']),
+  providerStatus: z.enum(['BLOCKED', 'CONFIGURED_NOT_LIVE_VERIFIED', 'NOT_REQUIRED']).optional(),
+  providerBlockers: z.array(z.object({ tool: z.string(), reason: z.string() })).optional(),
   providerReady: z.boolean(),
   missingProviders: z.array(z.string()),
   profileReady: z.boolean(),
@@ -138,6 +140,7 @@ export const serviceDeploymentSchema = z.object({
   braveSearchKeyConfigured: z.boolean().optional(),
   requiredProvider: z.enum(['world-bank', 'brave-search']).optional(),
   providerSwitchReady: z.boolean().optional(),
+  providerStatus: z.enum(['BLOCKED', 'CONFIGURED_NOT_LIVE_VERIFIED']).optional(),
   consentScopesRequired: z.array(z.string()).optional(),
   unavailableExternalConnectors: z.array(unavailableExternalConnectorSchema).optional(),
 });

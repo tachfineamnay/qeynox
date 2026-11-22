@@ -9,6 +9,7 @@ import {
   type DeploymentProbe,
   type ServiceRequestContract,
 } from '@qeynox/application';
+import { egressPolicyFromEnv } from '@qeynox/tools';
 import { SERVICE_CONTRACT_WORLD_BANK as WB_KEY } from '@qeynox/contracts';
 import { QEYNOX_STORE } from '../database/database.module';
 import { apiRuntimeReadiness } from '../operations/runtime-readiness';
@@ -61,6 +62,10 @@ function createDeploymentProbe(contracts: ServiceContractRegistry | null): Deplo
     const braveSearchEnabled = process.env.QEYNOX_BRAVE_SEARCH_ENABLED === 'true';
     const braveSearchKeyConfigured = Boolean((process.env.QEYNOX_BRAVE_SEARCH_API_KEY ?? '').trim());
     const egressAttested = process.env.QEYNOX_NETWORK_POLICY_ATTESTED === 'true';
+    const hostAllowed = (provider: string) => {
+      try { egressPolicyFromEnv().assertAllowed(new URL(provider === 'world-bank' ? 'https://api.worldbank.org/' : 'https://api.search.brave.com/')); return true; }
+      catch { return false; }
+    };
 
     const contract = (offerId ? contracts?.forOffer(offerId) : null) ?? contracts?.forKey(contractKey) ?? null;
     if (contractKey === WB_KEY && !contract) {
@@ -70,7 +75,7 @@ function createDeploymentProbe(contracts: ServiceContractRegistry | null): Deplo
         braveSearchEnabled,
         braveSearchKeyConfigured,
         requiredProvider: 'world-bank',
-        providerSwitchReady: worldBankEnabled && egressAttested,
+        providerSwitchReady: worldBankEnabled && hostAllowed('world-bank'),
         consentScopesRequired: [],
         unavailableExternalConnectors: [],
       };
@@ -79,8 +84,8 @@ function createDeploymentProbe(contracts: ServiceContractRegistry | null): Deplo
 
     const requiredProvider = contract.requiredProvider ?? 'world-bank';
     const providerSwitchReady = requiredProvider === 'brave-search'
-      ? braveSearchEnabled && braveSearchKeyConfigured && egressAttested
-      : worldBankEnabled && egressAttested;
+      ? braveSearchEnabled && braveSearchKeyConfigured && hostAllowed(requiredProvider)
+      : worldBankEnabled && hostAllowed(requiredProvider);
     const consentScopesRequired = requiredProvider === 'brave-search' ? ['web:search'] : [];
 
     return {

@@ -1,5 +1,29 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-22 — MISSION P19: business-provider integration (live certification deferred)
+
+Inspected all eight A16 packs and their actual WB/Brave requirements. Implemented shared reviewed
+provider resolution across readiness/launch/Worker/final broker authorization, exact legacy manifest
+operation aliases, configuration-only operator/hub status, and explicit provider blockers in catalogue/
+PlanRead/Pilot prompt and notes. Missing adapters do not disable unrelated tools or masquerade as
+ACTIVE execution; strict legacy registry builder remains. Pack tool substitutions/broadening are
+refused; actual strict input schemas guide tool proposals and SEO locale/field mapping is corrected.
+Finite operation/beta ceilings remain canonical; paid search now requires a positive reserved ceiling.
+Brave returned-page citation metadata is bound to search-response digests with explicit snippet-only
+limitations, not invented page fetches. Added raw-response-text digest/freshness ledger metadata,
+usable-data/scope checks and whole DNS/connection/body/broker deadlines without automatic paid retries.
+Only existing READ_ONLY WB/Brave adapters; identity OAuth does not activate business data or writes.
+
+Requested minimal compilation: **typecheck PASS (6 tasks + release tooling)**; **QA/tests and builds
+not run**. Focused Brave fixture/assertions updated but not executed. No live provider/DB/OAuth call,
+configuration/credential mutation, deploy/restart/migration or speculative connector. BETA_FREE /
+INVITE_ONLY, tenant isolation, storage/encryption and financial history preserved. Provider status is
+**CONFIGURED_NOT_LIVE_VERIFIED or BLOCKED**, never fabricated certification; actual business journeys,
+entitlement/terms, egress, quota, cost/recovery and provenance need **P22** evidence. See
+[P19 verification](../../infra/P19_VERIFICATION.md) and
+[business-provider operator contract](../../infra/BUSINESS_PROVIDERS_RELEASE.md).
+
+
 ## 2026-11-22 — MISSION P18: private document storage integration (P22 certification deferred)
 
 Completed missing operational source/configuration around existing P10–P12, not a rewrite: shared

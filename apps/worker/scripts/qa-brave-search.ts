@@ -255,7 +255,7 @@ async function partTwo(): Promise<'PASSED' | 'BLOCKED'> {
       principal: owner, operationId: operation.id, planRevisionId: plan.revision.id, stepAttemptId: attemptId,
       capabilityId: 'capability-slot-1-v1' as ID, profileId: 'qa-profile' as ID, profileVersion: 1,
       allowedConnectorTools: ['brave-search:web@1'], consentScopes: ['web:search'],
-      approvedRequests: [], remainingCostUnits: 0, remainingToolCalls: 2,
+      approvedRequests: [], remainingCostUnits: 5, remainingToolCalls: 2,
     };
     const callFor = (key: string, inputOverride: Record<string, unknown> = {}): ConnectorCall => ({
       operationId: operation.id, planRevisionId: plan.revision.id, stepAttemptId: attemptId,
@@ -296,6 +296,10 @@ async function partTwo(): Promise<'PASSED' | 'BLOCKED'> {
     await expectDomainError('DENIED', () => broker.invoke(callFor('not-allowed-tool'), { ...basePermission, allowedConnectorTools: [] }), 'tool outside profile allowlist');
     await expectDomainError('DENIED', () => broker.invoke(callFor('no-tool-budget'), { ...basePermission, remainingToolCalls: 0 }), 'tool call budget exhausted');
     await expectDomainError('DENIED', () => broker.invoke(callFor('wrong-capability'), { ...basePermission, capabilityId: 'capability-slot-2-v1' as ID }), 'tool outside its capability');
+
+    await expectDomainError('DENIED', () => broker.invoke(callFor('no-paid-ceiling'), { ...basePermission, remainingCostUnits: 0 }), 'paid search requires a positive reserved ceiling');
+    check(result.sources?.length === 3 && result.sources[0]?.uri === value.results[0]?.url, 'returned pages, not a fabricated page fetch, are available as citations');
+    check(result.provenance.rawResponseDigest?.length === 64, 'raw provider JSON text has a separate digest');
 
     // Replayed intent is refused (idempotent at the ledger)
     await expectDomainError('CONFLICT', () => broker.invoke({ ...firstCall }, basePermission), 'replayed invocation intent');

@@ -68,3 +68,5 @@ export * from './beta-journey';
 export * from './mission-documents';
 
 export * from './storage-configuration';
+
+export * from './business-provider-status';
