@@ -1,3 +1,4 @@
+import { betaOperationsCopy } from '../../../lib/beta-operations-copy';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { requirePlatformMe, tryApi } from '../../../lib/api';
@@ -69,17 +70,17 @@ export default async function OperationsPage({ params, searchParams }: { params:
             <ul className="timeline">
               {incidentsResult.value.items.map(incident => (
                 <li key={incident.id}>
-                  <strong>{incident.category + ' · ' + incident.status}</strong>{' '}<Badge tone={incident.status === 'RESOLVED' || incident.status === 'CLOSED' ? 'success' : 'warning'}>{incident.status}</Badge>
+                  <Link href={'/'+lang+'/operations/'+encodeURIComponent(incident.operationId)}>{incident.category + ' · ' + incident.status}</Link>{' '}<Badge tone={incident.status === 'RESOLVED' || incident.status === 'CLOSED' ? 'success' : 'warning'}>{incident.status}</Badge>
                   <small>{new Date(incident.updatedAt).toLocaleString(lang) + ' · ' + incident.operationId}</small>
                   <p>{incident.reason}</p>
-                  {incident.actions.length ? <ul className="plain-list">{incident.actions.map(action => <li key={action.id}><code>{action.action}</code> — {action.reason}</li>)}</ul> : null}
+                  {incident.actions.length ? <ul className="plain-list">{incident.actions.map(action => <li key={action.id}><code>{action.action}</code></li>)}</ul> : null}
                 </li>
               ))}
             </ul>
           )
         ) : <Notice tone="warning" title={t.operationsUnavailable}>{incidentsResult && !incidentsResult.ok ? incidentsResult.code : 'UNAVAILABLE'}</Notice>}
       </Card>
-      <p className="muted">{t.operationsReadOnly}</p>
+      <p className="muted">{betaOperationsCopy[lang].recoveryHint}</p><p className="page-actions"><Link href={'/'+lang+'/operations/queues'}>{betaOperationsCopy[lang].queues}</Link><Link href={'/'+lang+'/operations/spending'}>{betaOperationsCopy[lang].spending}</Link></p>
     </Shell>
   );
 }

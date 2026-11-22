@@ -1,3 +1,4 @@
+import { MigrationDiagnostics } from '../../../../components/operations-diagnostics';
 import { requirePlatformMe, tryApi } from '../../../../lib/api';
 import { copy, locale } from '../../../../lib/copy';
 import { can, OPERATIONS } from '../../../../lib/permissions';
@@ -12,7 +13,7 @@ export default async function ReleasesPage({ params }: { params: Promise<{ lang:
   const result = allowed ? await tryApi<ReleasesView>('/v1/platform/operations/releases') : null;
   const unavailable = (value: string | null | undefined) => value === null || value === undefined || value.length === 0 ? <Badge tone="warning">{t.operationsUnavailable}</Badge> : <>{value}</>;
   return (
-    <Shell lang={lang} path="/operations" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
+    <Shell lang={lang} path="/operations/releases" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
       <PageHeader title={t.operationsReleasesTitle} intro={t.operationsReleasesIntro} />
       {!allowed ? <PermissionDenied lang={lang} /> : null}
       {result && !result.ok ? <ApiErrorNotice lang={lang} code={result.code} /> : null}
@@ -55,6 +56,7 @@ export default async function ReleasesPage({ params }: { params: Promise<{ lang:
           </Card>
         </>
       ) : null}
+      {allowed ? <MigrationDiagnostics lang={lang} /> : null}
     </Shell>
   );
 }

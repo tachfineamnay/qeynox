@@ -179,13 +179,13 @@ export interface RecoveryIncidentView {
 export interface OperationSummaryView {
   operationId: string; workspaceId: string; workspaceName: string | null; title: string;
   status: string; version: number; createdBy: string; currentRevisionId: string | null;
-  updatedAt: string; lastActivityAt: string;
+  updatedAt: string; lastActivityAt: string; failureCode?: string | null;
 }
 export interface OperationRuntimeView {
   operationId: string;
   dispatch: { id: string; state: string; topic: string; attempts: number; lastErrorCode: string | null }[];
   executions: { id: string; attemptId: string; provider: string; runId: string | null; status: string }[];
-  attempts: { id: string; stepId: string; state: string; sequence: number }[];
+  attempts: { id: string; stepId: string; state: string; sequence: number; errorCode?: string | null }[];
 }
 export interface OperationEventView {
   sequence: number; kind: string; occurredAt: string; actorType: string;

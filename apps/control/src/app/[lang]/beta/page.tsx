@@ -1,3 +1,4 @@
+import { betaOperationsCopy } from '../../../lib/beta-operations-copy';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { requirePlatformMe, tryApi } from '../../../lib/api';
@@ -66,7 +67,7 @@ export default async function BetaAccessPage({ params, searchParams }: { params:
 
   return (
     <Shell lang={lang} path="/beta" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
-      <PageHeader title={t.betaTitle} intro={t.betaIntro} />
+      <PageHeader title={t.betaTitle} intro={t.betaIntro} actions={<Link className="button secondary" href={'/'+lang+'/beta/invitations'}>{betaOperationsCopy[lang].invitations}</Link>} />
       <OutcomeNotice lang={lang} done={done} error={error} />
       {allowed ? (
         <form className="card form" method="get" action={'/admin/' + lang + '/beta'}>

@@ -1,5 +1,18 @@
 # QeyNox 2027 — source implementation map
 
+**2026-11-22 P20 existing Control beta operations:** EN/FR invitation management reuses existing
+ADMINISTRATION issue/revoke/audit and tester/workspace/grant links. OPERATIONS adds bounded metadata
+queues (outbox, document ingest/deletion, email), per-workspace/mission provider ledger and outstanding
+holds, existing runtime/provider/storage diagnostics, migration manifest/history comparison, and
+allowlisted mission/attempt failure codes instead of raw event/error payloads. Two confirmed,
+reasoned, atomic-audited local actions only: OPEN incident escalation and due-now scheduling for a
+future never-dispatched job whose mission/revision/attempt remains active. No blind retry, uncertain
+email resend, terminal job reset, lease/cost guard bypass, second console or payment activation.
+**Typecheck + scoped API/Control builds pass; no tests/QA/browser/DB/live calls.** SQL execution,
+authorization/concurrency, private-data isolation, invitation handoff/redemption and real beta journeys
+remain unverified P22 gates. See [P20_VERIFICATION.md](../../infra/P20_VERIFICATION.md).
+
+
 **2026-11-22 P19 business-provider integration:** all eight A16 requirements inspected; shared actual
 adapter resolution/status, manifest alias compatibility, catalogue/Pilot provider blockers, pack-safe
 selection/input guidance, positive paid-search ceilings, per-call authority reload, returned-page

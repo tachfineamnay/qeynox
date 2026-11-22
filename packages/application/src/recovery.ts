@@ -64,14 +64,7 @@ export class RecoveryService{
    if(ambiguous)throw new DomainError('UNKNOWN_OUTCOME','A tool write may have succeeded remotely');
    throw new DomainError('UNSUPPORTED','Safe retry requires a verified read-only classification and runtime observation');
   }
-  const now=new Date().toISOString(),status=action==='ABANDON'?'ABANDONED':'ESCALATED';
-  await this.store.db.transaction(async tx=>{
-   const [current]=await tx.select().from(recoveryIncidents).where(and(eq(recoveryIncidents.id,incidentId),eq(recoveryIncidents.status,'OPEN'))).for('update').limit(1);
-   if(!current)throw new DomainError('CONFLICT','Incident already handled');
-   await tx.update(recoveryIncidents).set({status,updatedAt:now}).where(eq(recoveryIncidents.id,incidentId));
-   await tx.insert(recoveryActions).values({id:newId(),incidentId,workspaceId:actor.workspaceId,operationId:incident.operationId,actorId:actor.userId,action,reason,createdAt:now,details:{}});
-  });
-  return {incidentId,status};
+  return this.store.db.transaction(tx=>classifyRecoveryIncident(tx,{workspaceId:actor.workspaceId,userId:actor.userId},incidentId,action,reason));
  }
  async expireApprovals(actor:Principal,operationId:ID){
   this.requireOperator(actor);await this.store.getOperation(actor,operationId);
@@ -84,4 +77,18 @@ export class RecoveryService{
   }
   return {expired};
  }
+}
+
+/** Shared classification only: never retries/cancels a mission or changes an ambiguous dispatch. */
+export async function classifyRecoveryIncident(
+ tx: Parameters<Parameters<QeyNoxStore['db']['transaction']>[0]>[0],
+ actor: { workspaceId: string; userId: string }, incidentId: string,
+ action: 'ESCALATE'|'ABANDON', reason: string,
+){
+ const [current]=await tx.select().from(recoveryIncidents).where(and(eq(recoveryIncidents.id,incidentId),eq(recoveryIncidents.workspaceId,actor.workspaceId),eq(recoveryIncidents.status,'OPEN'))).for('update').limit(1);
+ if(!current)throw new DomainError('CONFLICT','Incident already handled or outside workspace');
+ const now=new Date().toISOString(),status=action==='ABANDON'?'ABANDONED':'ESCALATED';
+ await tx.update(recoveryIncidents).set({status,updatedAt:now}).where(and(eq(recoveryIncidents.id,incidentId),eq(recoveryIncidents.workspaceId,actor.workspaceId)));
+ await tx.insert(recoveryActions).values({id:newId(),incidentId,workspaceId:actor.workspaceId,operationId:current.operationId,actorId:actor.userId,action,reason,createdAt:now,details:{}});
+ return {incidentId,status};
 }

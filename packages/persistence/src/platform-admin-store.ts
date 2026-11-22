@@ -1,3 +1,4 @@
+import { operationalErrorCode } from '@qeynox/domain';
 import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { DomainError, isPlatformRole, type PlatformRole } from '@qeynox/domain';
 import type { QeyNoxDatabase } from './database';
@@ -59,13 +60,14 @@ export interface PlatformOperationSummary {
   readonly currentRevisionId: string | null;
   readonly updatedAt: string;
   readonly lastActivityAt: string;
+  readonly failureCode?: string | null;
 }
 
 export interface PlatformOperationRuntime {
   readonly operationId: string;
   readonly dispatch: readonly { readonly id: string; readonly state: string; readonly topic: string; readonly attempts: number; readonly lastErrorCode: string | null }[];
   readonly executions: readonly { readonly id: string; readonly attemptId: string; readonly provider: string; readonly runId: string | null; readonly status: string }[];
-  readonly attempts: readonly { readonly id: string; readonly stepId: string; readonly state: string; readonly sequence: number }[];
+  readonly attempts: readonly { readonly id: string; readonly stepId: string; readonly state: string; readonly sequence: number; readonly errorCode?: string | null }[];
 }
 
 export interface PlatformRevokeGuardInput {
@@ -271,7 +273,7 @@ export class PlatformAdminStore {
       operationId: row.id, workspaceId: row.workspaceId, workspaceName: workspace?.name ?? null,
       title: row.payload.title, status: row.status, version: row.version, createdBy: row.createdBy,
       currentRevisionId: row.currentRevisionId ?? null, updatedAt: row.payload.updatedAt,
-      lastActivityAt: row.lastActivityAt,
+      lastActivityAt: row.lastActivityAt, failureCode: operationalErrorCode(row.payload.lastErrorCode),
     };
   }
 
@@ -285,9 +287,9 @@ export class PlatformAdminStore {
     ]);
     return {
       operationId,
-      dispatch: dispatchRows.map(row => ({ id: row.id, state: row.state, topic: row.topic, attempts: row.attempts, lastErrorCode: row.lastError })),
+      dispatch: dispatchRows.map(row => ({ id: row.id, state: row.state, topic: row.topic, attempts: row.attempts, lastErrorCode: operationalErrorCode(row.lastError) })),
       executions: executionRows.map(row => ({ id: row.id, attemptId: row.attemptId, provider: row.provider, runId: row.workflowRunId, status: row.payload.status })),
-      attempts: attemptRows.map(row => ({ id: row.id, stepId: row.stepId, state: row.state, sequence: row.sequence })),
+      attempts: attemptRows.map(row => ({ id: row.id, stepId: row.stepId, state: row.state, sequence: row.sequence, errorCode: operationalErrorCode(row.payload.errorCode) })),
     };
   }
 }

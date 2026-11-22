@@ -1,3 +1,5 @@
+import { RecoveryForm } from '../../../../components/beta-operations-forms';
+import { betaOperationsCopy } from '../../../../lib/beta-operations-copy';
 import Link from 'next/link';
 import { requirePlatformMe, tryApi } from '../../../../lib/api';
 import { copy, locale } from '../../../../lib/copy';
@@ -32,6 +34,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
                 <dt>{'Operation'}</dt><dd><code>{result.value.summary.operationId}</code></dd>
                 <dt>{'Version'}</dt><dd>{result.value.summary.version}</dd>
                 <dt>{t.operationsUpdated}</dt><dd>{new Date(result.value.summary.lastActivityAt).toLocaleString(lang)}</dd>
+                <dt>{betaOperationsCopy[lang].failure}</dt><dd>{result.value.summary.failureCode??'—'}</dd>
                 <dt>{t.operationsSteps}</dt><dd>{result.value.summary.currentRevisionId ?? t.operationsUnavailable}</dd>
               </dl>
             </Card>
@@ -57,7 +60,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
             {result.value.runtime.attempts.length === 0 ? <Empty>{t.operationsUnavailable}</Empty> : (
               <div className="table-wrap"><table>
                 <thead><tr><th>{'#'}</th><th>{'Step'}</th><th>{t.status}</th></tr></thead>
-                <tbody>{result.value.runtime.attempts.map(row => <tr key={row.id}><td>{row.sequence}</td><td><code>{row.stepId}</code></td><td>{row.state}</td></tr>)}</tbody>
+                <tbody>{result.value.runtime.attempts.map(row => <tr key={row.id}><td>{row.sequence}</td><td><code>{row.stepId}</code></td><td>{row.state}{row.errorCode?<p><code>{row.errorCode}</code></p>:null}</td></tr>)}</tbody>
               </table></div>
             )}
           </Card>
@@ -69,7 +72,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
                   <li key={event.sequence}>
                     <strong>{event.kind}</strong>{' '}<Badge tone="neutral">{event.actorType}</Badge>
                     <small>{new Date(event.occurredAt).toLocaleString(lang) + ' · seq ' + event.sequence}</small>
-                    <p><code>{JSON.stringify(event.data).slice(0, 400)}</code></p>
+                    {typeof event.data.errorCode==='string'?<p><code>{event.data.errorCode}</code></p>:null}
                   </li>
                 ))}
               </ul>
@@ -83,13 +86,13 @@ export default async function OperationDetailPage({ params }: { params: Promise<
                   <li key={incident.id}>
                     <strong>{incident.category + ' · ' + incident.status}</strong>
                     <small>{new Date(incident.updatedAt).toLocaleString(lang)}</small>
-                    <p>{incident.reason}</p>
-                    {incident.actions.length ? <ul className="plain-list">{incident.actions.map(action => <li key={action.id}><code>{action.action}</code> — {action.reason}</li>)}</ul> : null}
+                    <p>{incident.reason}</p>{incident.status==='OPEN'?<RecoveryForm lang={lang} action="ESCALATE_INCIDENT" id={incident.id} workspaceId={incident.workspaceId} operationId={incident.operationId}/>:null}
+                    {incident.actions.length ? <ul className="plain-list">{incident.actions.map(action => <li key={action.id}><code>{action.action}</code></li>)}</ul> : null}
                   </li>
                 ))}
               </ul>
             )}
-            <p className="muted">{t.operationsReadOnly}</p>
+            <p className="muted">{betaOperationsCopy[lang].recoveryHint}</p><div className="page-actions"><Link href={'/'+lang+'/operations/queues?workspaceId='+encodeURIComponent(result.value.summary.workspaceId)+'&operationId='+encodeURIComponent(result.value.summary.operationId)}>{betaOperationsCopy[lang].queues}</Link><Link href={'/'+lang+'/operations/spending?workspaceId='+encodeURIComponent(result.value.summary.workspaceId)+'&operationId='+encodeURIComponent(result.value.summary.operationId)}>{betaOperationsCopy[lang].spending}</Link></div>
           </Card>
         </>
       ) : null}

@@ -24,6 +24,7 @@ nav a[aria-current="page"]{background:var(--qx-blue-800);color:#fff}
 .sidebar-actions{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .sidebar-actions a{color:#fff;font-weight:700;text-decoration:none;font-size:13px}
 .link-button{background:none;border:0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;padding:4px;text-decoration:underline}
+.desktop-nav{min-height:0;overflow-y:auto}
 .mobile-nav{display:none}
 .workspace{display:flex;flex-direction:column;min-width:0}
 .content{padding:28px clamp(16px,4vw,48px);max-width:1200px;width:100%}
