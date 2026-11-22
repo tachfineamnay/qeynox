@@ -61,7 +61,8 @@
     "qa:security-regressions": "pnpm --filter @qeynox/worker qa:security-regressions",
     "qa:hardening-followup": "pnpm --filter @qeynox/worker qa:hardening-followup",
     "qa:tool-authorization": "pnpm --filter @qeynox/worker qa:tool-authorization",
-    "qa:worker-lifecycle": "pnpm --filter @qeynox/worker qa:worker-lifecycle"
+    "qa:worker-lifecycle": "pnpm --filter @qeynox/worker qa:worker-lifecycle",
+    "db:release": "pnpm --filter @qeynox/persistence db:release"
   },
   "devDependencies": {
     "typescript": "5.9.3",

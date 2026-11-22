@@ -14,6 +14,9 @@
     "@types/pg": "8.15.5"
   },
   "scripts": {
-    "migrate": "tsx scripts/migrate.ts"
+    "migrate": "tsx scripts/migrate.ts",
+    "db:release": "tsx scripts/database-release.ts",
+    "test:release-safety": "tsx --test scripts/database-release.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   }
 }
