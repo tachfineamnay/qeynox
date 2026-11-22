@@ -66,3 +66,5 @@ export * from './beta-access';
 export * from './registration';
 export * from './beta-journey';
 export * from './mission-documents';
+
+export * from './storage-configuration';

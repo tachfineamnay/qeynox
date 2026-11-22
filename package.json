@@ -70,7 +70,8 @@
     "release:test": "tsx --test infra/release/release.test.ts",
     "typecheck:release": "tsc --noEmit -p infra/release/tsconfig.json",
     "hermes:vertex-config": "node infra/services/render-hermes-vertex.mjs",
-    "qa:hermes-vertex-contract": "tsx --test packages/engine/scripts/qa-hermes-vertex-contract.test.ts"
+    "qa:hermes-vertex-contract": "tsx --test packages/engine/scripts/qa-hermes-vertex-contract.test.ts",
+    "storage:policy": "node infra/services/render-storage-policy.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3",

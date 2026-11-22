@@ -1,5 +1,15 @@
 # QeyNox 2027 — source implementation map
 
+**2026-11-22 P18 private storage integration:** shared API/Worker config, bounded S3 transport,
+SSE/conditional PUT signing, HEAD-checked read grants, canonical-resource-authorized same-origin relay,
+lease-aware maintenance batches and protected read-only storage/queue diagnostics are source
+implemented. Offline policy bundle/runbook preserve private bucket/data/KMS and P10–P12 algorithms.
+Minimal typecheck (6 tasks + release) and three scoped builds pass; **tests not run; real S3/P22
+certification deferred**. No live storage/DB/policy mutation, deploy, restart, migration or public bucket.
+See [P18_VERIFICATION.md](../../infra/P18_VERIFICATION.md) and
+[STORAGE_RELEASE.md](../../infra/STORAGE_RELEASE.md).
+
+
 **2026-11-22 P17 Hermes Vertex integration:** source-only read-only Hermes credential/config mounts,
 hardened exact-model renderer, shared app settings, auth/model/toolset probe tightening, bounded
 inference, classified/logged recovery facts and truthful estimated/unknown accounting are implemented.
