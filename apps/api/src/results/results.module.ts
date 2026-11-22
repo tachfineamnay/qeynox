@@ -5,7 +5,7 @@ import {
   AtlasLibraryService,
   ResultAssembler,
   ResultDeliveryService,
-  S3ArtifactStore,
+  createS3ArtifactStoreFromEnv,
   type ArtifactStorePort,
 } from '@qeynox/application';
 import { DomainError } from '@qeynox/domain';
@@ -41,9 +41,6 @@ export interface ConfiguredArtifactStore {
     {
       provide: ARTIFACT_STORE_PORT,
       useFactory: (): ConfiguredArtifactStore => {
-        const accessKeyId = process.env.QEYNOX_ARTIFACT_ACCESS_KEY;
-        const secretAccessKey = process.env.QEYNOX_ARTIFACT_SECRET_KEY;
-        const bucket = process.env.QEYNOX_ARTIFACT_BUCKET;
         const missing: ArtifactStorePort = {
           put: async () => {
             throw new DomainError('NOT_CONFIGURED', 'Artifact store not configured');
@@ -55,20 +52,8 @@ export interface ConfiguredArtifactStore {
             throw new DomainError('NOT_CONFIGURED', 'Artifact store not configured');
           },
         };
-        const serverSideEncryption: 'AES256' | false =
-          process.env.QEYNOX_ARTIFACT_SERVER_SIDE_ENCRYPTION === 'false' ? false : 'AES256';
-        if (accessKeyId && secretAccessKey && bucket) {
-          return {
-            port: new S3ArtifactStore(bucket, {
-              accessKeyId,
-              secretAccessKey,
-              region: process.env.QEYNOX_ARTIFACT_REGION ?? 'us-east-1',
-              endpoint: process.env.QEYNOX_ARTIFACT_ENDPOINT,
-              serverSideEncryption,
-            }),
-            configured: true,
-          };
-        }
+        const objects = createS3ArtifactStoreFromEnv();
+        if (objects) return { port: objects, configured: true };
         return { port: missing, configured: false };
       },
     },

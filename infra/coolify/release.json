@@ -180,7 +180,15 @@
       ],
       "public_ports": [],
       "traefik_enable": false,
-      "action": "inspect-and-reconcile-in-place-only"
+      "action": "inspect-and-reconcile-in-place-only",
+      "additional_requirements": [
+        "existing private bucket: no public policy/ACL/anonymous access",
+        "scoped application identity limited to workspaces/*; root/KMS credentials stay in storage only",
+        "SSE AES256 on all new puts, existing KMS key and versions preserved",
+        "API and Worker use identical reviewed endpoint/region/bucket/credential revision",
+        "read-only OPERATIONS diagnostics at /v1/platform/storage; P22 validates real signing and object operations"
+      ],
+      "policy_renderer": "infra/services/render-storage-policy.mjs"
     },
     "hatchet": {
       "recorded_uuid": "povviyiod3fxzrbhe4hzhmn1",

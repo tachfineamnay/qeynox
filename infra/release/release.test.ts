@@ -21,7 +21,7 @@ test('release identity, frozen beta policies and credential-safe diagnostics', (
 });
 
 test('private S3 transfer tickets are encrypted, session/workspace/method bound, expiring and tamper resistant', () => {
-  const raw = 'http://qeynox-storage:9000/qa-private/workspaces/qa-workspace/documents/object.txt?X-Amz-Signature=' + '1'.repeat(64);
+  const raw = 'http://qeynox-storage:9000/qa-private/workspaces/qa-workspace/documents/object.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=19700101T001640Z&X-Amz-Expires=180&X-Amz-SignedHeaders=host&X-Amz-Signature=' + '1'.repeat(64);
   const url = mintStorageTransfer(raw, 'GET', 'qa-workspace', 'qa-session', web, 1_000_000);
   assert.equal(url.includes('qeynox-storage'), false);
   const ticket = new URL(url).searchParams.get('ticket')!;

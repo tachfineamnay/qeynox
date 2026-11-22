@@ -39,6 +39,7 @@ import {
   QeyNoxStore, documentAuditEvents, documentChunks, documentIngestJobs, documentStorageDeletions, documents, identityMemberships, operationDocuments, operations,
   type StorageDeletionReason, type StorageDeletionState,
 } from '@qeynox/persistence';
+import { storageFailureCode } from './s3';
 import { cosineSimilarity, type EmbeddingProvider } from './embeddings';
 
 export const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
@@ -116,6 +117,7 @@ const UPLOAD_URL_GRACE_MS = 11 * 60 * 1000;
 interface ClaimedStorageDeletion { readonly id: string; readonly workspaceId: string; readonly documentId: string; readonly storageKey: string; readonly attempts: number; readonly token: string; readonly notBefore: Date }
 /** A short, non-sensitive error classifier (SDK error name only — never messages, keys or URLs). */
 function storageErrorSuffix(error: unknown): string {
+  if (error instanceof DomainError && error.context?.storageFailure) return ':S3_' + storageFailureCode(error);
   const name = (error as { name?: unknown } | null)?.name;
   return typeof name === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,60}$/.test(name) ? ':' + name : '';
 }
@@ -143,7 +145,7 @@ function sanitizeName(name: string): string {
 function storageKeyFor(workspaceId: string, id: string, name: string): string {
   // The key carries no customer data beyond the random document id and a safe slug of the name.
   const slug = name.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'document';
-  return `workspaces/${workspaceId}/documents/${id}/${slug}`;
+  return `workspaces/${workspaceId}/documents/${id}/${slug === '.' || slug === '..' ? 'document' : slug}`;
 }
 
 /** Deterministic paragraph-aware chunker. Overlap keeps citations meaningful across boundaries. */
@@ -385,7 +387,7 @@ export class DocumentVaultService {
       } catch (error: unknown) {
         // Lost the lease: another worker owns the job now (or it was reset). Write nothing.
         if (error instanceof IngestLeaseLostError) continue;
-        const code = error instanceof IngestTerminalError ? error.code : error instanceof DomainError ? error.code : 'INGEST_FAILED';
+        const code = error instanceof IngestTerminalError ? error.code : error instanceof DomainError ? (error.context?.storageFailure ? 'STORAGE_' + storageFailureCode(error) : error.code) : 'INGEST_FAILED';
         const terminal = error instanceof IngestTerminalError || job.attempts >= INGEST_MAX_ATTEMPTS;
         const recorded = await this.store.db.transaction(async tx => {
           const [released] = await tx.update(documentIngestJobs)

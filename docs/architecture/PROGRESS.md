@@ -1,5 +1,24 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-22 — MISSION P18: private document storage integration (P22 certification deferred)
+
+Completed missing operational source/configuration around existing P10–P12, not a rewrite: shared
+API/Worker private S3 settings, SSE/conditional upload signing, bounded transport/retries/bytes,
+read-grant HEAD preflight, browser relay signed-header/expiry/error handling and per-transfer canonical
+resource reauthorization. Added conservative lease-aware maintenance batches, sanitized failure facts,
+protected read-only OPERATIONS storage/queue diagnostics, offline scoped policy bundle and operator
+runbook. Existing ingestion/deletion fencing/retry/retention/retrieval algorithms and storage data/KMS/
+volume remain intact; bucket stays private. No new scheduler, schema or visual UI.
+
+Requested minimal checks only: **typecheck PASS (6 tasks + release tooling)** and **API/Worker/Web
+scoped builds PASS (3 builds)**. Tests were **not run**. No real storage/DB call, policy/object/credential
+mutation, deployment, restart or migration. **Real S3 signing/encryption/browser/isolation/recovery/
+retention/version semantics remain unverified and deferred to P22**; ListBucket probe is explicitly
+not write/delete/encryption certification. BETA_FREE / INVITE_ONLY and financial history unchanged.
+See [P18 verification](../../infra/P18_VERIFICATION.md) and
+[storage operator contract](../../infra/STORAGE_RELEASE.md).
+
+
 ## 2026-11-22 — MISSION P17: Hermes → Vertex source integration (P22 certification deferred)
 
 Hermes remains the agent runtime and Hatchet the single durable orchestrator. Added mandatory

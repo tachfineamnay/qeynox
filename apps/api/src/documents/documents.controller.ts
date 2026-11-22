@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Inject, Param, Post, Req } from '@nestjs/common';
 import { z } from 'zod';
 import { DomainError, type Principal } from '@qeynox/domain';
-import { DocumentVaultService, DOCUMENT_ALLOWED_CONTENT_TYPES, DOCUMENT_MAX_BYTES } from '@qeynox/application';
+import { DocumentVaultService, DOCUMENT_ALLOWED_CONTENT_TYPES, DOCUMENT_MAX_BYTES, documentMaintenanceConfiguration } from '@qeynox/application';
 import { DOCUMENT_VAULT } from './documents.tokens';
 
 /**
@@ -40,6 +40,7 @@ const idSchema = z.string().min(4).max(64).regex(/^[A-Za-z0-9_-]+$/);
 
 @Controller()
 export class DocumentsController {
+  private readonly ingestBatch = documentMaintenanceConfiguration().ingestBatch;
   constructor(@Inject(DOCUMENT_VAULT) private readonly documents: DocumentVaultService) {}
 
   @Post('v1/documents/begin')
@@ -55,7 +56,7 @@ export class DocumentsController {
     const result = await this.documents.completeUpload(actor, idSchema.parse(id));
     // Best-effort same-process drain; the worker polls the durable job table as the real guarantee.
     setImmediate(() => {
-      void this.documents.drainIngestPending({ workspaceId: actor.workspaceId, limit: 5 }).catch(() => undefined);
+      void this.documents.drainIngestPending({ workspaceId: actor.workspaceId, limit: this.ingestBatch }).catch(() => undefined);
     });
     return result;
   }
