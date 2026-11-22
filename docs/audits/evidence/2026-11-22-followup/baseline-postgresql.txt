@@ -1,0 +1,1092 @@
+Root checks below were run in initial environment without QEYNOX_QA_DATABASE_URL; QA suites ran with disposable PostgreSQL.
+
+
+$ pnpm typecheck
+
+> qeynox@0.1.0 typecheck /home/user/qeynox
+> turbo run typecheck
+
+
+Attention:
+Turborepo now collects completely anonymous telemetry regarding usage.
+This information is used to shape the Turborepo roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://turborepo.com/docs/telemetry
+
+turbo 2.5.8
+
+• Packages in scope: @qeynox/api, @qeynox/application, @qeynox/contracts, @qeynox/control, @qeynox/domain, @qeynox/engine, @qeynox/orchestration, @qeynox/persistence, @qeynox/roles, @qeynox/tools, @qeynox/web, @qeynox/worker
+• Running typecheck in 12 packages
+• Remote caching disabled
+@qeynox/control:typecheck: cache miss, executing 30e438e6a799ce01
+@qeynox/web:typecheck: cache miss, executing d763273eac22dd4c
+@qeynox/worker:typecheck: cache miss, executing a59ff448cb9463d2
+@qeynox/api:typecheck: cache miss, executing 64e5669e73c3d6c7
+@qeynox/control:typecheck:
+@qeynox/control:typecheck: > @qeynox/control@0.1.0 typecheck /home/user/qeynox/apps/control
+@qeynox/control:typecheck: > next typegen && tsc --noEmit
+@qeynox/control:typecheck:
+@qeynox/worker:typecheck:
+@qeynox/worker:typecheck: > @qeynox/worker@0.1.0 typecheck /home/user/qeynox/apps/worker
+@qeynox/worker:typecheck: > tsc --noEmit -p tsconfig.json
+@qeynox/worker:typecheck:
+@qeynox/web:typecheck:
+@qeynox/web:typecheck: > @qeynox/web@0.1.0 typecheck /home/user/qeynox/apps/web
+@qeynox/web:typecheck: > next typegen && tsc --noEmit
+@qeynox/web:typecheck:
+@qeynox/api:typecheck:
+@qeynox/api:typecheck: > @qeynox/api@0.1.0 typecheck /home/user/qeynox/apps/api
+@qeynox/api:typecheck: > tsc --noEmit -p tsconfig.json
+@qeynox/api:typecheck:
+@qeynox/web:typecheck: Generating route types...
+@qeynox/control:typecheck: Generating route types...
+@qeynox/web:typecheck: ✓ Types generated successfully
+@qeynox/control:typecheck: ✓ Types generated successfully
+
+ Tasks:    4 successful, 4 total
+Cached:    0 cached, 4 total
+  Time:    29.179s
+
+
+$ pnpm build
+
+> qeynox@0.1.0 build /home/user/qeynox
+> turbo run build
+
+turbo 2.5.8
+
+• Packages in scope: @qeynox/api, @qeynox/application, @qeynox/contracts, @qeynox/control, @qeynox/domain, @qeynox/engine, @qeynox/orchestration, @qeynox/persistence, @qeynox/roles, @qeynox/tools, @qeynox/web, @qeynox/worker
+• Running build in 12 packages
+• Remote caching disabled
+@qeynox/control:build: cache miss, executing d67b058e34f4d07f
+@qeynox/web:build: cache miss, executing b94fa44848ebf91a
+@qeynox/api:build: cache miss, executing 88c4bb57695474f0
+@qeynox/worker:build: cache miss, executing 2ecce66a6f4d13a9
+@qeynox/web:build:
+@qeynox/web:build: > @qeynox/web@0.1.0 build /home/user/qeynox/apps/web
+@qeynox/web:build: > next build
+@qeynox/web:build:
+@qeynox/worker:build:
+@qeynox/worker:build: > @qeynox/worker@0.1.0 build /home/user/qeynox/apps/worker
+@qeynox/worker:build: > tsc -p tsconfig.json
+@qeynox/worker:build:
+@qeynox/control:build:
+@qeynox/control:build: > @qeynox/control@0.1.0 build /home/user/qeynox/apps/control
+@qeynox/control:build: > next build
+@qeynox/control:build:
+@qeynox/api:build:
+@qeynox/api:build: > @qeynox/api@0.1.0 build /home/user/qeynox/apps/api
+@qeynox/api:build: > tsc -p tsconfig.json
+@qeynox/api:build:
+@qeynox/web:build: ▲ Next.js 16.4.6 (Turbopack)
+@qeynox/web:build: ✓ Running next.config.ts took 79ms
+@qeynox/web:build: Attention: Next.js now collects completely anonymous telemetry regarding usage.
+@qeynox/web:build: This information is used to shape Next.js' roadmap and prioritize features.
+@qeynox/web:build: You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+@qeynox/web:build: https://nextjs.org/telemetry
+@qeynox/web:build:
+@qeynox/web:build:
+@qeynox/control:build: ▲ Next.js 16.4.6 (Turbopack)
+@qeynox/control:build: ✓ Running next.config.ts took 67ms
+@qeynox/web:build:   Creating an optimized production build ...
+@qeynox/control:build:
+@qeynox/control:build:   Creating an optimized production build ...
+@qeynox/control:build: ✓ Compiled successfully in 16.6s
+@qeynox/control:build:   Running TypeScript ...
+@qeynox/web:build: ✓ Compiled successfully in 27.2s
+@qeynox/web:build:   Running TypeScript ...
+@qeynox/control:build:   Finished TypeScript in 12.4s ...
+@qeynox/control:build:   Collecting page data using 1 worker ...
+@qeynox/control:build:   Generating static pages using 1 worker (0/2) ...
+@qeynox/control:build: ✓ Generating static pages using 1 worker (2/2) in 306ms
+@qeynox/control:build:   Finalizing page optimization ...
+@qeynox/control:build:
+@qeynox/control:build: Route (app)
+@qeynox/control:build: ┌ ○ /_not-found
+@qeynox/control:build: ├ ƒ /[lang]
+@qeynox/control:build: ├ ƒ /[lang]/account
+@qeynox/control:build: ├ ƒ /[lang]/admins
+@qeynox/control:build: ├ ƒ /[lang]/audit
+@qeynox/control:build: ├ ƒ /[lang]/beta
+@qeynox/control:build: ├ ƒ /[lang]/beta/[id]
+@qeynox/control:build: ├ ƒ /[lang]/configuration
+@qeynox/control:build: ├ ƒ /[lang]/operations
+@qeynox/control:build: ├ ƒ /[lang]/operations/[id]
+@qeynox/control:build: ├ ƒ /[lang]/operations/health
+@qeynox/control:build: ├ ƒ /[lang]/operations/releases
+@qeynox/control:build: ├ ƒ /[lang]/organizations
+@qeynox/control:build: ├ ƒ /[lang]/organizations/[id]
+@qeynox/control:build: ├ ƒ /[lang]/settings
+@qeynox/control:build: ├ ƒ /[lang]/support
+@qeynox/control:build: ├ ƒ /[lang]/support/[id]
+@qeynox/control:build: ├ ƒ /[lang]/users
+@qeynox/control:build: └ ƒ /[lang]/users/[id]
+@qeynox/control:build:
+@qeynox/control:build:
+@qeynox/control:build: ○  (Static)   prerendered as static content
+@qeynox/control:build: ƒ  (Dynamic)  server-rendered on demand
+@qeynox/control:build:
+@qeynox/web:build:   Finished TypeScript in 13.7s ...
+@qeynox/web:build:   Collecting page data using 1 worker ...
+@qeynox/web:build:   Generating static pages using 1 worker (0/4) ...
+@qeynox/web:build:   Generating static pages using 1 worker (1/4)
+@qeynox/web:build:   Generating static pages using 1 worker (2/4)
+@qeynox/web:build:   Generating static pages using 1 worker (3/4)
+@qeynox/web:build: ✓ Generating static pages using 1 worker (4/4) in 109ms
+@qeynox/web:build:   Finalizing page optimization ...
+@qeynox/web:build:
+@qeynox/web:build: Route (app)
+@qeynox/web:build: ┌ ○ /_not-found
+@qeynox/web:build: ├ ƒ /[lang]
+@qeynox/web:build: ├ ƒ /[lang]/account
+@qeynox/web:build: ├ ƒ /[lang]/account/recover
+@qeynox/web:build: ├ ƒ /[lang]/account/register
+@qeynox/web:build: ├ ƒ /[lang]/account/reset
+@qeynox/web:build: ├ ƒ /[lang]/account/settings
+@qeynox/web:build: ├ ƒ /[lang]/account/verify
+@qeynox/web:build: ├ ƒ /[lang]/capabilities
+@qeynox/web:build: ├ ƒ /[lang]/connections
+@qeynox/web:build: ├ ƒ /[lang]/contact
+@qeynox/web:build: ├ ƒ /[lang]/documents
+@qeynox/web:build: ├ ƒ /[lang]/how-it-works
+@qeynox/web:build: ├ ƒ /[lang]/legal/cookies
+@qeynox/web:build: ├ ƒ /[lang]/legal/notice
+@qeynox/web:build: ├ ƒ /[lang]/legal/privacy
+@qeynox/web:build: ├ ƒ /[lang]/legal/terms
+@qeynox/web:build: ├ ƒ /[lang]/manifesto
+@qeynox/web:build: ├ ƒ /[lang]/missions
+@qeynox/web:build: ├ ƒ /[lang]/missions/[id]
+@qeynox/web:build: ├ ƒ /[lang]/missions/[id]/results/[documentId]
+@qeynox/web:build: ├ ƒ /[lang]/mydash
+@qeynox/web:build: ├ ƒ /[lang]/notifications
+@qeynox/web:build: ├ ƒ /[lang]/results
+@qeynox/web:build: ├ ƒ /[lang]/results/[documentId]
+@qeynox/web:build: ├ ƒ /[lang]/results/shared/[token]
+@qeynox/web:build: ├ ƒ /[lang]/services
+@qeynox/web:build: ├ ƒ /[lang]/services/[offerId]
+@qeynox/web:build: ├ ƒ /[lang]/soul
+@qeynox/web:build: ├ ƒ /[lang]/support
+@qeynox/web:build: ├ ƒ /[lang]/support/[id]
+@qeynox/web:build: ├ ƒ /[lang]/workspaces
+@qeynox/web:build: ├ ○ /robots.txt
+@qeynox/web:build: └ ○ /sitemap.xml
+@qeynox/web:build:
+@qeynox/web:build:
+@qeynox/web:build: ○  (Static)   prerendered as static content
+@qeynox/web:build: ƒ  (Dynamic)  server-rendered on demand
+@qeynox/web:build:
+
+ Tasks:    4 successful, 4 total
+Cached:    0 cached, 4 total
+  Time:    44.357s
+
+Terminal evidence captured in Arena on 2026-11-22.
+PostgreSQL 16.6 disposable local cluster; each QA integration creates/drops its own database.
+No production service used. No real S3 or external Hermes/Hatchet/provider certification.
+
+========================================================================
+$ pnpm qa:task02
+
+> qeynox@0.1.0 qa:task02 /home/user/qeynox
+> pnpm --filter @qeynox/api qa:task02
+
+
+> @qeynox/api@0.1.0 qa:task02 /home/user/qeynox/apps/api
+> tsx scripts/qa-task02.ts
+
+QA database created: qeynox_qa_c7cc0b3bc4c7455c
+QA database dropped: qeynox_qa_c7cc0b3bc4c7455c
+QA verification FAILED: Error: ASSERTION FAILED: migration created declared index email_deliveries_dedup_unique
+    at assert (/home/user/qeynox/apps/api/scripts/qa-task02.ts:35:25)
+    at verifySchemaParity (/home/user/qeynox/apps/api/scripts/qa-task02.ts:193:7)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async main (/home/user/qeynox/apps/api/scripts/qa-task02.ts:333:5)
+/home/user/qeynox/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @qeynox/api@0.1.0 qa:task02: `tsx scripts/qa-task02.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+
+========================================================================
+$ pnpm qa:backend
+
+> qeynox@0.1.0 qa:backend /home/user/qeynox
+> pnpm --filter @qeynox/api qa:backend
+
+
+> @qeynox/api@0.1.0 qa:backend /home/user/qeynox/apps/api
+> tsx scripts/qa-backend-certification.ts
+
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+Backend certification PASSED: 28 assertions
+QA database dropped: qeynox_qa_405d61d23887434f
+
+========================================================================
+$ pnpm qa:agent-runtime
+
+> qeynox@0.1.0 qa:agent-runtime /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:agent-runtime
+
+
+> @qeynox/worker@0.1.0 qa:agent-runtime /home/user/qeynox/apps/worker
+> tsx scripts/qa-agent-runtime.ts
+
+Agent runtime QA PASSED: 65 assertions
+QA database dropped: qeynox_qa_a572a726cbab4c3a
+
+========================================================================
+$ pnpm qa:connectors
+
+> qeynox@0.1.0 qa:connectors /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:connectors
+
+
+> @qeynox/worker@0.1.0 qa:connectors /home/user/qeynox/apps/worker
+> tsx scripts/qa-connectors.ts
+
+QA database dropped: qeynox_qa_2cf36c4a74c1407d
+Connector QA FAILED: DomainError: Provider connection failed: Client network socket disconnected before secure TLS connection was established
+    at ClientRequest.<anonymous> (/home/user/qeynox/packages/tools/src/egress.ts:163:43)
+    at ClientRequest.emit (node:events:531:35)
+    at emitErrorEvent (node:_http_client:108:11)
+    at TLSSocket.socketErrorListener (node:_http_client:575:5)
+    at TLSSocket.emit (node:events:519:28)
+    at emitErrorNT (node:internal/streams/destroy:170:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:129:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+/home/user/qeynox/apps/worker:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @qeynox/worker@0.1.0 qa:connectors: `tsx scripts/qa-connectors.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+
+========================================================================
+$ pnpm qa:raas
+
+> qeynox@0.1.0 qa:raas /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:raas-deliverable
+
+
+> @qeynox/worker@0.1.0 qa:raas-deliverable /home/user/qeynox/apps/worker
+> tsx scripts/qa-raas-deliverable.ts
+
+QA database dropped: qeynox_qa_643762d1ee074a43
+RAAS deliverable QA FAILED: DomainError: Provider connection failed: Client network socket disconnected before secure TLS connection was established
+    at ClientRequest.<anonymous> (/home/user/qeynox/packages/tools/src/egress.ts:163:43)
+    at ClientRequest.emit (node:events:531:35)
+    at emitErrorEvent (node:_http_client:108:11)
+    at TLSSocket.socketErrorListener (node:_http_client:575:5)
+    at TLSSocket.emit (node:events:519:28)
+    at emitErrorNT (node:internal/streams/destroy:170:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:129:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+/home/user/qeynox/apps/worker:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @qeynox/worker@0.1.0 qa:raas-deliverable: `tsx scripts/qa-raas-deliverable.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+
+========================================================================
+$ pnpm qa:storage
+
+> qeynox@0.1.0 qa:storage /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:storage
+
+
+> @qeynox/worker@0.1.0 qa:storage /home/user/qeynox/apps/worker
+> tsx scripts/qa-object-storage.ts
+
+STORAGE QA BLOCKED: QEYNOX_QA_S3_ENDPOINT/ACCESS_KEY/SECRET_KEY are not configured; no live S3 checks performed.
+
+========================================================================
+$ pnpm qa:egress
+
+> qeynox@0.1.0 qa:egress /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:egress
+
+
+> @qeynox/worker@0.1.0 qa:egress /home/user/qeynox/apps/worker
+> tsx scripts/qa-egress.ts
+
+Provider egress QA FAILED: DomainError: Provider connection failed: Client network socket disconnected before secure TLS connection was established
+    at ClientRequest.<anonymous> (/home/user/qeynox/packages/tools/src/egress.ts:163:43)
+    at ClientRequest.emit (node:events:519:28)
+    at emitErrorEvent (node:_http_client:108:11)
+    at TLSSocket.socketErrorListener (node:_http_client:575:5)
+    at TLSSocket.emit (node:events:519:28)
+    at emitErrorNT (node:internal/streams/destroy:170:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:129:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+/home/user/qeynox/apps/worker:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @qeynox/worker@0.1.0 qa:egress: `tsx scripts/qa-egress.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+
+========================================================================
+$ pnpm qa:platform-authorization
+
+> qeynox@0.1.0 qa:platform-authorization /home/user/qeynox
+> pnpm --filter @qeynox/api qa:platform-authorization
+
+
+> @qeynox/api@0.1.0 qa:platform-authorization /home/user/qeynox/apps/api
+> tsx scripts/qa-platform-authorization.ts
+
+  part A authorization invariants: OK
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+/home/user/qeynox/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @qeynox/api@0.1.0 qa:platform-authorization: `tsx scripts/qa-platform-authorization.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+
+========================================================================
+$ pnpm qa:platform-admin
+
+> qeynox@0.1.0 qa:platform-admin /home/user/qeynox
+> pnpm --filter @qeynox/api qa:platform-admin
+
+
+> @qeynox/api@0.1.0 qa:platform-admin /home/user/qeynox/apps/api
+> tsx scripts/qa-platform-admin.ts
+
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+Platform administration e2e PASSED: 70 assertions against an isolated PostgreSQL database
+QA database dropped: qeynox_qa_0224a02b07ec41f2
+
+========================================================================
+$ pnpm qa:platform-users
+
+> qeynox@0.1.0 qa:platform-users /home/user/qeynox
+> pnpm --filter @qeynox/api qa:platform-users
+
+
+> @qeynox/api@0.1.0 qa:platform-users /home/user/qeynox/apps/api
+> tsx scripts/qa-platform-users.ts
+
+  part A users-management invariants: OK (92 assertions so far)
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+/home/user/qeynox/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @qeynox/api@0.1.0 qa:platform-users: `tsx scripts/qa-platform-users.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+
+========================================================================
+$ pnpm qa:platform-organizations
+
+> qeynox@0.1.0 qa:platform-organizations /home/user/qeynox
+> pnpm --filter @qeynox/api qa:platform-organizations
+
+
+> @qeynox/api@0.1.0 qa:platform-organizations /home/user/qeynox/apps/api
+> tsx scripts/qa-platform-organizations.ts
+
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+Organizations & memberships e2e PASSED: 87 assertions against an isolated PostgreSQL database
+QA database dropped: qeynox_qa_5844db567d544b6a
+
+========================================================================
+$ pnpm qa:platform-configuration
+
+> qeynox@0.1.0 qa:platform-configuration /home/user/qeynox
+> pnpm --filter @qeynox/api qa:platform-configuration
+
+
+> @qeynox/api@0.1.0 qa:platform-configuration /home/user/qeynox/apps/api
+> tsx scripts/qa-platform-configuration.ts
+
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+Platform configuration e2e PASSED: 70 assertions against an isolated PostgreSQL database
+QA database dropped: qeynox_qa_cb07383920894cfa
+
+========================================================================
+$ pnpm qa:chatwoot
+
+> qeynox@0.1.0 qa:chatwoot /home/user/qeynox
+> pnpm --filter @qeynox/api qa:chatwoot
+
+
+> @qeynox/api@0.1.0 qa:chatwoot /home/user/qeynox/apps/api
+> tsx scripts/qa-chatwoot-http.ts
+
+Chatwoot HTTP contract, reconciliation and failure injection: PASS — 42 assertions (fixture only; NOT a live Chatwoot verification)
+
+========================================================================
+$ pnpm qa:support-isolation
+
+> qeynox@0.1.0 qa:support-isolation /home/user/qeynox
+> pnpm --filter @qeynox/api qa:support-isolation
+
+
+> @qeynox/api@0.1.0 qa:support-isolation /home/user/qeynox/apps/api
+> tsx scripts/qa-support-isolation.ts
+
+support isolation, orphan handling, duplicate fail-closed, direction and outage propagation: PASS (fixture only — not a live Chatwoot check)
+
+========================================================================
+$ pnpm qa:support-private
+
+> qeynox@0.1.0 qa:support-private /home/user/qeynox
+> pnpm --filter @qeynox/api qa:support-private
+
+
+> @qeynox/api@0.1.0 qa:support-private /home/user/qeynox/apps/api
+> tsx scripts/qa-support-private.ts
+
+Chatwoot customer private note isolation: PASS (fixture only — not a live Chatwoot check)
+
+========================================================================
+$ pnpm qa:support-concurrency
+
+> qeynox@0.1.0 qa:support-concurrency /home/user/qeynox
+> pnpm --filter @qeynox/api qa:support-concurrency
+
+
+> @qeynox/api@0.1.0 qa:support-concurrency /home/user/qeynox/apps/api
+> tsx scripts/qa-support-concurrency.ts
+
+Support concurrency: PASS — 11 assertions (fixture only; NOT a live Chatwoot verification)
+
+========================================================================
+$ pnpm qa:support-reconciliation
+
+> qeynox@0.1.0 qa:support-reconciliation /home/user/qeynox
+> pnpm --filter @qeynox/api qa:support-reconciliation
+
+
+> @qeynox/api@0.1.0 qa:support-reconciliation /home/user/qeynox/apps/api
+> tsx scripts/qa-support-reconciliation.ts
+
+Support reconciliation (isolated PostgreSQL + fixture Chatwoot): PASS — 33 assertions
+NOTE: the Chatwoot side here is the deterministic fixture, NOT the live service. Live verification is documented in docs/architecture/CHATWOOT_SUPPORT.md.
+
+========================================================================
+$ pnpm qa:hermes-contract
+
+> qeynox@0.1.0 qa:hermes-contract /home/user/qeynox
+> pnpm --filter @qeynox/engine qa:hermes-contract
+
+
+> @qeynox/engine@0.1.0 qa:hermes-contract /home/user/qeynox/packages/engine
+> tsx scripts/qa-hermes-contract.ts
+
+PASS: Hermes/VERTEX contract QA — 57 assertions (contract only; real inference NOT exercised).
+
+========================================================================
+$ pnpm qa:hermes-live
+
+> qeynox@0.1.0 qa:hermes-live /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:hermes-live
+
+
+> @qeynox/worker@0.1.0 qa:hermes-live /home/user/qeynox/apps/worker
+> tsx scripts/qa-hermes-live.ts
+
+BLOCKED: real inference not attempted: QEYNOX_QA_HERMES_URL / QEYNOX_QA_HERMES_KEY are not set. A contract-only run is NOT evidence of real inference.
+/home/user/qeynox/apps/worker:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @qeynox/worker@0.1.0 qa:hermes-live: `tsx scripts/qa-hermes-live.ts`
+Exit status 3
+ ELIFECYCLE  Command failed with exit code 3.
+
+========================================================================
+$ pnpm qa:hermes-live-selftest
+
+> qeynox@0.1.0 qa:hermes-live-selftest /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:hermes-live-selftest
+
+
+> @qeynox/worker@0.1.0 qa:hermes-live-selftest /home/user/qeynox/apps/worker
+> tsx scripts/qa-hermes-live-selftest.ts
+
+PASS: live-inference procedure self-test — 15 assertions.
+This validates the procedure and exit codes against a fixture. It is NOT real inference evidence.
+
+========================================================================
+$ pnpm qa:runtime-readiness
+
+> qeynox@0.1.0 qa:runtime-readiness /home/user/qeynox
+> pnpm --filter @qeynox/application qa:runtime-readiness
+
+
+> @qeynox/application@0.1.0 qa:runtime-readiness /home/user/qeynox/packages/application
+> tsx scripts/qa-runtime-readiness.ts && tsx scripts/qa-runtime-readiness-negative.ts
+
+Runtime readiness QA PASSED: 70 assertions
+States verified: CONFIGURED, OPERATIONAL, BLOCKED, UNVERIFIED
+Negative cases: config-only, missing policy/profile/provider, BLOCKED runtime, QA contract vs operational
+A21.07: NOT_PROBED, VERIFIED, STALE, TARGET_CHANGED, FAILED, identity-less success, monitor deadline, scrubbing
+Runtime readiness NEGATIVE QA PASSED: 27 assertions
+
+========================================================================
+$ pnpm qa:runtime-verification
+
+> qeynox@0.1.0 qa:runtime-verification /home/user/qeynox
+> pnpm --filter @qeynox/api qa:runtime-verification
+
+
+> @qeynox/api@0.1.0 qa:runtime-verification /home/user/qeynox/apps/api
+> tsx scripts/qa-runtime-verification.ts
+
+PASS: pure rules: clamped probe policy, no verification without evidence, launch blocker codes, customer summary shape
+PASS: monitor: nothing configured is NOT_CONFIGURED; configured without evidence is NOT_PROBED/UNVERIFIED; the operator boolean is ignored
+PASS: Hermes-only success: Hermes VERIFIED with proven identity, Hatchet FAILED separately, execution blocked
+PASS: Hatchet-only success: Hatchet VERIFIED with tenant identity, Hermes FAILED separately, execution blocked
+PASS: both verified: OPERATIONAL, canExecute, separate evidence references
+PASS: stale evidence: valid until expiresAt, STALE/UNVERIFIED at expiry, future evidence distrusted, freshReadiness re-verifies
+PASS: timeout: 250 ms bound, FAILED TIMEOUT per component, the other component unaffected; in-flight probes are shared
+PASS: restart: a new process starts NOT_PROBED; runtime restarts fail then re-verify with the new identity
+PASS: configuration change: rotated key / endpoint / gRPC address → TARGET_CHANGED per component; removed config → NOT_CONFIGURED; attestations stay required
+PASS: failure classification: isolation, identity, health, model, auth, readiness and tenant failures are distinct and per component
+PASS: probe hygiene: unauthenticated health checks, the token only to its tenant endpoint, URL credentials stripped
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: launch gate: NOT_CONFIGURED without evidence, UNAVAILABLE when either probe failed, nothing consumed until both are verified
+PASS: HTTP: readiness blockers and verification per component, start 503/502/201, journey summaries, operator evidence, stale, key rotation and restart
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: lifecycle: the API probes both runtimes at boot (QEYNOX_RUNTIME_PROBES=off disables it)
+PASS: no credential leakage across 49 recorded readiness objects and HTTP responses plus 12 raw evidence snapshots
+RESULT: qa:runtime-verification PASS: 15 groups, 146 assertions in 2528 ms
+
+========================================================================
+$ pnpm qa:a03-service
+
+> qeynox@0.1.0 qa:a03-service /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:a03-service
+
+
+> @qeynox/worker@0.1.0 qa:a03-service /home/user/qeynox/apps/worker
+> tsx scripts/qa-a03-service.ts
+
+— PART 1: configuration content, request contract, bounded plan —
+  PART 1 PASSED: 49 assertions
+— PART 2: configuration, authorization, budget, provider, evidence, review, deliverable —
+BLOCKED: the live World Bank provider is unreachable from this environment (Provider connection failed: Client network socket disconnected before secure TLS connection was established). Provider provenance, digest, human review and deliverable were NOT verified; no fixture was substituted.
+A03 SERVICE QA PARTIAL — PART 1 PASSED, PART 2 BLOCKED (82 assertions before the block).
+This run is NOT integration evidence for the provider chain.
+/home/user/qeynox/apps/worker:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @qeynox/worker@0.1.0 qa:a03-service: `tsx scripts/qa-a03-service.ts`
+Exit status 3
+ ELIFECYCLE  Command failed with exit code 3.
+
+========================================================================
+$ pnpm qa:service-catalogue
+
+> qeynox@0.1.0 qa:service-catalogue /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:service-catalogue
+
+
+> @qeynox/worker@0.1.0 qa:service-catalogue /home/user/qeynox/apps/worker
+> tsx scripts/qa-service-catalogue.ts
+
+— PART 1: typed request contract and registry —
+  PART 1 PASSED: 22 assertions
+— PART 2: catalogue, availability, order flow —
+  PART 2 PASSED: cumulative 63 assertions
+A13 SERVICE CATALOGUE QA PASSED: 63 assertions (PART 1 contracts + PART 2 catalogue and order flow).
+
+========================================================================
+$ pnpm qa:connector-hub
+
+> qeynox@0.1.0 qa:connector-hub /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:connector-hub
+
+
+> @qeynox/worker@0.1.0 qa:connector-hub /home/user/qeynox/apps/worker
+> tsx scripts/qa-connector-hub.ts
+
+— PART 1: contracts, provider declaration, vault honesty —
+  PART 1 PASSED: cumulative 18 assertions (18 in this half)
+— PART 2: OAuth lifecycle, vault, capabilities, audit —
+  PART 2 PASSED: cumulative 79 assertions
+A14 CONNECTOR HUB QA PASSED: 79 assertions (PART 1 contracts + PART 2 OAuth lifecycle).
+
+========================================================================
+$ pnpm qa:identity
+
+> qeynox@0.1.0 qa:identity /home/user/qeynox
+> pnpm --filter @qeynox/api qa:identity
+
+
+> @qeynox/api@0.1.0 qa:identity /home/user/qeynox/apps/api
+> tsx scripts/qa-identity-lifecycle.ts
+
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+IDENTITY_LIFECYCLE {"verification":"single-use, digest-only, replay and concurrent-duplicate refused","recovery":"revoked 2 session(s), old password rejected, replay refused","suspension":"session blocked, sign-in blocked, recovery not issued","transport":{"shipped":"NOT_CONFIGURED (no delivery claimed)","configuredRun":"recording transport, no network, no real e-mail"}}
+PASS: customer identity lifecycle — 57 assertions.
+NOTE: no e-mail was delivered. The configured run proves token handling and truthful reporting, not delivery.
+
+========================================================================
+$ pnpm qa:soul-intelligence
+
+> qeynox@0.1.0 qa:soul-intelligence /home/user/qeynox
+> pnpm --filter @qeynox/api qa:soul-intelligence
+
+
+> @qeynox/api@0.1.0 qa:soul-intelligence /home/user/qeynox/apps/api
+> tsx scripts/qa-soul-intelligence.ts
+
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: onboarding view reports real engine readiness (aiAvailable=false, reason=NO_ATTESTATION)
+PASS: guided input is refused on non-conversational steps and leaves the step unchanged
+PASS: guided input cannot be used to talk past the consent step
+PASS: guidance after declined consent writes no fact, leaves the step unchanged and degrades without a profile
+PASS: offline engine falls back deterministically and creates no operation
+PASS: idempotent first-mission flow, objective conflict detection and single operation preserved
+PASS: guidance is unavailable after onboarding completes
+PASS: AI guidance is labelled AI, sends no facts, and uses namespaced placeholder ids
+PASS: a retried guidance attempt reuses the first result without a second model call
+PASS: placeholder identity is deterministic per onboarding and step, and varies by step
+PASS: a model refusal is reported as ENGINE_REFUSED and replaced by fallback text
+PASS: refusal detection is conservative and does not reject ordinary business prose
+PASS: an offline engine yields a deterministic fallback in the customer language
+PASS: a hanging engine is bounded by the timeout and reported as ENGINE_TIMEOUT
+PASS: empty and failed completions fall back instead of being shown as AI guidance
+PASS: the turn ceiling stops the conversation at 12 customer turns without calling the model
+PASS: a missing Soul profile degrades to the fallback instead of failing the onboarding page
+PASS: guidance prompt is locale-aware, bounded to recent turns and carries no customer facts
+PASS: an attempt key is scoped per workspace and user, so it cannot leak a result across tenants
+PASS: after consent revocation guidance loses its grounding, the fact row survives and guidance stays deterministic
+PASS: revoked consent still allows skipping the remainder and creating the first mission
+PASS: another user has no onboarding record and cannot obtain guidance from it
+
+Intelligent Soul onboarding (A05) — 22 groups PASS in 1.2s
+
+========================================================================
+$ pnpm qa:pilot-planner
+
+> qeynox@0.1.0 qa:pilot-planner /home/user/qeynox
+> pnpm --filter @qeynox/api qa:pilot-planner
+
+
+> @qeynox/api@0.1.0 qa:pilot-planner /home/user/qeynox/apps/api
+> tsx scripts/qa-pilot-planner.ts
+
+PASS: AI proposal is labelled, bounded, readiness-aware and sends no memory context
+PASS: the proposal endpoint persists nothing — saving a plan remains the customer-facing endpoints
+PASS: a retried proposal attempt reuses the cached result without a second model call
+PASS: ceiling, capability, dependency and cycle violations reject the whole proposal — never a partial draft
+PASS: EXTERNAL_ACTION with reviewed tools is proposed with requiresApproval=true
+PASS: the customer is asked at most three clarifying questions
+PASS: refusal, failure, empty, invalid, offline and timeout all degrade to an empty, honest fallback
+PASS: a missing workspace budget policy is reported as unknown, never as an invented ceiling
+PASS: with no ACTIVE capability the engine is never called and no steps are proposed
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: HTTP layer: fail-closed engine, contract validation, workspace isolation, no implicit operation creation
+
+Pilot planner QA PASSED: 10 check groups in 1141 ms
+QA database dropped: qeynox_qa_44db73a8c0f5430e
+
+========================================================================
+$ pnpm qa:mission-lifecycle
+
+> qeynox@0.1.0 qa:mission-lifecycle /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:mission-lifecycle
+
+
+> @qeynox/worker@0.1.0 qa:mission-lifecycle /home/user/qeynox/apps/worker
+> tsx scripts/qa-mission-lifecycle.ts
+
+PASS: step dependencies and handoffs execute strictly in order with one durable output per step
+PASS: dispatch is durable: one intent per step, one execution link per dispatch, nothing re-dispatched
+PASS: concurrent approval decisions are serialised with exactly one winner
+PASS: an approval requested for a superseded revision is refused instead of authorising stale work
+PASS: result assembly attributes every finding to a claim, and unverified evidence cannot be delivered
+PASS: customer-visible progress is derived from persisted status and never claims an unproven milestone
+PASS: a stop request stays unresolved until persisted state proves nothing is running, then reconciles to INTERRUPTED
+PASS: retry reuses the attempt identity and a concurrently retried key creates at most one intent
+PASS: retry is refused when a tool write outcome is unknown, so no remote side effect is duplicated
+PASS: an ambiguous dispatch stays UNKNOWN and blocks retry instead of replaying a possible run
+PASS: worker failures propagate their real error code and are recorded as STEP_FAILED
+PASS: budget exhaustion ends in an explicit terminal state with the policy cause recorded
+PASS: a timed-out workflow ends in an explicit recoverable state with a recorded timeout code
+PASS: lifecycle artefacts and interruption controls stay inside their tenant
+
+Mission lifecycle A06 — 14 groups, 88 assertions PASS in 1.6s
+BOUNDARY: dispatch verified against a recording OrchestratorPort double; no Hatchet server ran. Live dispatch NOT VERIFIED.
+QA database dropped: qeynox_qa_020c2534c2cd4edc
+
+========================================================================
+$ pnpm qa:atlas-results
+
+> qeynox@0.1.0 qa:atlas-results /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:atlas-results
+
+
+> @qeynox/worker@0.1.0 qa:atlas-results /home/user/qeynox/apps/worker
+> tsx scripts/qa-atlas-results.ts
+
+PASS: classification only demotes, never promotes, and always states a reason
+PASS: no unreviewed document can be presented as a reviewed conclusion
+PASS: a PDF export never fails on unrepresentable text, and the other formats keep it exact
+PASS: JSON, HTML and PDF derive from one classification and are byte-reproducible
+PASS: the PDF export is a valid, paginated, deterministic, document-specific artefact
+PASS: exports escape markup, refuse unsafe links, and stay honest under hostile input
+PASS: PDF artefacts are stored under a tenant-scoped key with the correct digest and content type
+PASS: a document is only exportable by its own workspace, on its active revision
+PASS: pending PDF artefacts reconcile deterministically and stay inside the tenant
+PASS: tenant fixture is real: two workspaces, two members, documents and artefacts in one of them
+
+Atlas results A07 — 10 groups, 150 assertions PASS in 0.8s
+BOUNDARY: generators and tenancy verified against real application code and an isolated database. No browser, PDF viewer or S3 endpoint ran here: PDF visual fidelity is NOT VERIFIED and qa:storage stays BLOCKED.
+QA database dropped: qeynox_qa_d6967bd943464888
+
+========================================================================
+$ pnpm qa:stripe-payments
+
+> qeynox@0.1.0 qa:stripe-payments /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:stripe-payments
+
+
+> @qeynox/worker@0.1.0 qa:stripe-payments /home/user/qeynox/apps/worker
+> tsx scripts/qa-stripe-payments.ts
+
+PASS: with no provider configured every payment operation fails closed
+PASS: live keys are refused and test-mode keys construct
+PASS: real HMAC signatures verify, and forged, tampered, stale and mismatched signatures are refused
+PASS: a paid order cannot execute before verified authorization
+PASS: checkout is idempotent and a race cannot create a second payable payment
+PASS: opening checkout charges nothing: no authorization exists until the provider says so
+PASS: checkout validates redirects, expiry and tenancy before touching the provider
+PASS: a signed authorization applies once and every duplicate is a no-op
+PASS: delayed and out-of-order events never regress a verified state, and orphans are recorded
+PASS: pending, failed, expired and disputed are distinct states and none of them authorizes execution
+PASS: capture happens once and a retry is idempotent
+PASS: only an authorized payment can be captured
+PASS: refunds are idempotent, capped by the captured amount, and failures stay auditable
+PASS: a quote, its amount, its offer version and its plan revision are all re-checked before money moves
+PASS: a browser redirect is navigation, never proof of payment
+PASS: checkout, capture, refund and read are all tenant-scoped
+PASS: every signed event is auditable exactly once, with its digest and outcome
+
+Stripe payments A08 — 17 groups, 108 assertions PASS in 1.1s
+BOUNDARY: Stripe was never contacted. Provider behaviour is a deterministic in-process double; webhook signatures are real HMAC via the Stripe SDK. Live test-mode Stripe remains NOT VERIFIED.
+QA database dropped: qeynox_qa_0384c1695cf54e30
+
+========================================================================
+$ pnpm qa:payment-freeze
+
+> qeynox@0.1.0 qa:payment-freeze /home/user/qeynox
+> pnpm --filter @qeynox/api qa:payment-freeze
+
+
+> @qeynox/api@0.1.0 qa:payment-freeze /home/user/qeynox/apps/api
+> tsx scripts/qa-payment-freeze.ts
+
+PASS: positive control: a real Stripe SDK call is detected and refused by the network guard before connecting
+PASS: QEYNOX_COMMERCE_MODE defaults to PAYMENTS_DISABLED, accepts BETA_FREE, and refuses every other value
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: fixture: pre-freeze history (open checkout, authorized, captured+refunded, orphan event, unpaid order) recorded and snapshotted
+PASS: default (unset) mode, no Stripe keys: checkout, capture, refund, reconcile and webhooks fail closed with PAYMENTS_FROZEN in-process
+PASS: default (unset) mode, no Stripe keys: reads report history truthfully, withhold stale checkout links, and change nothing
+PASS: PAYMENTS_DISABLED with Stripe test keys: checkout, capture, refund, reconcile and webhooks fail closed with PAYMENTS_FROZEN in-process
+PASS: PAYMENTS_DISABLED with Stripe test keys: reads report history truthfully, withhold stale checkout links, and change nothing
+PASS: BETA_FREE, no Stripe keys: checkout, capture, refund, reconcile and webhooks fail closed with PAYMENTS_FROZEN in-process
+PASS: BETA_FREE, no Stripe keys: reads report history truthfully, withhold stale checkout links, and change nothing
+PASS: BETA_FREE with Stripe test keys: checkout, capture, refund, reconcile and webhooks fail closed with PAYMENTS_FROZEN in-process
+PASS: BETA_FREE with Stripe test keys: reads report history truthfully, withhold stale checkout links, and change nothing
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: default (unset) mode, no Stripe keys: every payment mutation route fails closed over HTTP, including signed provider webhooks
+PASS: default (unset) mode, no Stripe keys: HTTP reads are frozen and truthful; historical data unchanged; zero Stripe calls
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: PAYMENTS_DISABLED with Stripe test keys: every payment mutation route fails closed over HTTP, including signed provider webhooks
+PASS: PAYMENTS_DISABLED with Stripe test keys: HTTP reads are frozen and truthful; historical data unchanged; zero Stripe calls
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: BETA_FREE, no Stripe keys: every payment mutation route fails closed over HTTP, including signed provider webhooks
+PASS: BETA_FREE, no Stripe keys: HTTP reads are frozen and truthful; historical data unchanged; zero Stripe calls
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: BETA_FREE with Stripe test keys: every payment mutation route fails closed over HTTP, including signed provider webhooks
+PASS: BETA_FREE with Stripe test keys: HTTP reads are frozen and truthful; historical data unchanged; zero Stripe calls
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: a paid QEYNOX_COMMERCE_MODE refuses to boot the API even with Stripe test keys present
+PASS: global: zero Stripe network calls, no ledger writes, and all historical commerce data unchanged
+
+Payment freeze A21.01 — 21 groups, 369 assertions PASS in 1.6s
+BOUNDARY: Stripe was never contacted (outbound connections intercepted; positive control proved detection). Pre-freeze history was written by the preserved A08 engine with an in-process provider double and real HMAC-signed events. No browser ran.
+QeyNox database pool error: terminating connection due to administrator command
+QeyNox database pool error: terminating connection due to administrator command
+QeyNox database pool error: terminating connection due to administrator command
+QA database dropped: qeynox_qa_a5e2d521e1c94ede
+
+========================================================================
+$ pnpm qa:beta-access
+
+> qeynox@0.1.0 qa:beta-access /home/user/qeynox
+> pnpm --filter @qeynox/api qa:beta-access
+
+
+> @qeynox/api@0.1.0 qa:beta-access /home/user/qeynox/apps/api
+> tsx scripts/qa-beta-access.ts
+
+PASS: migration 0026 is additive and creates beta_grants / beta_grant_missions / beta_grant_events with their backstop constraints
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: fixture: six platform operators, five HTTP workspaces, a workspace member, a creator-only workspace and real configuration
+PASS: without a grant every launch fails closed (in-process and HTTP 403), dispatches nothing, is ledgered and is shown as a readiness blocker
+PASS: anonymous, workspace sessions, SUPPORT/AUDITOR/OPERATIONS operators, self-grants (membership or creator) and invalid grants are all refused and audited; no grant row is written
+PASS: grant → activation by OWNER works; MEMBER, cross-tenant and issuer activations are refused; the token is single-use; status is tenant-isolated
+PASS: parallel launches never exceed concurrentLimit (2/6) nor the mission quota (3), relaunch does not consume quota, and the DB CHECK backstops the quota
+PASS: parallel spend reservations never exceed the cap (2/6 at 200 under 500), settlement frees only unspent money, uncertain cost stays counted, unadmitted missions cannot spend, DB CHECK backstops
+PASS: revocation immediately blocks new launches (start in-process, HTTP, racing launches, retry and redo) and new spend, while earlier reservations still settle; revocation is audited and not repeatable
+PASS: expired grants and expired invitations fail closed for launch, spend, activation, status and readiness; a new grant materialises the expiry
+PASS: the payment freeze still refuses priced orders first (PAYMENT_REQUIRED) and the beta gate grants no payment entitlement
+PASS: every grant, revocation and denial is in platform_admin_audit; lifecycle and usage are in beta_grant_events
+Beta access QA PASSED: 11 groups, 126 assertions in 3s
+BOUNDARY: real PostgreSQL, real services and HTTP API; no worker/Hermes/provider ran (spend exercised through BudgetService.reserve/settle); completion and expiry use explicit fixture shortcuts; no browser ran.
+QA database dropped: qeynox_qa_00356cee63e04b92
+
+========================================================================
+$ pnpm qa:beta-execution
+
+> qeynox@0.1.0 qa:beta-execution /home/user/qeynox
+> pnpm --filter @qeynox/api qa:beta-execution
+
+
+> @qeynox/api@0.1.0 qa:beta-execution /home/user/qeynox/apps/api
+> tsx scripts/qa-beta-execution.ts
+
+PASS: migration 0027 is additive: raas_beta_authorizations with amount_due_now = 0, bindings as foreign keys, one per revision
+[services] registered 8 service contract(s): offer-research-pack-v1, offer-strategy-pack-v1, offer-marketing-pack-v1, offer-seo-pack-v1, offer-sales-pack-v1, offer-operations-pack-v1, offer-financial-pack-v1, offer-content-pack-v1
+PASS: default PAYMENTS_DISABLED: priced packs stay PAYMENT_REQUIRED even with an active grant, free packs stay AUTHORIZED, no beta authorization is created
+PASS: BETA_FREE + ACTIVE grant: 8 packs quoted and accepted over HTTP at published prices; 6 priced orders BETA_AUTHORIZED with a bound beta authorization (0 due), 2 free offers AUTHORIZED unchanged; read models truthful
+Beta execution QA FAILED after 183 assertions: DomainError: Business pack deliverable is unavailable for this revision
+    at readBusinessPackResult (/home/user/qeynox/packages/application/src/business-pack-execution.ts:414:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async ResultAssembler.assemble (/home/user/qeynox/packages/application/src/result-document.ts:40:14)
+    at async runToReview (/home/user/qeynox/apps/api/scripts/qa-beta-execution.ts:421:19)
+    at async main (/home/user/qeynox/apps/api/scripts/qa-beta-execution.ts:431:22)
+    at async <anonymous> (/home/user/qeynox/apps/api/scripts/qa-beta-execution.ts:811:1)
+QA database dropped: qeynox_qa_4f7a2737e9e94cb6
+/home/user/qeynox/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @qeynox/api@0.1.0 qa:beta-execution: `tsx scripts/qa-beta-execution.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+
+========================================================================
+$ pnpm qa:verification-resend
+
+> qeynox@0.1.0 qa:verification-resend /home/user/qeynox
+> pnpm --filter @qeynox/api qa:verification-resend
+
+
+> @qeynox/api@0.1.0 qa:verification-resend /home/user/qeynox/apps/api
+> tsx scripts/qa-verification-resend.ts
+
+PASS: route contract: session required; anonymous and forged bearers send nothing
+PASS: spoofing: a body naming another e-mail/user id changes neither the recipient nor whose token is issued
+PASS: Resend adapter contract: endpoint, bearer key, From, idempotency key, category, localized link, SENT ledger row with provider id
+PASS: full journey: resend → mailbox → inspect → confirm → VERIFIED; superseded and replayed links refused; one live token
+PASS: already verified: ALREADY_VERIFIED, no token, no provider call
+PASS: delivery failure: 5xx, 4xx and unreachable provider → DELIVERY_FAILED with the real ledger code; recovery ACCEPTED
+PASS: too many requests: per-account 429 with no provider call; other accounts unaffected; public flood cannot lock the owner out
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: transport not configured: NOT_CONFIGURED, no token, no provider call, no misleading throttle; public route unchanged
+Verification resend QA PASSED: 8 groups, 68 assertions in 1s
+BOUNDARY: real PostgreSQL, real NestJS HTTP API, real ResendEmailTransport; the provider is a local HTTP fixture (127.0.0.1), no real Resend key or delivery; no browser ran.
+QA database dropped: qeynox_qa_5a41c59023874243
+
+========================================================================
+$ pnpm qa:registration
+
+> qeynox@0.1.0 qa:registration /home/user/qeynox
+> pnpm --filter @qeynox/api qa:registration
+
+
+> @qeynox/api@0.1.0 qa:registration /home/user/qeynox/apps/api
+> tsx scripts/qa-registration.ts
+
+PASS: policy resolution: default CLOSED, three modes, unsupported values fail closed, deprecated alias, MODE precedence
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: web/API agreement: for 9 configurations the served policy predicts the register outcome exactly; QEYNOX_REGISTRATION_ENABLED=true changes nothing
+PASS: operator issuance: ADMINISTRATION only, token once + SHA-256 digest only, no self-invitation, no existing account, one pending per e-mail, audited
+PASS: registration disabled: 503 NOT_CONFIGURED for every request, nothing written, invitation untouched
+PASS: registration enabled (OPEN): password/input rules, normalised e-mail, workspace + OWNER, 24h session, sign-in, and NOT_ENROLLED (no beta bypass)
+PASS: invalid invitations: missing, blank, malformed, unknown, other e-mail, expired, revoked → one 403 INVITATION_INVALID, nothing written
+PASS: valid invitation: account + workspace + OWNER + ACTIVE beta grant with the invited terms + ledger, invitation REDEEMED, single use; OPEN + invitation consistent
+PASS: duplicate e-mail: generic non-enumerating 409 in OPEN and INVITE_ONLY; a duplicate never consumes the invitation
+PASS: concurrency: one invitation, three simultaneous redemptions → one account, one workspace, one grant
+Registration QA PASSED: 9 groups, 149 assertions in 2s
+BOUNDARY: real PostgreSQL, real NestJS HTTP API and services; expiry by moving stored timestamps; no e-mail sent; no browser ran (web covered by smoke).
+QA database dropped: qeynox_qa_301b863d788a4e28
+
+========================================================================
+$ pnpm qa:beta-journey
+
+> qeynox@0.1.0 qa:beta-journey /home/user/qeynox
+> pnpm --filter @qeynox/api qa:beta-journey
+
+
+> @qeynox/api@0.1.0 qa:beta-journey /home/user/qeynox/apps/api
+> tsx scripts/qa-beta-journey.ts
+
+PASS: journey state precedence: NOT_CONFIGURED → account (NOT_ENROLLED, INVITATION_PENDING, EXPIRED, REVOKED, QUOTA_EXHAUSTED, CONCURRENT_LIMIT_REACHED) → RUNTIME_UNAVAILABLE → ACTIVE
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: fixture: real API in BETA_FREE, one platform admin, four HTTP workspaces and a member, real configuration
+PASS: journey requires a session, is tenant-scoped (spoofed workspace refused) and is side-effect free
+PASS: INVITATION_PENDING (owner may activate, member may not) → RUNTIME_UNAVAILABLE (blocked or unverified runtime) → ACTIVE, with the stored allowance and expiry
+PASS: CONCURRENT_LIMIT_REACHED and QUOTA_EXHAUSTED (missions and provider budget) come from real admissions and reservations
+PASS: EXPIRED (clock) and REVOKED (operator) are stated, with no waiver and no launch
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+PASS: NOT_CONFIGURED: PAYMENTS_DISABLED reports no free beta and no waiver, still no card and nothing due
+Beta journey QA PASSED: 7 groups, 130 assertions in 1s
+BOUNDARY: real PostgreSQL, real services and HTTP API; runtime readiness from real probes of local Hermes/Hatchet QA fixtures (no real deployment contacted); expiry by moving stored timestamps; no worker, provider or browser ran.
+QA database dropped: qeynox_qa_a7aa7af73dba492d
+
+========================================================================
+$ pnpm qa:brave-search
+
+> qeynox@0.1.0 qa:brave-search /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:brave-search
+
+
+> @qeynox/worker@0.1.0 qa:brave-search /home/user/qeynox/apps/worker
+> tsx scripts/qa-brave-search.ts
+
+— PART 1: contracts and reviewed manifest —
+  PART 1 PASSED: cumulative 23 assertions (23 in this half)
+— PART 2: operator activation, registry fail-closed, broker path —
+  PART 2 PASSED: cumulative 57 assertions
+A15 BRAVE SEARCH QA PASSED: 57 assertions (PART 1 contracts + PART 2 broker path).
+
+========================================================================
+$ pnpm qa:workspace-management
+
+> qeynox@0.1.0 qa:workspace-management /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:workspace-management
+
+
+> @qeynox/worker@0.1.0 qa:workspace-management /home/user/qeynox/apps/worker
+> tsx scripts/qa-workspace-management.ts
+
+— PART 1: account settings logic (in-memory repository double) —
+— PART 2: team management, roles, revocation, cross-workspace —
+  PART 2 PASSED: cumulative 82 assertions
+A18 WORKSPACE QA PASSED: 82 assertions.
+
+========================================================================
+$ pnpm qa:documents
+
+> qeynox@0.1.0 qa:documents /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:documents
+
+
+> @qeynox/worker@0.1.0 qa:documents /home/user/qeynox/apps/worker
+> tsx scripts/qa-documents.ts
+
+— PART 1: chunker, embeddings helpers, declared policy —
+  PART 1 PASSED: cumulative 18 assertions (18 in this half)
+— PART 2: vault, retrieval, citations, retention —
+  PART 2 PASSED: cumulative 77 assertions
+A17 DOCUMENTS QA PASSED: 77 assertions.
+
+========================================================================
+$ pnpm qa:notifications
+
+> qeynox@0.1.0 qa:notifications /home/user/qeynox
+> pnpm --filter @qeynox/api qa:notifications
+
+
+> @qeynox/api@0.1.0 qa:notifications /home/user/qeynox/apps/api
+> tsx scripts/qa-notifications.ts
+
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+qa-notifications: all 98 assertions passed
+QeyNox database pool error: terminating connection due to administrator command
+
+========================================================================
+$ pnpm qa:business-packs
+
+> qeynox@0.1.0 qa:business-packs /home/user/qeynox
+> pnpm --filter @qeynox/api qa:business-packs
+
+
+> @qeynox/api@0.1.0 qa:business-packs /home/user/qeynox/apps/api
+> tsx scripts/qa-business-packs.ts
+
+— PART 1: operator bundles, typed request contracts, DAG planners, math & deliverable validators —
+  PART 1 PASSED: 217 assertions
+— PART 2: isolated DB, operator customization, validator, Pilot, real HTTP API & execution —
+[services] registered 8 service contract(s): offer-research-pack-v1, offer-strategy-pack-v1, offer-marketing-pack-v1, offer-seo-pack-v1, offer-sales-pack-v1, offer-operations-pack-v1, offer-financial-pack-v1, offer-content-pack-v1
+A16 BUSINESS CAPABILITY PACKS QA FAILED: DomainError: Business pack deliverable is unavailable for this revision
+    at readBusinessPackResult (/home/user/qeynox/packages/application/src/business-pack-execution.ts:414:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async ResultAssembler.assemble (/home/user/qeynox/packages/application/src/result-document.ts:40:14)
+    at async <anonymous> (/home/user/qeynox/apps/api/scripts/qa-business-packs.ts:1217:24)
+/home/user/qeynox/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @qeynox/api@0.1.0 qa:business-packs: `tsx scripts/qa-business-packs.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+
+========================================================================
+$ pnpm qa:atlas-library
+
+> qeynox@0.1.0 qa:atlas-library /home/user/qeynox
+> pnpm --filter @qeynox/api qa:atlas-library
+
+
+> @qeynox/api@0.1.0 qa:atlas-library /home/user/qeynox/apps/api
+> tsx scripts/qa-atlas-library.ts
+
+— PART 1: posture derivation, provenance summary, cursor & version comparison —
+  PART 1 PASSED: 13 assertions
+— PART 2: isolated DB, search, filters, pagination, exports, sharing & tenant RBAC —
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+[services] QEYNOX_SERVICE_CATALOG_PATH is not set; offers are listed but no request contract is registered
+  PART 2 PASSED: cumulative 105 assertions
+A20 GLOBAL ATLAS LIBRARY QA PASSED: 105 assertions.
+QA database dropped: qeynox_qa_9f8ccc2580084492
+
+========================================================================
+$ pnpm qa:security-regressions
+
+> qeynox@0.1.0 qa:security-regressions /home/user/qeynox
+> pnpm --filter @qeynox/worker qa:security-regressions
+
+
+> @qeynox/worker@0.1.0 qa:security-regressions /home/user/qeynox/apps/worker
+> tsx --test scripts/qa-security-regressions.ts
+
+TAP version 13
+# (node:11131) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: egress rejects equivalent IPv6 spellings and non-public transition/reserved ranges
+ok 1 - egress rejects equivalent IPv6 spellings and non-public transition/reserved ranges
+  ---
+  duration_ms: 5.533997
+  type: 'test'
+  ...
+# Subtest: consent expiry is temporal, timezone-aware and fail-closed for malformed timestamps
+ok 2 - consent expiry is temporal, timezone-aware and fail-closed for malformed timestamps
+  ---
+  duration_ms: 1.255031
+  type: 'test'
+  ...
+# Subtest: tool registry rejects non-finite limits and registration is atomic
+ok 3 - tool registry rejects non-finite limits and registration is atomic
+  ---
+  duration_ms: 0.568223
+  type: 'test'
+  ...
+# Subtest: broker rejects malformed budgets before ledger reservation or provider execution
+ok 4 - broker rejects malformed budgets before ledger reservation or provider execution
+  ---
+  duration_ms: 2.039525
+  type: 'test'
+  ...
+# Subtest: worker poller serializes slow drains and stop waits for the active drain
+ok 5 - worker poller serializes slow drains and stop waits for the active drain
+  ---
+  duration_ms: 0.691932
+  type: 'test'
+  ...
+# Subtest: worker poller handles rejection and continues without unhandled promises
+ok 6 - worker poller handles rejection and continues without unhandled promises
+  ---
+  duration_ms: 0.326806
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 935.048103

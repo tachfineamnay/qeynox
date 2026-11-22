@@ -33,8 +33,8 @@ export async function peekWorkspaceBudget(store: QeyNoxStore, actor: Principal):
   controllers: [PilotController],
   providers: [{
     provide: PLAN_PROPOSAL_SERVICE,
-    useFactory: async (store: QeyNoxStore, profiles: AgentProfileStore, engine: EnginePort) =>
-      new PlanProposalService(engine, actor => profiles.getActive('pilot'), new CapabilityRegistry(await store.getCapabilities()), {
+    useFactory: (store: QeyNoxStore, profiles: AgentProfileStore, engine: EnginePort) =>
+      new PlanProposalService(engine, actor => profiles.getActive('pilot'), async () => new CapabilityRegistry(await store.getCapabilities()), {
         peekBudget: actor => peekWorkspaceBudget(store, actor),
       }),
     inject: [QEYNOX_STORE, AGENT_PROFILES, ENGINE_PORT],

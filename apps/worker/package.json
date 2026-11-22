@@ -25,7 +25,10 @@
     "qa:brave-search": "tsx scripts/qa-brave-search.ts",
     "qa:workspace-management": "tsx scripts/qa-workspace-management.ts",
     "qa:documents": "tsx scripts/qa-documents.ts",
-    "qa:security-regressions": "tsx --test scripts/qa-security-regressions.ts"
+    "qa:security-regressions": "tsx --test scripts/qa-security-regressions.ts",
+    "qa:hardening-followup": "tsx --test scripts/qa-hardening-followup.ts",
+    "qa:tool-authorization": "tsx scripts/qa-tool-authorization.ts",
+    "qa:worker-lifecycle": "tsx --test scripts/qa-worker-lifecycle.ts"
   },
   "dependencies": {
     "@hatchet-dev/typescript-sdk": "1.46.1",

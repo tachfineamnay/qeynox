@@ -7,6 +7,9 @@ export class CapabilityRegistry {
     for (const definition of definitions) {
       if (!slots.includes(definition.slot)) throw new DomainError('INVALID_INPUT','Capability slot outside 1..8');
       if (definition.status!=='ACTIVE') continue;
+      if (!Number.isSafeInteger(definition.version) || definition.version < 1 ||
+          !Number.isSafeInteger(definition.maximumSteps) || !Number.isSafeInteger(definition.maximumToolCalls))
+        throw new DomainError('INVALID_INPUT','Active capability limits must be safe integers');
       const prior=this.active.get(definition.slot);
       if (prior && prior.version>=definition.version) continue;
       if (!definition.name || !definition.purpose || definition.maximumSteps<1 || definition.maximumToolCalls<0)

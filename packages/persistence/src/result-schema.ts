@@ -1,4 +1,5 @@
-import { pgTable, text, integer, jsonb, uniqueIndex, index, timestamp } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { pgTable, text, integer, jsonb, uniqueIndex, index, timestamp, check } from 'drizzle-orm/pg-core';
 import { identityUsers, identityWorkspaces } from './identity-schema';
 
 export type DocumentState = 'DRAFT' | 'PARTIAL' | 'READY_FOR_REVIEW' | 'DELIVERABLE';
@@ -65,5 +66,5 @@ export const resultShareLinks = pgTable(
     lastAccessedAt: timestamp('last_accessed_at', { withTimezone: true }),
     accessCount: integer('access_count').notNull().default(0),
   },
-  t => [index('result_share_links_workspace_doc_idx').on(t.workspaceId, t.documentId, t.createdAt)],
+  t => [index('result_share_links_workspace_doc_idx').on(t.workspaceId, t.documentId, t.createdAt.desc()),check('result_share_links_access_count_check', sql`${t.accessCount} >= 0`)],
 );

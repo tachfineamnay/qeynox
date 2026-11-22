@@ -1,5 +1,7 @@
 # Audit de durcissement backend — 22 novembre 2026
 
+> Rapport historique du lot PR #47. La [suite du diagnostic et des corrections](2026-11-22-backend-followup.md) apporte PostgreSQL réel, les corrections résiduelles et une nouvelle matrice (41 QA PASS / 6 BLOCKED). Les résultats ci-dessous restent ceux du lot initial.
+
 ## Conclusion et périmètre
 
 **Validation globale BLOCKED — ne pas fusionner comme une certification de production.**

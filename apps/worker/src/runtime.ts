@@ -3,7 +3,7 @@ import { DomainError,newId,transitionOperation,type ID,type Evidence,type StepAt
 import { connectDatabase,QeyNoxStore,attempts,operations,events } from '@qeynox/persistence';
 import { HermesAdapter,hermesCapabilities } from '@qeynox/engine';
 import { AgentProfileStore,CapabilityRegistry } from '@qeynox/roles';
-import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv,createRuntimeProbeMonitor,runtimeExecutionBlocker,recoverBusinessPackMission,businessPackStepRole,assertBusinessPackProfile,capturedPackSources,businessPackStepInstructions,acceptBusinessPackDeliverable,recordBusinessPackClaims,rawOutputDigest,DocumentVaultService,embeddingsFromEnv,prepareMissionDocuments,recordMissionDocumentCitations,missionDocumentQuery } from '@qeynox/application';
+import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv,createRuntimeProbeMonitor,runtimeExecutionBlocker,recoverBusinessPackMission,businessPackStepRole,assertBusinessPackProfile,capturedPackSources,businessPackStepInstructions,acceptBusinessPackDeliverable,recordBusinessPackClaims,rawOutputDigest,DocumentVaultService,S3ArtifactStore,embeddingsFromEnv,prepareMissionDocuments,recordMissionDocumentCitations,missionDocumentQuery } from '@qeynox/application';
 import { NotificationStore } from '@qeynox/persistence';
 import { createConfiguredToolRegistry } from '@qeynox/tools';
 import { PgOutboxDispatcher,type ExecutionRequest,type OrchestratorPort } from '@qeynox/orchestration';
@@ -14,6 +14,7 @@ export async function createWorkerDependencies(){
  // P08: the URLs this worker is actually wired to; the QA bypass is judged against these, not later env.
  const connectedDatabaseUrl=process.env.DATABASE_URL,connectedHermesBaseUrl=process.env.HERMES_API_BASE_URL;
  const conn=connectDatabase(connectedDatabaseUrl),store=new QeyNoxStore(conn.db);
+ try {
  const profiles=new AgentProfileStore(conn.db),progression=new StepProgression(store);
  const hermesProvider=process.env.HERMES_PROVIDER;
  const engine=new HermesAdapter({baseUrl:process.env.HERMES_API_BASE_URL,privateOrigin:process.env.HERMES_PRIVATE_ORIGIN,apiKey:process.env.HERMES_API_KEY,model:process.env.HERMES_MODEL??'hermes-agent',provider:hermesProvider==='vertex'||hermesProvider==='gemini'||hermesProvider==='custom'?hermesProvider:undefined,timeoutMs:Number(process.env.HERMES_REQUEST_TIMEOUT_MS??60000),nativeToolsIsolated:process.env.HERMES_NATIVE_TOOLS_ISOLATED==='true',egressAttested:process.env.QEYNOX_NETWORK_POLICY_ATTESTED==='true'});
@@ -36,7 +37,15 @@ export async function createWorkerDependencies(){
  // indexed chunks under workspace/mission/consent rules only and can never fetch or sign storage objects.
  const vault=new DocumentVaultService(store,undefined,embeddingsFromEnv());
  let dispatcherPoller:SerialPoller|undefined;
+ let documentPoller:SerialPoller|undefined;
  let closing=false;
+ let backgroundStarted=false;
+ let closePromise:Promise<void>|undefined;
+ const stopBackground=async()=>{
+   closing=true;
+   runtimeMonitor.stop();
+   await Promise.all([dispatcherPoller?.stop(),documentPoller?.stop()]);
+ };
  return {
   handler:async(request:ExecutionRequest,runtime:{workflowRunId:string})=>{
    const [row]=await conn.db.select().from(operations).where(and(eq(operations.id,request.operationId),eq(operations.workspaceId,request.workspaceId))).limit(1);
@@ -174,7 +183,29 @@ export async function createWorkerDependencies(){
    }
   },
   startDispatcher:async(orchestrator:OrchestratorPort)=>{
-    if(closing||dispatcherPoller)throw new DomainError('CONFLICT','Dispatcher already started or worker closing');
+    if(closing||backgroundStarted)throw new DomainError('CONFLICT','Dispatcher already started or worker closing');
+    backgroundStarted=true;
+    const interval=Number(process.env.QEYNOX_DOCUMENT_INGEST_INTERVAL_MS??5000);
+    if(!Number.isSafeInteger(interval)||interval<0||interval>2_147_483_647)throw new DomainError('NOT_CONFIGURED','Invalid document polling interval');
+    const accessKeyId=process.env.QEYNOX_ARTIFACT_ACCESS_KEY,secretAccessKey=process.env.QEYNOX_ARTIFACT_SECRET_KEY,bucket=process.env.QEYNOX_ARTIFACT_BUCKET;
+    if(interval>0&&accessKeyId&&secretAccessKey&&bucket){
+      const objects=new S3ArtifactStore(bucket,{
+        accessKeyId,secretAccessKey,region:process.env.QEYNOX_ARTIFACT_REGION??'us-east-1',
+        endpoint:process.env.QEYNOX_ARTIFACT_ENDPOINT,
+        serverSideEncryption:process.env.QEYNOX_ARTIFACT_SERVER_SIDE_ENCRYPTION==='false'?false:'AES256',
+      });
+      const documentVault=new DocumentVaultService(store,objects,embeddingsFromEnv());
+      const report=(label:string,error:unknown)=>console.error('[documents] '+label+':',error instanceof Error?error.message:'unknown');
+      documentPoller=new SerialPoller(async()=>{
+        try{await documentVault.drainIngestPending({limit:5});}catch(error:unknown){report('ingest drain failed',error);}
+        try{await documentVault.purgeExpired({limit:10});}catch(error:unknown){report('retention purge failed',error);}
+        try{
+          const result=await documentVault.drainStorageDeletions({limit:10});
+          if(result.failed)console.error('[documents] deletion attempts exhausted for '+result.failed+' object(s); operator attention required');
+        }catch(error:unknown){report('deletion sweep failed',error);}
+      },interval,error=>report('poller failed',error));
+      await documentPoller.start();
+    }else console.log('[documents] poller disabled or storage not configured; ingestion stays fail-closed');
     const dispatcher=new PgOutboxDispatcher(conn.pool,orchestrator);
     // MISSION A19: the same loop that drains the execution outbox also materializes notification
     // events (approval required / execution failed / result delivered) and sends what is due.
@@ -188,10 +219,12 @@ export async function createWorkerDependencies(){
     await dispatcherPoller.start();
   },
   runtimeMonitor,
-  close:async()=>{closing=true;runtimeMonitor.stop();await dispatcherPoller?.stop();await conn.close();},
+  stopBackground,
+  close:()=>{closePromise??=(async()=>{try{await stopBackground();}finally{await conn.close();}})();return closePromise;},
   toolRegistry:tools, // startup snapshot retained for existing QA callers
   loadToolRegistry:()=>createConfiguredToolRegistry(conn.db),
  };
+ } catch(error:unknown) { await conn.close(); throw error; }
 }
 
 let refusedQaBypassWarned=false;
