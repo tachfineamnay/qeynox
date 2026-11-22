@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { and,eq } from 'drizzle-orm';
-import { DomainError,newId,type ID,type Principal,type Evidence,type Source } from '@qeynox/domain';
+import { DomainError,isConsentActive,newId,type ID,type Principal,type Evidence,type Source } from '@qeynox/domain';
 import { QeyNoxStore,approvals,identityMemberships,sourceSnapshots } from '@qeynox/persistence';
 import type { EnginePort,AgentProfile,EngineOutcome,EngineRequest } from '@qeynox/engine';
 import { ToolBroker,ToolRegistry,PgToolLedger,configuredProviderRateLimiter,type ConnectorCall,type PermissionContext } from '@qeynox/tools';
@@ -31,8 +31,6 @@ export class BrokeredAgentExecutor {
    if(!member)throw new DomainError('DENIED','Operation owner membership no longer active');
    const principal:Principal={userId:member.userId as ID,workspaceId:member.workspaceId as ID,roles:[member.role]};
    const approved=(await this.store.db.select().from(approvals).where(and(eq(approvals.operationId,request.operationId),eq(approvals.workspaceId,request.workspaceId)))).map(r=>r.payload);
-   const consent=await this.store.getConsents(principal.workspaceId,principal.userId);
-   const consentScopes=consent.filter(c=>!c.revokedAt&&(!c.expiresAt||c.expiresAt>new Date().toISOString())).flatMap(c=>c.scopes);
    const allowed=capability.allowedTools.filter(t=>request.profile.allowedTools.includes(t));
    const history: Array<{role:'user'|'assistant';content:string}>=[...(request.priorMessages??[])];
    const captured:CapturedObservation[]=[];
@@ -58,6 +56,10 @@ export class BrokeredAgentExecutor {
      const observations:unknown[]=[];
      for(let j=0;j<answer.proposedTools.length;j++){
        const proposal=answer.proposedTools[j]!;
+       // Consent may expire or be revoked while inference (or a previous tool) is running.
+       // Reload immediately before every proposed call; a run-start snapshot is not authority.
+       const consent=await this.store.getConsents(principal.workspaceId,principal.userId);
+       const consentScopes=consent.filter(c=>c.userId===principal.userId&&c.workspaceId===principal.workspaceId&&isConsentActive(c,new Date().toISOString())).flatMap(c=>c.scopes);
        const permission:PermissionContext={principal,operationId:request.operationId,planRevisionId:attempt.planRevisionId,stepAttemptId:attempt.id,capabilityId:capability.id,profileId:request.profile.id,profileVersion:request.profile.version,allowedConnectorTools:allowed,consentScopes,approvedRequests:approved,remainingCostUnits:0,remainingToolCalls:remainingCalls-callsUsed};
        // Tool actions are proposals, never authority. WRITE requires a pre-approved intentId tied to the exact payload; no auto-approved writes.
        const serialized=JSON.stringify({proposal,attemptId:attempt.id,iteration:i,position:j});

@@ -23,7 +23,7 @@
  * claim-verification or delivery rules on their own.
  */
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { newId, type Evidence, type ID, type Principal } from '@qeynox/domain';
+import { isConsentActive, newId, type Evidence, type ID, type Principal } from '@qeynox/domain';
 import { documents, stepOutputs, type QeyNoxStore } from '@qeynox/persistence';
 import type {
   DocumentVaultService, MissionPassage, MissionPassageBounds, MissionPassageRetrieval, WithheldDocumentReason,
@@ -70,7 +70,7 @@ export interface MissionDocumentGroundingRecord {
 }
 
 function hasDocumentConsent(consents: readonly { scopes: readonly string[]; revokedAt?: string; expiresAt?: string }[], now: string): boolean {
-  return consents.some(consent => !consent.revokedAt && (!consent.expiresAt || consent.expiresAt > now) && consent.scopes.includes(MISSION_DOCUMENTS_CONSENT_SCOPE));
+  return consents.some(consent => isConsentActive(consent, now) && consent.scopes.includes(MISSION_DOCUMENTS_CONSENT_SCOPE));
 }
 
 /**

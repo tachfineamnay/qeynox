@@ -44,39 +44,33 @@ function ipv4Reserved(address: string): boolean {
   if (a === 172 && b >= 16 && b <= 31) return true;
   if (a === 192 && b === 0) return true; // IETF protocol assignments/documentation
   if (a === 192 && b === 168) return true;
+  if (a === 192 && b === 88 && c === 99) return true; // deprecated 6to4 relay
   if (a === 198 && (b === 18 || b === 19)) return true;
   if (a === 198 && b === 51 && c === 100) return true;
   if (a === 203 && b === 0 && c === 113) return true;
   return false;
 }
-function mappedIpv4(address: string): string | undefined {
-  const lower = address.toLowerCase();
-  if (!lower.startsWith('::ffff:')) return undefined;
-  const tail = lower.slice('::ffff:'.length);
-  if (isIP(tail) === 4) return tail;
-  const groups = tail.split(':');
-  if (groups.length !== 2) return undefined;
-  const highGroup = groups[0];
-  const lowGroup = groups[1];
-  if (highGroup === undefined || lowGroup === undefined) return undefined;
-  const high = Number.parseInt(highGroup, 16);
-  const low = Number.parseInt(lowGroup, 16);
-  if (!Number.isInteger(high) || !Number.isInteger(low)) return undefined;
-  return [(high >> 8) & 255, high & 255, (low >> 8) & 255, low & 255].join('.');
-}
-/** True for addresses that a public provider call must never target (loopback, private, metadata, multicast, documentation). */
+/**
+ * Only ordinary global-unicast IPv6 is eligible for public provider connections.
+ * Parse numeric prefix groups after WHATWG canonicalization: textual prefix checks alone miss
+ * expanded/zero-padded forms. Transition mechanisms are deliberately denied, even when their
+ * embedded IPv4 looks public, so routing cannot translate a vetted IPv6 address to a private IP.
+ */
 export function isPrivateOrReservedAddress(address: string): boolean {
   const family = isIP(address);
   if (family === 4) return ipv4Reserved(address);
-  if (family !== 6) return true;
-  const lower = address.toLowerCase();
-  const mapped = mappedIpv4(lower);
-  if (mapped) return ipv4Reserved(mapped);
-  if (lower === '::' || lower === '::1') return true;
-  if (lower.startsWith('fe8') || lower.startsWith('fe9') || lower.startsWith('fea') || lower.startsWith('feb')) return true; // link-local
-  if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // unique local
-  if (lower.startsWith('ff')) return true; // multicast
-  if (lower.startsWith('2001:db8')) return true; // documentation
+  if (family !== 6 || address.includes('%')) return true;
+  const canonical = new URL('http://[' + address + ']/').hostname.slice(1, -1);
+  const groups = canonical.split(':');
+  const first = Number.parseInt(groups[0] || '0', 16);
+  const second = Number.parseInt(groups[1] || '0', 16);
+  // 2000::/3: excludes loopback, unspecified, mapped IPv4, NAT64, discard, site/link/unique
+  // local, multicast and unallocated space without relying on their presentation.
+  if ((first & 0xe000) !== 0x2000) return true;
+  if (first === 0x2001 && second < 0x0200) return true; // IETF assignments incl. Teredo, ORCHID, benchmarking
+  if (first === 0x2001 && second === 0x0db8) return true; // documentation
+  if (first === 0x2002) return true; // 6to4 embeds an IPv4 destination
+  if (first === 0x3fff && second < 0x1000) return true; // 3fff::/20 documentation
   return false;
 }
 export interface ResolvedAddress { address: string; family: number }

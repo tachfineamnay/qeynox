@@ -94,10 +94,6 @@ export class QeyNoxStore {
   async getAttempt(id: ID): Promise<StepAttempt | undefined> {
     return (await this.db.select().from(attempts).where(eq(attempts.id,id)).limit(1))[0]?.payload;
   }
-  async updateAttempt(attempt: StepAttempt, expectedVersion: number): Promise<void> {
-    const changed = await this.db.update(attempts).set({payload:attempt,state:attempt.state}).where(eq(attempts.id,attempt.id)).returning({id:attempts.id});
-    if (!changed.length) throw new DomainError('NOT_FOUND','Attempt not found');
-  }
   async putApproval(approval: ApprovalRequest): Promise<void> {
     await this.db.insert(approvals).values({id:approval.id,workspaceId:approval.workspaceId,operationId:approval.operationId,status:approval.status,payload:approval});
   }
