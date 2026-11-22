@@ -1,5 +1,30 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-22 — MISSION P21: execution authority / revocation fencing (P22 certification pending)
+
+Preserved PgToolAuthorization and its existing canonical PostgreSQL checks. Closed confirmed missing
+boundaries with short fresh admissions before each mission inference and after tool quota/ledger
+waits: current membership/identity, mission/revision/attempt epoch, capability/profile, consent,
+provider configuration, beta admission and exact spend reservation. Existing attempt.version fences
+stale Worker claims/completions/failures across resume; existing command-id uniqueness admits an
+inference reservation only once. No new migration, scheduler, global epoch or long-lived lock.
+
+Prepared and dependency-output document context now carries original consent/document bindings for
+revalidation on every new dispatch. Retrieval and production advisory call sites reauthorize current
+membership/profile and consented facts without making pre-mission advice a mission launch. In-flight
+WRITE failures propagate UNKNOWN_OUTCOME (also when ledger acknowledgement fails); other STARTED /
+UNKNOWN WRITEs block new execution until reconciliation. Known completed outcomes/settlements remain
+historical truth. New admissions expire after a short freshness window; no database transaction holds
+locks across engine/tool/embedding network calls. Revocation applies at the fresh DB admission
+snapshot, not an invented ability to undo or atomically cancel an already admitted remote action.
+
+**Typecheck PASS (6 tasks + release), API build PASS, Worker build PASS, diff check PASS.** Added a
+not-executed disposable-PostgreSQL regression entry point; no tests/QA/DB/live revocations or provider
+calls run. Multi-worker ordering, crash/timeout/slow-pool, financial holds, legacy fixture provisioning
+and privacy proof remain **P22**. Stripe frozen / BETA_FREE / INVITE_ONLY and private resources remain
+unchanged. No deployment/migration/merge. See [P21 boundaries and evidence](../../infra/P21_VERIFICATION.md).
+
+
 ## 2026-11-22 — MISSION P20: existing Control beta operations (certification deferred)
 
 Extended the existing Professional Blue EN/FR operator shell, not a second administration platform.

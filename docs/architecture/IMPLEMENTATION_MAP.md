@@ -1,5 +1,18 @@
 # QeyNox 2027 — source implementation map
 
+**2026-11-22 P21 execution authority / revocation:** PgToolAuthorization's PostgreSQL checks are
+preserved and extended with a final fresh mission admission (membership, revision, attempt-version
+fence, capability/profile, consent/context binding, provider configuration, beta/reservation).
+Inference is admitted once per existing durable reservation via command-id uniqueness; stale Worker
+claim/completion/failure cannot overwrite a resumed epoch. Document and dependency context bindings
+are revalidated; production Soul/Pilot advisory boundaries recheck member/profile/fact consent.
+In-flight WRITE failures/ledger uncertainty propagate UNKNOWN_OUTCOME; earlier STARTED/UNKNOWN WRITEs
+block new execution rather than silently replay. No new migration/global lease system, network under
+DB locks, remote-undo claim or Stripe activation. **Basic typecheck and API/Worker builds pass; no
+QA/tests/DB/live calls.** Full concurrency, crashes, slow admissions, financial/secret isolation and
+legacy fixture provisioning remain P22. See [P21_VERIFICATION.md](../../infra/P21_VERIFICATION.md).
+
+
 **2026-11-22 P20 existing Control beta operations:** EN/FR invitation management reuses existing
 ADMINISTRATION issue/revoke/audit and tester/workspace/grant links. OPERATIONS adds bounded metadata
 queues (outbox, document ingest/deletion, email), per-workspace/mission provider ledger and outstanding

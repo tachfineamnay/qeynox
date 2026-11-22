@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { DomainError,newId,type ID,type WorkStep,type StepAttempt,type Evidence,type ApprovalRequest,type Operation } from '@qeynox/domain';
 import { QeyNoxStore,operations,steps,attempts,stepOutputs,outbox,events,approvals,planSeals } from '@qeynox/persistence';
 
@@ -16,9 +16,9 @@ export class StepProgression {
       return {stepId:out.stepId,attemptId:out.attemptId,content:out.content,quality:out.quality};
     });
   }
-  async complete(attemptId:ID, content:unknown, quality:'UNVERIFIED'|'SUPPORTED'):Promise<'NEXT_QUEUED'|'AWAITING_REVIEW'>{
+  async complete(attemptId:ID, content:unknown, quality:'UNVERIFIED'|'SUPPORTED',expectedAttemptVersion?:number):Promise<'NEXT_QUEUED'|'AWAITING_REVIEW'>{
     const original=await this.store.getAttempt(attemptId);
-    if(!original||original.state!=='RUNNING')throw new DomainError('INVALID_STATE','Attempt not running');
+    if(!original||original.state!=='RUNNING'||(expectedAttemptVersion!==undefined&&original.version!==expectedAttemptVersion))throw new DomainError('INVALID_STATE','Attempt not running');
     const now=new Date().toISOString();
     return this.store.db.transaction(async tx=>{
       const [opRow]=await tx.select().from(operations).where(eq(operations.id,original.operationId)).for('update').limit(1);
@@ -26,9 +26,10 @@ export class StepProgression {
       const [seal]=await tx.select().from(planSeals).where(eq(planSeals.revisionId,original.planRevisionId)).limit(1);
       if(!seal)throw new DomainError('INVALID_STATE','Plan is not sealed');
       const [at]=await tx.select().from(attempts).where(and(eq(attempts.id,attemptId),eq(attempts.state,'RUNNING'))).limit(1);
-      if(!at)throw new DomainError('CONFLICT','Attempt already processed');
+      if(!at||at.payload.version!==original.version)throw new DomainError('CONFLICT','Attempt already processed');
       const finished:StepAttempt={...at.payload,state:'COMPLETED',version:at.payload.version+1,finishedAt:now};
-      await tx.update(attempts).set({state:'COMPLETED',payload:finished}).where(eq(attempts.id,attemptId));
+      const [completed]=await tx.update(attempts).set({state:'COMPLETED',payload:finished}).where(and(eq(attempts.id,attemptId),eq(attempts.state,'RUNNING'),sql`${attempts.payload}->>'version' = ${String(original.version)}`)).returning({id:attempts.id});
+      if(!completed)throw new DomainError('CONFLICT','Attempt epoch changed before completion');
       await tx.insert(stepOutputs).values({id:newId(),operationId:original.operationId,revisionId:original.planRevisionId,stepId:original.workStepId,attemptId:original.id,content,quality,createdAt:now});
       const allSteps=(await tx.select().from(steps).where(eq(steps.revisionId,original.planRevisionId))).map(s=>s.payload).sort((a,b)=>a.ordinal-b.ordinal);
       const allAttempts=(await tx.select().from(attempts).where(eq(attempts.revisionId,original.planRevisionId))).map(a=>a.payload);

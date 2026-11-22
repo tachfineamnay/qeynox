@@ -1,3 +1,4 @@
+import type { MissionContextAuthority } from '@qeynox/persistence';
 import type { ZodType } from 'zod';
 import type { ID, Principal, ToolInvocationIntent, ApprovalRequest } from '@qeynox/domain';
 export interface ConnectorCall {
@@ -21,6 +22,7 @@ export interface ToolConnector {
 export interface PermissionContext {
  principal:Principal;operationId:ID;planRevisionId:ID;stepAttemptId:ID;
  capabilityId:ID;profileId:ID;profileVersion:number;
+ attemptVersion?:number;capabilityVersion?:number;reservationId?:string;contextAuthority?:MissionContextAuthority;
  allowedConnectorTools:readonly string[];consentScopes:readonly string[];
  approvedRequests:readonly ApprovalRequest[];remainingCostUnits:number;remainingToolCalls:number;
 }

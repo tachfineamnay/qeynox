@@ -75,6 +75,7 @@ export interface GuidanceResult {
 }
 
 export interface GuidedRequest {
+  readonly consentBindings?: readonly {id:string;version:number}[];
   /** Identity of the onboarding row; the placeholder ids are derived from it. */
   readonly onboardingId: string;
   readonly step: GuidedStep;
@@ -162,6 +163,7 @@ export function fallbackQuestion(locale: 'en' | 'fr', step: GuidedStep): string 
 }
 
 export interface GuidedOnboardingOptions {
+  readonly authorize?: (actor:Principal,profile:AgentProfile,request:GuidedRequest)=>Promise<void>;
   readonly now?: () => Date;
   /** Outer bound the caller waits for. The engine has its own, shorter, transport timeout. */
   readonly timeoutMs?: number;
@@ -198,7 +200,7 @@ export class GuidedOnboardingService implements GuidedOnboardingPort {
   constructor(
     private readonly engine: EnginePort,
     private readonly profileFor: (actor: Principal) => Promise<AgentProfile>,
-    options: GuidedOnboardingOptions = {},
+    private readonly options: GuidedOnboardingOptions = {},
   ) {
     this.now = options.now ?? (() => new Date());
     this.timeoutMs = options.timeoutMs ?? 15_000;
@@ -241,6 +243,7 @@ export class GuidedOnboardingService implements GuidedOnboardingPort {
     }
     const ids = placeholderIdentity(request.onboardingId, request.step);
 
+    await this.options.authorize?.(actor,profile,request);
     let outcome: EngineOutcome;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);

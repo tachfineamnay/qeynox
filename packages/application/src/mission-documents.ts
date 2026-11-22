@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { PgExecutionAuthority, type MissionAuthorityScope, type MissionContextAuthority } from '@qeynox/persistence';
 /**
  * MISSION P10 — A17 document knowledge in the agent execution context.
  *
@@ -23,7 +25,7 @@
  * claim-verification or delivery rules on their own.
  */
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { isConsentActive, newId, type Evidence, type ID, type Principal } from '@qeynox/domain';
+import { DomainError, isConsentActive, newId, type Evidence, type ID, type Principal } from '@qeynox/domain';
 import { documents, stepOutputs, type QeyNoxStore } from '@qeynox/persistence';
 import type {
   DocumentVaultService, MissionPassage, MissionPassageBounds, MissionPassageRetrieval, WithheldDocumentReason,
@@ -41,6 +43,7 @@ export interface MissionDocumentProvenance {
   readonly excerptSha256: string; readonly excerptChars: number; readonly truncated: boolean; readonly score: number;
 }
 export interface MissionDocumentGrounding {
+  readonly authority?: MissionContextAuthority;
   readonly mode: MissionPassageRetrieval['mode'];
   readonly attachedCount: number;
   readonly passages: readonly (MissionPassage & { readonly ref: string })[];
@@ -49,6 +52,7 @@ export interface MissionDocumentGrounding {
   readonly estimatedTokens: number;
 }
 export interface PreparedMissionDocuments {
+  readonly authority?: MissionContextAuthority;
   /** Merge into the engine request context; Hermes forwards it only if the profile permits the key. */
   readonly context: Readonly<Record<string, unknown>>;
   readonly grounding: MissionDocumentGrounding;
@@ -56,6 +60,7 @@ export interface PreparedMissionDocuments {
 export interface MissionDocumentCitation extends MissionDocumentProvenance { readonly evidenceId: ID }
 /** Stored in the step output: provenance only, never excerpt text. */
 export interface MissionDocumentGroundingRecord {
+  readonly authority?: MissionContextAuthority;
   readonly mode: MissionPassageRetrieval['mode'];
   readonly attachedCount: number;
   readonly provided: readonly MissionDocumentProvenance[];
@@ -81,17 +86,23 @@ export async function prepareMissionDocuments(
   vault: DocumentVaultService,
   store: QeyNoxStore,
   owner: Principal,
-  input: { readonly operationId: ID; readonly query: string; readonly profile: { readonly permittedContextKeys: readonly string[] }; readonly bounds?: MissionPassageBounds },
+  input: { readonly operationId: ID; readonly query: string; readonly profile: { readonly permittedContextKeys: readonly string[] }; readonly bounds?: MissionPassageBounds; readonly authorityScope?:MissionAuthorityScope },
 ): Promise<PreparedMissionDocuments | null> {
-  const consented = hasDocumentConsent(await store.getConsents(owner.workspaceId, owner.userId), new Date().toISOString());
+  const permits = await store.getConsents(owner.workspaceId, owner.userId);
+  const consented = hasDocumentConsent(permits, new Date().toISOString());
   const withholdAll: Extract<WithheldDocumentReason, 'CONSENT_MISSING' | 'PROFILE_NOT_PERMITTED'> | undefined =
     !input.profile.permittedContextKeys.includes(MISSION_DOCUMENTS_CONTEXT_KEY) ? 'PROFILE_NOT_PERMITTED'
       : !consented ? 'CONSENT_MISSING' : undefined;
-  const retrieval = await vault.missionPassages(owner, input.operationId, input.query, input.bounds ?? MISSION_DOCUMENT_BOUNDS, withholdAll);
+  const retrieval = await vault.missionPassages(owner, input.operationId, input.query, input.bounds ?? MISSION_DOCUMENT_BOUNDS, withholdAll, input.authorityScope ? ()=>new PgExecutionAuthority(store.db).assertCurrent(input.authorityScope!,{requiredScopes:['context:read']}) : undefined);
   if (!retrieval.attachedCount) return null;
   const passages = retrieval.passages.map((passage, index) => ({ ...passage, ref: 'D' + (index + 1) }));
   const excerptChars = passages.reduce((total, passage) => total + passage.excerpt.length, 0);
+  const authority: MissionContextAuthority | undefined = passages.length ? {
+    consents: permits.filter(permit=>isConsentActive(permit,new Date().toISOString())&&permit.scopes.includes(MISSION_DOCUMENTS_CONSENT_SCOPE)).map(permit=>({id:permit.id,version:permit.version})),
+    documents: passages.map(passage=>({documentId:passage.documentId,chunkId:passage.chunkId,documentSha256:passage.documentSha256})),
+  } : undefined;
   const grounding: MissionDocumentGrounding = {
+    authority,
     mode: retrieval.mode, attachedCount: retrieval.attachedCount, passages, withheld: retrieval.withheld,
     excerptChars, estimatedTokens: Math.ceil(excerptChars / CHARS_PER_TOKEN_ESTIMATE),
   };
@@ -111,7 +122,7 @@ export async function prepareMissionDocuments(
       withheld: retrieval.withheld.map(entry => ({ document: entry.name, reason: entry.reason })),
     },
   };
-  return { context, grounding };
+  return { context, grounding, authority };
 }
 
 const toProvenance = (passage: MissionPassage & { readonly ref: string }): MissionDocumentProvenance => ({
@@ -154,7 +165,7 @@ export async function recordMissionDocumentCitations(
     cited.push({ ...provenance, evidenceId: evidence.id });
   }
   return {
-    mode: grounding.mode, attachedCount: grounding.attachedCount,
+    authority: grounding.authority, mode: grounding.mode, attachedCount: grounding.attachedCount,
     provided: grounding.passages.map(toProvenance), cited, uncitable, unknownRefs, withheld: grounding.withheld,
     excerptChars: grounding.excerptChars, estimatedTokens: grounding.estimatedTokens,
   };
@@ -206,4 +217,25 @@ export async function readMissionDocumentSources(store: QeyNoxStore, actor: Prin
     seen.add(key);
     return true;
   });
+}
+
+
+const contextAuthoritySchema = z.object({
+  consents: z.array(z.object({id:z.string(),version:z.number().int().positive()})),
+  documents: z.array(z.object({documentId:z.string(),chunkId:z.string(),documentSha256:z.string()})),
+});
+/** Cached prior outputs can contain document-derived text too. Re-granting a new consent must not
+ * silently authorize old excerpts. Legacy grounded outputs without a binding fail closed. */
+export function missionContextAuthority(current: MissionContextAuthority | undefined, prior: readonly {content:unknown}[]): MissionContextAuthority | undefined {
+  const bindings: MissionContextAuthority[] = current ? [current] : [];
+  for (const output of prior) {
+    if(!output.content||typeof output.content!=='object'||Array.isArray(output.content))continue;
+    const parsed = z.object({documentGrounding:z.object({excerptChars:z.number(),authority:contextAuthoritySchema.optional()}).optional()}).safeParse(output.content);
+    if (!parsed.success) throw new DomainError('DENIED','Prior output context authority is invalid');
+    const grounding=parsed.data.documentGrounding;
+    if (!grounding || !grounding.excerptChars) continue;
+    if (!grounding.authority) throw new DomainError('DENIED','Legacy document context requires a newly authorized execution');
+    bindings.push(grounding.authority);
+  }
+  return bindings.length ? {consents:[...new Map(bindings.flatMap(binding=>binding.consents).map(permit=>[permit.id+':'+permit.version,permit])).values()],documents:[...new Map(bindings.flatMap(binding=>binding.documents).map(document=>[document.chunkId+':'+document.documentSha256,document])).values()]} : undefined;
 }

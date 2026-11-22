@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import type { QeyNoxStore } from '@qeynox/persistence';
+import { assertInteractiveInference, type QeyNoxStore } from '@qeynox/persistence';
 import type { EnginePort } from '@qeynox/engine';
 import { GuidedOnboardingService, SoulOnboardingService, SoulService, type AgentProfileStore } from '@qeynox/roles';
 import { QEYNOX_STORE } from '../database/database.module';
@@ -20,7 +20,7 @@ import { SOUL_ONBOARDING_SERVICE, SOUL_SERVICE } from './soul.tokens';
     {
       provide: SOUL_ONBOARDING_SERVICE,
       useFactory: (store: QeyNoxStore, soul: SoulService, engine: EnginePort) =>
-        new SoulOnboardingService(store, soul, new GuidedOnboardingService(engine, () => soul.activeSoulProfile())),
+        new SoulOnboardingService(store, soul, new GuidedOnboardingService(engine, () => soul.activeSoulProfile(), { authorize: (actor,profile,request)=>assertInteractiveInference(store.db,actor,profile,request.consentBindings) })),
       inject: [QEYNOX_STORE, SOUL_SERVICE, ENGINE_PORT],
     },
   ],

@@ -1,9 +1,9 @@
-import { and,eq } from 'drizzle-orm';
+import { and,eq,sql } from 'drizzle-orm';
 import { DomainError,newId,transitionOperation,type ID,type Evidence,type StepAttempt } from '@qeynox/domain';
-import { connectDatabase,QeyNoxStore,attempts,operations,events } from '@qeynox/persistence';
+import { PgExecutionAuthority,connectDatabase,QeyNoxStore,attempts,operations,events } from '@qeynox/persistence';
 import { HermesAdapter,hermesCapabilities,hermesSettingsFromEnv,hermesFailureFacts } from '@qeynox/engine';
 import { AgentProfileStore,CapabilityRegistry } from '@qeynox/roles';
-import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv,createRuntimeProbeMonitor,runtimeExecutionBlocker,recoverBusinessPackMission,businessPackStepRole,assertBusinessPackProfile,assertBusinessPackProvider,capturedPackSources,businessPackStepInstructions,acceptBusinessPackDeliverable,recordBusinessPackClaims,rawOutputDigest,DocumentVaultService,createS3ArtifactStoreFromEnv,documentMaintenanceConfiguration,storageFailureCode,embeddingsFromEnv,prepareMissionDocuments,recordMissionDocumentCitations,missionDocumentQuery } from '@qeynox/application';
+import { StepProgression,BrokeredAgentExecutor,ClaimsService,ResultAssembler,EngineRegistry,ExecutionEngineSelection,NotificationService,createEmailTransportFromEnv,createRuntimeProbeMonitor,runtimeExecutionBlocker,recoverBusinessPackMission,businessPackStepRole,assertBusinessPackProfile,assertBusinessPackProvider,capturedPackSources,businessPackStepInstructions,acceptBusinessPackDeliverable,recordBusinessPackClaims,rawOutputDigest,DocumentVaultService,createS3ArtifactStoreFromEnv,documentMaintenanceConfiguration,storageFailureCode,embeddingsFromEnv,prepareMissionDocuments,recordMissionDocumentCitations,missionDocumentQuery,missionContextAuthority } from '@qeynox/application';
 import { NotificationStore } from '@qeynox/persistence';
 import { createRuntimeToolRegistry } from '@qeynox/tools';
 import { PgOutboxDispatcher,type ExecutionRequest,type OrchestratorPort } from '@qeynox/orchestration';
@@ -62,11 +62,14 @@ export async function createWorkerDependencies(){
    const cap=new CapabilityRegistry(await store.getCapabilities()).get(step.capabilityId);
    const profile=await profiles.getActive('business:'+cap.slot);
    const start:StepAttempt={...attempt,state:'RUNNING',startedAt:new Date().toISOString(),version:attempt.version+1};
-   const [claimed]=await conn.db.update(attempts).set({state:'RUNNING',payload:start}).where(and(eq(attempts.id,attempt.id),eq(attempts.state,'PENDING'))).returning({id:attempts.id});
+   const [claimed]=await conn.db.update(attempts).set({state:'RUNNING',payload:start}).where(and(eq(attempts.id,attempt.id),eq(attempts.state,'PENDING'),sql`${attempts.payload}->>'version' = ${String(attempt.version)}`)).returning({id:attempts.id});
    if(!claimed)throw new DomainError('CONFLICT','Attempt already claimed');
    try{
-    const prior=await progression.priorOutputs(request.operationId,request.planRevisionId,step.id);
+    const authority=new PgExecutionAuthority(conn.db);
     const owner={userId:row.payload.createdBy,workspaceId:row.payload.workspaceId,roles:['system:worker']};
+    const scope={principal:owner,operationId:request.operationId,planRevisionId:request.planRevisionId,stepAttemptId:attempt.id,attemptVersion:start.version,capabilityId:cap.id,capabilityVersion:cap.version,profileId:profile.id,profileVersion:profile.version};
+    await authority.assertCurrent(scope);
+    const prior=await progression.priorOutputs(request.operationId,request.planRevisionId,step.id);
     // MISSION P09: a business-pack mission recovers its fingerprint-verified request and pack identity
     // BEFORE any engine selection or budget use; an unrecoverable pack mission fails closed here and is
     // never executed as a generic one. Generic missions get null and keep the path below unchanged.
@@ -105,12 +108,15 @@ export async function createWorkerDependencies(){
       :null;
     // MISSION P10: bounded excerpts from AVAILABLE documents attached to THIS mission (workspace, consent,
     // retention, revocation and profile rules enforced by the vault); null when nothing is attached.
-    const missionDocuments=await prepareMissionDocuments(vault,store,owner,{operationId:row.id as ID,query:missionDocumentQuery([row.payload.title,step.title,step.description]),profile});
+    await authority.assertCurrent(scope);
+    const missionDocuments=await prepareMissionDocuments(vault,store,owner,{operationId:row.id as ID,query:missionDocumentQuery([row.payload.title,step.title,step.description]),profile,authorityScope:scope});
+    const contextAuthority=missionContextAuthority(missionDocuments?.authority,prior);
     const run=await executor.run({
       workspaceId:row.workspaceId as ID,operationId:row.id as ID,stepAttemptId:attempt.id,
       profile,userMessage:packInstructions?.userMessage??step.description,context:{...genericContext,...(packInstructions?.context??{}),...(missionDocuments?.context??{})},
       correlationId:request.idempotencyKey,
-    },cap);
+    },cap,{attemptVersion:start.version,context:contextAuthority});
+    await authority.assertCurrent({...scope,context:contextAuthority});
     const answer=run.outcome;
     if(answer.status!=='COMPLETED')throw new DomainError('INVALID_STATE','Agent did not finish business step');
     // P10: grounded document citations (re-checked after the run) are recorded only for an ACCEPTED output.
@@ -125,7 +131,7 @@ export async function createWorkerDependencies(){
       const evidence:Evidence={id:newId(),operationId:row.id as ID,stepAttemptId:attempt.id,statement:'Validated '+packMission.contractKey+' structured deliverable (agent output sha256 '+rawOutputDigest(answer.content)+')',observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['Structured deliverable passed its pack schema and integrity rules; each claim still requires evidence assessment and human review']};
       await store.recordEvidence(evidence);
       await recordBusinessPackClaims(claims,owner,{operationId:request.operationId,attemptId:attempt.id,profileId:profile.id,profileVersion:profile.version},packMission,accepted.projection,captured);
-      const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id,businessDeliverable:accepted.record,...documentGrounding},'UNVERIFIED');
+      const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id,businessDeliverable:accepted.record,...documentGrounding},'UNVERIFIED',start.version);
       // The ResultAssembler derives the pack document from the recorded deliverable; human review stays mandatory.
       if(state==='AWAITING_REVIEW')await documents.assemble(owner,request.operationId,request.planRevisionId,row.payload.title,[],[]);
       return {outcome:'COMPLETED' as const,detail:state};
@@ -135,7 +141,7 @@ export async function createWorkerDependencies(){
       // register a generic AGENT_FINDING; the domain claims come only from the validated deliverable.
       const evidence:Evidence={id:newId(),operationId:row.id as ID,stepAttemptId:attempt.id,statement:answer.content,observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['Supporting step output for a business-pack deliverable; not a finding']};
       await store.recordEvidence(evidence);
-      const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id,...await groundDocuments()},'UNVERIFIED');
+      const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id,...await groundDocuments()},'UNVERIFIED',start.version);
       return {outcome:'COMPLETED' as const,detail:state};
     }
     const evidence:Evidence={id:newId(),operationId:row.id as ID,stepAttemptId:attempt.id,statement:answer.content,observedAt:new Date().toISOString(),status:'UNVERIFIED',limitations:['AI summary requires evidence assessment']};
@@ -153,7 +159,7 @@ export async function createWorkerDependencies(){
         if(!(error instanceof DomainError)||error.code!=='NOT_CONFIGURED')throw error;
       }
     }
-    const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id,...await groundDocuments()},'UNVERIFIED');
+    const state=await progression.complete(attempt.id,{text:answer.content,engine:answer.engine,engineRunId:answer.engineRunId,evidenceId:evidence.id,...await groundDocuments()},'UNVERIFIED',start.version);
     if(state==='AWAITING_REVIEW')await documents.assemble(owner,request.operationId,request.planRevisionId,row.payload.title,[],[]);
     return {outcome:'COMPLETED' as const,detail:state};
    }catch(error:unknown){
@@ -165,13 +171,13 @@ export async function createWorkerDependencies(){
     const errorCode=error instanceof DomainError?error.code:'UNEXPECTED_EXECUTION_ERROR';
     const unknownOutcome=errorCode==='UNKNOWN_OUTCOME';
     const engineFailure=hermesFailureFacts(error);
-    const failed:StepAttempt={...start,state:'FAILED',finishedAt:now,version:start.version+1,errorCode};
+    const failed:StepAttempt={...start,state:unknownOutcome?'UNKNOWN':'FAILED',finishedAt:now,version:start.version+1,errorCode};
     const attemptFailed=await conn.db.transaction(async tx=>{
       const [currentAttempt]=await tx.select().from(attempts).where(eq(attempts.id,attempt.id)).for('update').limit(1);
       // A post-step failure (for example result assembly) must not turn a COMPLETED
       // attempt into FAILED or overwrite an operation already waiting for review.
-      if(!currentAttempt||currentAttempt.state!=='RUNNING')return false;
-      await tx.update(attempts).set({state:'FAILED',payload:failed}).where(and(eq(attempts.id,attempt.id),eq(attempts.state,'RUNNING')));
+      if(!currentAttempt||currentAttempt.state!=='RUNNING'||currentAttempt.payload.version!==start.version)return false;
+      await tx.update(attempts).set({state:failed.state,payload:failed}).where(and(eq(attempts.id,attempt.id),eq(attempts.state,'RUNNING')));
       const [currentOp]=await tx.select().from(operations).where(and(eq(operations.id,row.id),eq(operations.workspaceId,row.workspaceId))).for('update').limit(1);
       if(currentOp?.status==='RUNNING'&&currentOp.payload.currentRevisionId===request.planRevisionId){
         // An exhausted budget is a policy stop, not a business failure, but the lifecycle only

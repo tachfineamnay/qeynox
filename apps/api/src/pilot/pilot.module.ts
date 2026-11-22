@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
-import { budgetPolicies, type QeyNoxStore } from '@qeynox/persistence';
+import { assertInteractiveInference, budgetPolicies, type QeyNoxStore } from '@qeynox/persistence';
 import type { EnginePort } from '@qeynox/engine';
 import { AgentRuntimeModule } from '../agent-runtime/agent-runtime.module';
 import { AgentProfileStore, CapabilityRegistry, PlanProposalService, type ProposalBudgetBoundary } from '@qeynox/roles';
@@ -35,6 +35,7 @@ export async function peekWorkspaceBudget(store: QeyNoxStore, actor: Principal):
     provide: PLAN_PROPOSAL_SERVICE,
     useFactory: (store: QeyNoxStore, profiles: AgentProfileStore, engine: EnginePort) =>
       new PlanProposalService(engine, actor => profiles.getActive('pilot'), async () => new CapabilityRegistry(await store.getCapabilities()), {
+        authorize: (actor,profile)=>assertInteractiveInference(store.db,actor,profile),
         peekBudget: actor => peekWorkspaceBudget(store, actor),
       }),
     inject: [QEYNOX_STORE, AGENT_PROFILES, ENGINE_PORT],

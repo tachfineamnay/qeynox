@@ -120,6 +120,7 @@ export interface PlanGoal {
 }
 
 export interface PlanProposalOptions {
+  readonly authorize?: (actor:Principal,profile:AgentProfile)=>Promise<void>;
   readonly now?: () => Date;
   readonly timeoutMs?: number;
   /** Idempotency cache shared across requests (module scope recommended). */
@@ -317,7 +318,7 @@ export class PlanProposalService implements PlanProposalPort {
     private readonly engine: EnginePort,
     private readonly profileFor: (actor: Principal) => Promise<AgentProfile>,
     private readonly capabilities: CapabilityRegistry | ProposalCapabilitiesPort,
-    options: PlanProposalOptions = {},
+    private readonly options: PlanProposalOptions = {},
   ) {
     this.now = options.now ?? (() => new Date());
     this.timeoutMs = options.timeoutMs ?? 25_000;
@@ -361,6 +362,7 @@ export class PlanProposalService implements PlanProposalPort {
     const prior = this.cache.get(cacheKey);
     if (prior) return prior;
 
+    await this.options.authorize?.(actor,profile);
     let outcome: EngineOutcome;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;

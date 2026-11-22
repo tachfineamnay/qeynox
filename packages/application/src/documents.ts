@@ -34,9 +34,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { and, count, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
-import { DomainError, newId, type ID, type Principal } from '@qeynox/domain';
+import { DomainError, isConsentActive, newId, type ID, type Principal } from '@qeynox/domain';
 import {
-  QeyNoxStore, documentAuditEvents, documentChunks, documentIngestJobs, documentStorageDeletions, documents, identityMemberships, operationDocuments, operations,
+  QeyNoxStore, assertActiveWorkspaceMember, documentAuditEvents, documentChunks, documentIngestJobs, documentStorageDeletions, documents, identityMemberships, operationDocuments, operations,
   type StorageDeletionReason, type StorageDeletionState,
 } from '@qeynox/persistence';
 import { storageFailureCode } from './s3';
@@ -529,6 +529,7 @@ export class DocumentVaultService {
 
   /** Tenant-scoped retrieval. FTS always; hybrid rerank only when a reviewed embedding provider is wired. */
   async search(actor: Principal, query: string, limit = 8): Promise<SearchResult> {
+    await assertActiveWorkspaceMember(this.store.db,actor);
     const cleaned = String(query ?? '').trim();
     if (cleaned.length < 2 || cleaned.length > 300) throw new DomainError('INVALID_INPUT', 'Query must be between 2 and 300 characters');
     const capped = Math.max(1, Math.min(20, limit));
@@ -554,6 +555,7 @@ export class DocumentVaultService {
 
     let mode: 'FTS' | 'HYBRID' = 'FTS';
     if (this.embeddings && candidates.length) {
+      await assertActiveWorkspaceMember(this.store.db,actor);
       try {
         const [queryVector] = await this.embeddings.embed([cleaned]);
         // Load stored vectors in one query (small candidate pool by construction).
@@ -619,8 +621,12 @@ export class DocumentVaultService {
     queryText: string,
     bounds: MissionPassageBounds,
     withholdAll?: Extract<WithheldDocumentReason, 'CONSENT_MISSING' | 'PROFILE_NOT_PERMITTED'>,
+    beforeExternal?: ()=>Promise<void>,
   ): Promise<MissionPassageRetrieval> {
     await this.assertMission(actor, operationId);
+    await assertActiveWorkspaceMember(this.store.db,actor);
+    const currentConsents=await this.store.getConsents(actor.workspaceId,actor.userId);
+    if(!currentConsents.some(permit=>isConsentActive(permit,new Date().toISOString())&&permit.scopes.includes('context:read')))withholdAll='CONSENT_MISSING';
     const attached = await this.attachedForAgent(actor, operationId);
     if (!attached.length) return { mode: 'NONE', passages: [], withheld: [], attachedCount: 0 };
     const withheld: Array<MissionPassageRetrieval['withheld'][number]> = [];
@@ -660,6 +666,7 @@ export class DocumentVaultService {
       `);
       rows = ((executed as unknown as { rows?: unknown[] }).rows ?? (executed as unknown as unknown[])) as Row[];
       if (rows.length && this.embeddings) {
+        await beforeExternal?.();
         const reranked = await this.rerank(String(queryText ?? '').trim().slice(0, 300), rows.map(row => ({ id: row.chunk_id, rank: Number(row.rank) })));
         if (reranked) {
           const byId = new Map(rows.map(row => [row.chunk_id, row] as const));
@@ -698,6 +705,14 @@ export class DocumentVaultService {
         score: Number(Math.min(1, Math.max(0, Number(row.rank))).toFixed(6)),
       });
     }
+    // A retrieval may await embeddings. Recheck the actual actor, original consent epoch and
+    // attachment eligibility before handing any cached excerpts to a new inference boundary.
+    await assertActiveWorkspaceMember(this.store.db,actor);
+    const latestConsents=await this.store.getConsents(actor.workspaceId,actor.userId);
+    const boundConsents=currentConsents.filter(permit=>isConsentActive(permit,new Date().toISOString())&&permit.scopes.includes('context:read'));
+    if(!boundConsents.some(bound=>latestConsents.some(permit=>permit.id===bound.id&&permit.version===bound.version&&isConsentActive(permit,new Date().toISOString()))))throw new DomainError('DENIED','Document retrieval consent changed');
+    const citable=await this.stillCitableChunks(actor,operationId,passages.map(passage=>passage.chunkId));
+    if(passages.some(passage=>!citable.has(passage.chunkId)))throw new DomainError('DENIED','Document access changed during retrieval');
     for (const documentId of new Set(passages.map(passage => passage.documentId))) {
       await this.audit(actor.workspaceId, documentId, null, 'AGENT_RETRIEVAL', 'SUCCESS', mode.toLowerCase());
     }

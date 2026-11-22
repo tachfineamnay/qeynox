@@ -1,5 +1,5 @@
 import { DomainError, type ID, type Principal, type OperationStatus } from '@qeynox/domain';
-import { QeyNoxStore } from '@qeynox/persistence';
+import { assertInteractiveInference, QeyNoxStore } from '@qeynox/persistence';
 import type { EnginePort, EngineOutcome } from '@qeynox/engine';
 import { CapabilityRegistry } from './capabilities';
 import { AgentProfileStore } from './profiles';
@@ -28,6 +28,9 @@ export class PilotService {
     if(!op.currentRevisionId)throw new DomainError('INVALID_STATE','Operation has no selected plan');
     const capability=this.capabilities.get(capabilityId);
     const profile=await this.profiles.getActive('pilot');
+    await assertInteractiveInference(this.store.db,actor,profile);
+    const currentCapability=await this.store.getCapability(capabilityId);
+    if(!currentCapability||currentCapability.status!=='ACTIVE'||currentCapability.version!==capability.version)throw new DomainError('DENIED','Advisory capability changed');
     return this.engine.invoke({
       workspaceId:actor.workspaceId,operationId,stepAttemptId:attemptId,profile,
       userMessage:question,
