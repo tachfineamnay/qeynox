@@ -3,7 +3,7 @@ import { PlatformStorageController } from './platform-storage.controller';
 import { randomBytes } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { PlatformAdminService, PlatformBetaAccessService, PlatformCatalogueService, PlatformConfigurationService, PlatformOperationsService, PlatformOrganizationsService, PlatformRegistrationInvitationService, PlatformSupportService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
+import { PlatformBetaOperationsService, PlatformAdminService, PlatformBetaAccessService, PlatformCatalogueService, PlatformConfigurationService, PlatformOperationsService, PlatformOrganizationsService, PlatformRegistrationInvitationService, PlatformSupportService, PlatformUsersService, type EmailTransport } from '@qeynox/application';
 import { BetaAccessStore, NotificationStore, PlatformAdminStore, PlatformOperationsStore, PlatformUserStore, RegistrationStore, SupportLinkStore, WorkspaceStore, type DatabaseConnection, type QeyNoxStore } from '@qeynox/persistence';
 import { AuthModule } from '../auth/auth.module';
 import { AuthService } from '../auth/auth.service';
@@ -36,6 +36,7 @@ import {
   PLATFORM_USER_STORE,
   PLATFORM_OPERATIONS_STORE,
   PLATFORM_OPERATIONS_SERVICE,
+  PLATFORM_BETA_OPERATIONS_SERVICE,
   RESOURCE_INVENTORY_PORT,
   DEPLOYMENT_INFO,
   PLATFORM_CATALOGUE_SERVICE,
@@ -48,6 +49,7 @@ import {
   imports: [AuthModule],
   controllers: [PlatformProvidersController, PlatformStorageController, PlatformAuthController, PlatformAdminController, PlatformUsersController, PlatformOrganizationsController, PlatformSupportController, PlatformOperationsController, PlatformCatalogueController, PlatformConfigurationController, PlatformBetaAccessController, PlatformRegistrationInvitationsController],
   providers: [
+    { provide: PLATFORM_BETA_OPERATIONS_SERVICE, useFactory: (store: QeyNoxStore, platform: PlatformAdminService) => new PlatformBetaOperationsService(store, platform), inject: [QEYNOX_STORE, PLATFORM_ADMIN_SERVICE] },
     {
       provide: PLATFORM_STORE,
       useFactory: (connection: DatabaseConnection) => new PlatformAdminStore(connection.db),

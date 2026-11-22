@@ -1,3 +1,4 @@
+import { OperationsDiagnostics } from '../../../../components/operations-diagnostics';
 import { requirePlatformMe, tryApi } from '../../../../lib/api';
 import { copy, locale } from '../../../../lib/copy';
 import { can, OPERATIONS } from '../../../../lib/permissions';
@@ -12,7 +13,7 @@ export default async function HealthPage({ params }: { params: Promise<{ lang: s
   const healthResult = allowed ? await tryApi<HealthView>('/v1/platform/operations/health') : null;
   const resourcesResult = allowed ? await tryApi<ResourcesView>('/v1/platform/operations/resources') : null;
   return (
-    <Shell lang={lang} path="/operations" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
+    <Shell lang={lang} path="/operations/health" permissions={me.permissions} userId={me.userId} sessionExpiresAt={me.sessionExpiresAt}>
       <PageHeader title={t.operationsHealthTitle} intro={t.operationsHealthIntro} />
       {!allowed ? <PermissionDenied lang={lang} /> : null}
       {healthResult && !healthResult.ok ? <ApiErrorNotice lang={lang} code={healthResult.code} /> : null}
@@ -59,6 +60,7 @@ export default async function HealthPage({ params }: { params: Promise<{ lang: s
           </>
         ) : <Notice tone="warning" title={t.operationsUnavailable}>{resourcesResult && !resourcesResult.ok ? resourcesResult.code : 'UNAVAILABLE'}</Notice>}
       </Card>
+      {allowed ? <OperationsDiagnostics lang={lang} /> : null}
     </Shell>
   );
 }

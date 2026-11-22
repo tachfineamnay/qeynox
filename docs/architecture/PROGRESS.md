@@ -1,5 +1,28 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-22 — MISSION P20: existing Control beta operations (certification deferred)
+
+Extended the existing Professional Blue EN/FR operator shell, not a second administration platform.
+Registration invitation issue/revoke now uses existing ADMINISTRATION APIs, manual one-time secret
+handoff and links redeemed testers to users/workspaces/grants. Existing beta quota/usage pages remain
+canonical. OPERATIONS gains bounded metadata-only outbox/ingestion/deletion/email queues, workspace/
+mission provider ledger accounting (currencies/origins/unknowns separate), existing Hermes/Hatchet
+probe snapshots and provider/storage diagnostics in Health, plus read-only migration checksum/history
+compatibility in Releases. Mission/attempt failure codes are visible; raw event/error/private payloads
+and free-form incident/action reasons are removed from operations projections.
+
+Strict confirmed/reasoned recovery is limited to OPEN incident escalation and moving a future,
+never-dispatched PENDING outbox job to due-now under active mission/attempt scope checks. Local changes
+and platform audits commit atomically; canonical dispatch, leases, runtime, budgets and beta guards
+remain owners. No ambiguous/terminal replay, email resend, force-success or deployment control.
+
+**Minimal verification: typecheck PASS (6 tasks + release tooling), API build PASS, Control production
+build PASS, diff whitespace PASS.** No tests/browser/QA/DB/live service calls or recovery exercises;
+real-user acceptance, SQL/permission/concurrency/secret-isolation and external reconciliation remain
+**P22 certification gates**, not a claimed production PASS. No migration, deployment or payments.
+See [P20 verification and operator boundaries](../../infra/P20_VERIFICATION.md).
+
+
 ## 2026-11-22 — MISSION P19: business-provider integration (live certification deferred)
 
 Inspected all eight A16 packs and their actual WB/Brave requirements. Implemented shared reviewed

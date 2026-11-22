@@ -70,3 +70,5 @@ export * from './mission-documents';
 export * from './storage-configuration';
 
 export * from './business-provider-status';
+
+export * from './platform-beta-operations';

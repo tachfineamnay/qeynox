@@ -8,3 +8,5 @@ export * from './platform-admin';
 export * from './workspaces';
 export * from './support';
 
+
+export * from './operational-metadata';

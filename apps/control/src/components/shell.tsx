@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Fragment, type ReactNode } from 'react';
+import { betaOperationsCopy } from '../lib/beta-operations-copy';
 import { copy, type Locale } from '../lib/copy';
 import { can, CONSULTATION, OPERATIONS, READ_ASSIGNMENTS, READ_BETA, READ_CATALOGUE, READ_CONFIGURATION, READ_ORGANIZATIONS, READ_USERS, SUPPORT } from '../lib/permissions';
 import { logoutAction } from '../lib/actions';
@@ -67,17 +68,21 @@ export function Shell({ lang, path, permissions, userId, sessionExpiresAt, child
     { href: '/' + lang + '/users', label: t.navUsers, match: 'users', allowed: can(permissions, READ_USERS), group: t.groupCustomer },
     { href: '/' + lang + '/organizations', label: t.navOrganizations, match: 'organizations', allowed: can(permissions, READ_ORGANIZATIONS), group: t.groupCustomer },
     { href: '/' + lang + '/beta', label: t.navBeta, match: 'beta', allowed: can(permissions, READ_BETA), group: t.groupCustomer },
+    { href: '/' + lang + '/beta/invitations', label: betaOperationsCopy[lang].invitations, match: 'beta/invitations', allowed: can(permissions, READ_BETA), group: t.groupCustomer },
     { href: '/' + lang + '/support', label: t.navSupport, match: 'support', allowed: can(permissions, SUPPORT), group: t.groupCustomer },
     { href: '/' + lang + '/admins', label: t.navAdmins, match: 'admins', allowed: can(permissions, READ_ASSIGNMENTS), group: t.groupPlatform },
     { href: '/' + lang + '/settings', label: t.navSettings, match: 'settings', allowed: can(permissions, READ_CATALOGUE), group: t.groupPlatform },
     { href: '/' + lang + '/configuration', label: t.navConfiguration, match: 'configuration', allowed: can(permissions, READ_CONFIGURATION), group: t.groupPlatform },
     { href: '/' + lang + '/audit', label: t.navAudit, match: 'audit', allowed: can(permissions, CONSULTATION), group: t.groupPlatform },
     { href: '/' + lang + '/operations', label: t.navOperations, match: 'operations', allowed: can(permissions, OPERATIONS), group: t.groupOperations },
-    { href: '/' + lang + '/operations/health', label: t.navHealth, match: 'operations', allowed: can(permissions, OPERATIONS), group: t.groupOperations },
-    { href: '/' + lang + '/operations/releases', label: t.navReleases, match: 'operations', allowed: can(permissions, OPERATIONS), group: t.groupOperations },
+    { href: '/' + lang + '/operations/queues', label: betaOperationsCopy[lang].queues, match: 'operations/queues', allowed: can(permissions, OPERATIONS), group: t.groupOperations },
+    { href: '/' + lang + '/operations/spending', label: betaOperationsCopy[lang].spending, match: 'operations/spending', allowed: can(permissions, OPERATIONS), group: t.groupOperations },
+    { href: '/' + lang + '/operations/health', label: t.navHealth, match: 'operations/health', allowed: can(permissions, OPERATIONS), group: t.groupOperations },
+    { href: '/' + lang + '/operations/releases', label: t.navReleases, match: 'operations/releases', allowed: can(permissions, OPERATIONS), group: t.groupOperations },
     { href: '/' + lang + '/account', label: t.navAccount, match: 'account', allowed: true, group: '' },
   ];
-  const activeKey = path.split('/').filter(Boolean)[0] ?? '';
+  const cleanPath=path.replace(/^\//,'');
+  const activeKey=[...items].filter(item=>item.allowed&&(item.match===''?cleanPath==='':cleanPath===item.match||cleanPath.startsWith(item.match+'/'))).sort((a,b)=>b.match.length-a.match.length)[0]?.match;
   const visible = items.filter(item => item.allowed);
   const nav = (
     <nav aria-label={t.menu}>

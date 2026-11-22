@@ -1,3 +1,4 @@
+import { operationalErrorCode } from '@qeynox/domain';
 import { desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import type { QeyNoxDatabase } from './database';
 import { identityWorkspaces } from './identity-schema';
@@ -77,13 +78,13 @@ export class PlatformOperationsStore {
     if (!operation) return undefined;
     const [events, incidents] = await Promise.all([
       this.db.select().from(eventEnvelopes).where(eq(eventEnvelopes.operationId, operationId)).orderBy(eventEnvelopes.sequence).limit(200),
-      this.db.select().from(recoveryIncidents).where(eq(recoveryIncidents.operationId, operationId)).orderBy(desc(recoveryIncidents.createdAt)),
+      this.db.select().from(recoveryIncidents).where(eq(recoveryIncidents.operationId, operationId)).orderBy(desc(recoveryIncidents.createdAt)).limit(100),
     ]);
     return {
       operationId,
       events: events.map(row => ({
         sequence: row.sequence, kind: row.kind, occurredAt: row.occurredAt, actorType: row.actorType,
-        revisionId: row.revisionId ?? null, attemptId: row.attemptId ?? null, data: row.data,
+        revisionId: row.revisionId ?? null, attemptId: row.attemptId ?? null, data: typeof row.data.errorCode === 'string' ? { errorCode: operationalErrorCode(row.data.errorCode) } : {},
       })),
       incidents: await this.actionsForIncidents(incidents),
     };
@@ -99,10 +100,10 @@ export class PlatformOperationsStore {
     const actions = await this.db.select().from(recoveryActions).where(inArray(recoveryActions.incidentId, rows.map(row => row.id)));
     return rows.map(row => ({
       id: row.id, workspaceId: row.workspaceId, operationId: row.operationId, category: row.category,
-      status: row.status, reason: row.reason, createdAt: row.createdAt, updatedAt: row.updatedAt,
+      status: row.status, reason: row.category === 'UNCONFIRMED_DISPATCH' ? 'UNCONFIRMED_DISPATCH' : 'DETAILS_RESTRICTED_TO_AUDIT', createdAt: row.createdAt, updatedAt: row.updatedAt,
       actions: actions.filter(action => action.incidentId === row.id).map(action => ({
         id: action.id, incidentId: action.incidentId, actorId: action.actorId,
-        action: action.action, reason: action.reason, createdAt: action.createdAt,
+        action: action.action, reason: 'DETAILS_RESTRICTED_TO_AUDIT', createdAt: action.createdAt,
       })),
     }));
   }
@@ -137,7 +138,7 @@ export class PlatformOperationsStore {
       since: since.toISOString(),
       total: rows.length,
       byOutcome: Array.from(grouped.entries()).map(([outcome, count]) => ({ outcome, count })),
-      recent: failures.map(row => ({ action: row.action, outcome: row.outcome, reason: row.reason, happenedAt: iso(row.happenedAt) })),
+      recent: failures.map(row => ({ action: row.action, outcome: row.outcome, reason: operationalErrorCode(row.reason), happenedAt: iso(row.happenedAt) })),
     };
   }
 }

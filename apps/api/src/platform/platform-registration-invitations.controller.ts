@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Param, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Header, Inject, Param, Post, Query, Req } from '@nestjs/common';
 import { ZodError, z } from 'zod';
 import { idSchema } from '@qeynox/contracts';
 import { DomainError, type PlatformPermission, type PlatformPrincipal } from '@qeynox/domain';
@@ -63,6 +63,7 @@ export class PlatformRegistrationInvitationsController {
 
   @PlatformAccess(invitationRead)
   @Get()
+  @Header('Cache-Control', 'private, no-store')
   async list(@Req() request: PlatformRequest, @Query() query: Record<string, unknown>): Promise<RegistrationInvitationPage> {
     const actor = principal(request);
     const parsed = await parseOrAudit(this.invitations, listQuerySchema, query, request, { action: 'LIST_REGISTRATION_INVITATIONS', targetType: 'REGISTRATION_INVITATION' });
@@ -71,6 +72,7 @@ export class PlatformRegistrationInvitationsController {
 
   @PlatformAccess('ADMINISTRATION')
   @Post()
+  @Header('Cache-Control', 'private, no-store')
   async issue(@Req() request: PlatformRequest, @Body() body: unknown): Promise<RegistrationInvitationCreatedView> {
     const actor = principal(request);
     const input = await parseOrAudit(this.invitations, issueSchema, body, request, { action: 'ISSUE_REGISTRATION_INVITATION', targetType: 'REGISTRATION_INVITATION' });
@@ -79,6 +81,7 @@ export class PlatformRegistrationInvitationsController {
 
   @PlatformAccess('ADMINISTRATION')
   @Post(':invitationId/revoke')
+  @Header('Cache-Control', 'private, no-store')
   async revoke(@Req() request: PlatformRequest, @Param('invitationId') invitationId: string, @Body() body: unknown): Promise<RegistrationInvitationView> {
     const actor = principal(request);
     const parsedId = await parseOrAudit(this.invitations, idSchema, invitationId, request, { action: 'REVOKE_REGISTRATION_INVITATION', targetType: 'REGISTRATION_INVITATION', targetId: invitationId });
