@@ -8,6 +8,7 @@ import { NotificationStore } from '@qeynox/persistence';
 import { createConfiguredToolRegistry } from '@qeynox/tools';
 import { PgOutboxDispatcher,type ExecutionRequest,type OrchestratorPort } from '@qeynox/orchestration';
 import { evaluateQaRuntimeBypass } from './qa-runtime-bypass';
+import { SerialPoller } from './serial-poller';
 
 export async function createWorkerDependencies(){
  // P08: the URLs this worker is actually wired to; the QA bypass is judged against these, not later env.
@@ -34,6 +35,8 @@ export async function createWorkerDependencies(){
  // MISSION P10: attached-document retrieval for agent steps. No object store is passed: this path reads
  // indexed chunks under workspace/mission/consent rules only and can never fetch or sign storage objects.
  const vault=new DocumentVaultService(store,undefined,embeddingsFromEnv());
+ let dispatcherPoller:SerialPoller|undefined;
+ let closing=false;
  return {
   handler:async(request:ExecutionRequest,runtime:{workflowRunId:string})=>{
    const [row]=await conn.db.select().from(operations).where(and(eq(operations.id,request.operationId),eq(operations.workspaceId,request.workspaceId))).limit(1);
@@ -171,6 +174,7 @@ export async function createWorkerDependencies(){
    }
   },
   startDispatcher:async(orchestrator:OrchestratorPort)=>{
+    if(closing||dispatcherPoller)throw new DomainError('CONFLICT','Dispatcher already started or worker closing');
     const dispatcher=new PgOutboxDispatcher(conn.pool,orchestrator);
     // MISSION A19: the same loop that drains the execution outbox also materializes notification
     // events (approval required / execution failed / result delivered) and sends what is due.
@@ -180,10 +184,11 @@ export async function createWorkerDependencies(){
       try{await dispatcher.dispatchOnce();}catch(error:unknown){console.error('Outbox dispatch error:',error instanceof Error?error.message:'unknown');}
       try{await notifications.drain(25);}catch(error:unknown){console.error('Notification drain error:',error instanceof Error?error.message:'unknown');}
     };
-    await deliver();setInterval(()=>{void deliver();},5000);
+    dispatcherPoller=new SerialPoller(deliver,5000,error=>console.error('Dispatcher polling error:',error instanceof Error?error.message:'unknown'));
+    await dispatcherPoller.start();
   },
   runtimeMonitor,
-  close:async()=>{runtimeMonitor.stop();await conn.close();},
+  close:async()=>{closing=true;runtimeMonitor.stop();await dispatcherPoller?.stop();await conn.close();},
   toolRegistry:tools, // startup snapshot retained for existing QA callers
   loadToolRegistry:()=>createConfiguredToolRegistry(conn.db),
  };

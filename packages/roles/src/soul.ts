@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import {
-  DomainError, contextSubset, newId,
+  DomainError, assertConsent, isConsentActive, contextSubset, newId,
   SOUL_FIRST_OBJECTIVE_FACT_KEY, SOUL_ONBOARDING_CONTENT_STEPS, SOUL_ONBOARDING_FACT_KEYS,
   SOUL_ONBOARDING_STEPS, soulOnboardingStepOrder,
   type Consent, type ID, type Principal, type SoulOnboardingContentStep, type SoulOnboardingDisplayStatus,
@@ -31,7 +31,9 @@ export class SoulService {
 
   async grantConsent(actor:Principal,purpose:string,scopes:readonly string[],expiresAt?:string):Promise<Consent> {
     if(!scopes.length||!purpose.trim())throw new DomainError('INVALID_INPUT','Consent must name purpose and scopes');
-    const consent:Consent={id:newId(),userId:actor.userId,workspaceId:actor.workspaceId,purpose,scopes,grantedAt:new Date().toISOString(),expiresAt,version:1};
+    const now=new Date().toISOString();
+    if(!isConsentActive({expiresAt},now))throw new DomainError('INVALID_INPUT','Consent expiration must be a valid future timestamp with timezone');
+    const consent:Consent={id:newId(),userId:actor.userId,workspaceId:actor.workspaceId,purpose,scopes,grantedAt:now,expiresAt:expiresAt===undefined?undefined:new Date(expiresAt).toISOString(),version:1};
     await this.store.putConsent(consent);
     return consent;
   }
@@ -44,7 +46,7 @@ export class SoulService {
   async saveFact(actor:Principal,key:string,value:unknown,consentId:ID):Promise<UserContext> {
     const consents=await this.store.getConsents(actor.workspaceId,actor.userId);
     const permit=consents.find(c=>c.id===consentId);
-    if(!permit || permit.revokedAt || (permit.expiresAt && permit.expiresAt<=new Date().toISOString()) || !permit.scopes.includes('context:write'))throw new DomainError('DENIED','Context write consent absent');
+    assertConsent(permit,'context:write',actor.userId,actor.workspaceId,new Date().toISOString());
     if(!key.trim() || key.length>80)throw new DomainError('INVALID_INPUT','Context key invalid');
     const old=(await this.store.getContext(actor.workspaceId,actor.userId)).find(x=>x.key===key&&!x.deletedAt);
     const now=new Date().toISOString();
@@ -324,15 +326,14 @@ export class SoulOnboardingService {
     if (!record.consentId) return undefined;
     const consents = await this.store.getConsents(actor.workspaceId, actor.userId);
     const consent = consents.find(item => item.id === record.consentId);
-    if (!consent || consent.revokedAt) return undefined;
-    if (consent.expiresAt && consent.expiresAt <= new Date().toISOString()) return undefined;
+    if (!consent || !isConsentActive(consent, new Date().toISOString())) return undefined;
     return consent.scopes.includes('context:write') ? consent : undefined;
   }
 
   private async viewOf(actor: Principal, record: SoulOnboardingRecord | undefined): Promise<SoulOnboardingView> {
     const consents = await this.store.getConsents(actor.workspaceId, actor.userId);
     const consent = record?.consentId ? consents.find(item => item.id === record.consentId) : undefined;
-    const granted = Boolean(consent && !consent.revokedAt && (!consent.expiresAt || consent.expiresAt > new Date().toISOString()) && consent.scopes.includes('context:write'));
+    const granted = Boolean(consent && isConsentActive(consent, new Date().toISOString()) && consent.scopes.includes('context:write'));
     const step: SoulOnboardingStep = record?.step ?? 'WELCOME';
     const index = soulOnboardingStepOrder.indexOf(step);
     return {

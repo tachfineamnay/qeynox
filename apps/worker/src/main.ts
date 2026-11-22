@@ -57,4 +57,7 @@ async function startDocumentIngestPoller(): Promise<void> {
   console.log('[documents] ingest poller running every ' + interval + ' ms');
 }
 
-void startDocumentIngestPoller();
+void startDocumentIngestPoller().catch((error: unknown) => {
+  console.error('[documents] ingest poller failed to start:', error instanceof Error ? error.message : 'unknown');
+  process.exitCode = 1;
+});

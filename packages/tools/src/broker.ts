@@ -14,7 +14,7 @@ export class ToolBroker {
    const {connector,definition}=this.registry.lookup(call.connectorId,call.toolName,call.version);
    if(!permission.allowedConnectorTools.includes(keyOf(call))||!definition.allowedCapabilities.includes(call.capabilityId))throw new DomainError('DENIED','Tool outside profile/capability allowlist');
    if(definition.requiredScopes.some(scope=>!permission.consentScopes.includes(scope)))throw new DomainError('DENIED','Missing consent for tool');
-   if(permission.remainingToolCalls<1||permission.remainingCostUnits<definition.maxCostUnits)throw new DomainError('DENIED','Tool budget unavailable');
+   if(!Number.isSafeInteger(permission.remainingToolCalls)||permission.remainingToolCalls<1||!Number.isSafeInteger(permission.remainingCostUnits)||permission.remainingCostUnits<0||permission.remainingCostUnits<definition.maxCostUnits)throw new DomainError('DENIED','Tool budget unavailable');
    const input=definition.input.parse(call.input);
    const hash=digest(input);
    if(definition.mode==='WRITE'){

@@ -13,7 +13,7 @@ export interface ConnectorBundle {manifest:ConnectorManifest;connector:ToolConne
 export function validateBundle(bundle:ConnectorBundle):void{
  const {manifest,connector}=bundle;
  if(manifest.id!==connector.id||manifest.version!==connector.version)throw new DomainError('INVALID_INPUT','Connector manifest version mismatch');
- if(manifest.rateLimit.maxPerMinute<1||manifest.freshness.ttlSeconds<0)throw new DomainError('INVALID_INPUT','Invalid provider constraints');
+ if(!Number.isSafeInteger(manifest.rateLimit.maxPerMinute)||manifest.rateLimit.maxPerMinute<1||!Number.isSafeInteger(manifest.freshness.ttlSeconds)||manifest.freshness.ttlSeconds<0)throw new DomainError('INVALID_INPUT','Invalid provider constraints');
  const declared=new Set(connector.definitions().map(d=>d.name+'@'+d.version));
  if(manifest.tools.some(t=>!declared.has(t.name+'@'+t.version)))throw new DomainError('INVALID_INPUT','Manifest references undefined tool');
  if(manifest.mode==='READ_ONLY'&&connector.definitions().some(d=>d.mode==='WRITE'))throw new DomainError('DENIED','Read-only provider cannot expose writes');

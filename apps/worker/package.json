@@ -24,7 +24,8 @@
     "qa:stripe-payments": "tsx scripts/qa-stripe-payments.ts",
     "qa:brave-search": "tsx scripts/qa-brave-search.ts",
     "qa:workspace-management": "tsx scripts/qa-workspace-management.ts",
-    "qa:documents": "tsx scripts/qa-documents.ts"
+    "qa:documents": "tsx scripts/qa-documents.ts",
+    "qa:security-regressions": "tsx --test scripts/qa-security-regressions.ts"
   },
   "dependencies": {
     "@hatchet-dev/typescript-sdk": "1.46.1",

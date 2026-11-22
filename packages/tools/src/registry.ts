@@ -10,7 +10,15 @@ export class ToolRegistry {
   if(this.connectors.has(connector.id))throw new DomainError('CONFLICT','Connector already registered');
   const defs=connector.definitions();
   if(!defs.length)throw new DomainError('INVALID_INPUT','Connector has no tools');
-  for(const d of defs){const k=this.key(connector.id,d.name,d.version);if(this.definitions.has(k))throw new DomainError('CONFLICT','Duplicate tool');if(d.timeoutMs<100||d.maxCostUnits<0)throw new DomainError('INVALID_INPUT','Invalid tool limits');this.definitions.set(k,d);}
+  const pending=new Map<string,ToolDefinition>();
+  for(const d of defs){
+   const k=this.key(connector.id,d.name,d.version);
+   if(this.definitions.has(k)||pending.has(k))throw new DomainError('CONFLICT','Duplicate tool');
+   if(!Number.isSafeInteger(d.timeoutMs)||d.timeoutMs<100||d.timeoutMs>2_147_483_647||!Number.isSafeInteger(d.maxCostUnits)||d.maxCostUnits<0)throw new DomainError('INVALID_INPUT','Invalid tool limits');
+   pending.set(k,d);
+  }
+  // Publish only after every definition is validated; a failed registration leaves no ghost tools.
+  for(const [key,definition] of pending)this.definitions.set(key,definition);
   this.connectors.set(connector.id,connector);
  }
  registerBundle(bundle:ConnectorBundle):void {validateBundle(bundle);this.register(bundle.connector);this.manifests.set(bundle.manifest.id,bundle.manifest);}
