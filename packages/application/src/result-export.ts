@@ -158,6 +158,13 @@ export async function exportPdf(doc: ResultDocument): Promise<Uint8Array> {
   pdf.setTitle(doc.title);
   pdf.setProducer('QeyNox');
   pdf.setCreator('QeyNox');
+  // pdf-lib stamps CreationDate/ModDate with wall-clock time when the document is created, and an
+  // unpinned date makes every export byte-different — which silently breaks digest-based artifact
+  // reconciliation (re-derivation can never match a recorded SHA-256 across a second boundary).
+  // Both dates derive from the document itself so re-derivation is byte-stable.
+  const pinnedDate = new Date(doc.reviewedAt ?? doc.createdAt);
+  pdf.setCreationDate(Number.isFinite(pinnedDate.getTime()) ? pinnedDate : new Date(0));
+  pdf.setModificationDate(Number.isFinite(pinnedDate.getTime()) ? pinnedDate : new Date(0));
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   // Counted per export so the document can disclose its own limitation instead of hiding it.

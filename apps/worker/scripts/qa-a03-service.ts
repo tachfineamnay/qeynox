@@ -441,7 +441,9 @@ async function partTwo(): Promise<'PASSED' | 'BLOCKED'> {
     });
     await expectError('INVALID_INPUT', () => claims.attach(owner, claim.id, sourceId, 'SUPPORTS'), 'support without evidence linkage');
     await expectError('INVALID_INPUT', () => claims.attach(owner, claim.id, sourceId, 'SUPPORTS', evidenceId, '0'.repeat(64)), 'support with a forged digest');
-    await expectError('DENIED', () => claims.attach(outsider, claim.id, sourceId, 'SUPPORTS', evidenceId, digest), 'cross-workspace evidence attachment');
+    // P22 BIS: cross-tenant access stays non-disclosing — a principal in another workspace gets
+    // NOT_FOUND for the claim, never a DENIED that would confirm the claim exists.
+    await expectError('NOT_FOUND', () => claims.attach(outsider, claim.id, sourceId, 'SUPPORTS', evidenceId, digest), 'cross-workspace evidence attachment is NOT_FOUND, never DENIED');
     await claims.attach(owner, claim.id, sourceId, 'SUPPORTS', evidenceId, digest);
 
     const policyAssessment = await claims.assess(owner, {

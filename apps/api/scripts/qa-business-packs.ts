@@ -524,6 +524,10 @@ process.env.QEYNOX_WORLD_BANK_ENABLED = 'true';
 process.env.QEYNOX_BRAVE_SEARCH_ENABLED = 'false';
 delete process.env.QEYNOX_BRAVE_SEARCH_API_KEY;
 process.env.QEYNOX_NETWORK_POLICY_ATTESTED = 'true';
+// P22 BIS: egress for both required provider hosts is configured explicitly inside this isolated
+// QA run (ambient shell state is never consulted). Brave stays disabled on purpose until the
+// deployment-probe section below, which must truthfully report it as not ready.
+process.env.QEYNOX_EGRESS_ALLOWED_HOSTS = 'api.worldbank.org,api.search.brave.com';
 
 let app: INestApplication | undefined;
 let connection: ReturnType<typeof connectDatabase> | undefined;
@@ -587,7 +591,15 @@ try {
 
   const attestedCapCatalogue = new CapabilityCatalogueService(store, () => OPERATIONAL_RUNTIME);
   const attestedCaps = await attestedCapCatalogue.list(member);
-  check(attestedCaps.slots.every(s => s.operationalState === 'OPERATIONAL' && s.available === true), 'with attested runtime and configured providers/profiles/policies all 8 slots are OPERATIONAL');
+  // P22 BIS: Brave Search is deliberately disabled at this point of the suite. Only the World Bank
+  // backed slots may claim OPERATIONAL; a disabled required provider blocks its packs instead of
+  // being reported operational. The all-8-operational claim is made further below, only once both
+  // required providers are explicitly configured.
+  const providerByCapabilityId = new Map(parsedSuiteServices.map(entry => [entry.capabilityId, REQUIRED_PROVIDER_BY_PACK[entry.pack]]));
+  const worldBankSlots = attestedCaps.slots.filter(slot => providerByCapabilityId.get(String(slot.capability?.id)) === 'world-bank');
+  const braveSlots = attestedCaps.slots.filter(slot => providerByCapabilityId.get(String(slot.capability?.id)) === 'brave-search');
+  check(worldBankSlots.length === 2 && worldBankSlots.every(slot => slot.operationalState === 'OPERATIONAL' && slot.available === true), 'with attested runtime and the configured World Bank provider both World Bank slots are OPERATIONAL');
+  check(braveSlots.length === 6 && braveSlots.every(slot => slot.operationalState === 'BLOCKED' && slot.available === false), 'while the required Brave Search provider is disabled its 6 packs are BLOCKED, never claimed OPERATIONAL');
 
   // --- 3. Service configuration validator across all 8 packs ----------------------------------
   for (const svc of parsedSuiteServices) {
@@ -950,6 +962,11 @@ try {
       (seoDetailWithSecret.body as { deployment: { providerSwitchReady: boolean } }).deployment.providerSwitchReady === true,
     'deployment probe echoes boolean braveSearchKeyConfigured=true when key is present',
   );
+
+  // P22 BIS: only now, with BOTH required providers explicitly configured (World Bank switch plus
+  // Brave switch + fixture credential + egress), may the catalogue claim all 8 slots OPERATIONAL.
+  const reconfiguredCaps = await new CapabilityCatalogueService(store, () => OPERATIONAL_RUNTIME).list(member);
+  check(reconfiguredCaps.slots.every(slot => slot.operationalState === 'OPERATIONAL' && slot.available === true), 'with both required providers explicitly configured, all 8 slots are OPERATIONAL');
 
   // Submit real service requests over HTTP for ALL 8 packs + verify commercial quote behavior & tenant isolation
   const commerce = new CommerceService(store);

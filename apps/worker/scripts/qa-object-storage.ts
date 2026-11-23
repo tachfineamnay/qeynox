@@ -97,7 +97,10 @@ async function main(): Promise<void> {
     const delivery = new ArtifactDelivery(store, realStore);
 
     // --- Real upload, SHA-256 integrity, privacy and signed download expiry. ---
-    const key = 'qa/object-' + randomUUID() + '.txt';
+    // P22 BIS: every direct object key is a valid tenant-scoped private key under workspaces/*,
+    // exactly as the canonical assertPrivateObjectKey policy requires for private storage.
+    const main = await operationWithRevision(store, owner, 'QA storage deliverable');
+    const key = 'workspaces/' + workspaceId + '/operations/' + main.operation.id + '/results/' + randomUUID() + '/' + randomUUID() + '.txt';
     const payload = Buffer.from('QeyNox real QA object payload ' + randomUUID());
     const receipt = await realStore.put(key, payload, 'text/plain');
     assert(receipt.sha256 === sha256(payload), 'put response digest matches content');
@@ -114,10 +117,10 @@ async function main(): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 2500));
     const expiredResponse = await fetch(shortUrl);
     assert(expiredResponse.status === 403 || expiredResponse.status === 401, 'expired signed download is rejected');
-    assert((await realStore.head('qa/missing-' + randomUUID())) === undefined, 'missing object head returns undefined');
+    const missingKey = 'workspaces/' + workspaceId + '/operations/' + main.operation.id + '/results/' + randomUUID() + '/' + randomUUID() + '.txt';
+    assert((await realStore.head(missingKey)) === undefined, 'missing object head returns undefined');
 
     // --- ArtifactDelivery real upload, private read grant and tenant isolation. ---
-    const main = await operationWithRevision(store, owner, 'QA storage deliverable');
     const document = documentFor(owner.workspaceId, main.operation.id, main.revisionId, 'QA storage document');
     await connection.db.insert(resultDocuments).values({ id: document.id, workspaceId: owner.workspaceId, operationId: main.operation.id, revisionId: main.revisionId, version: 1, state: 'READY_FOR_REVIEW', document: document as unknown as Record<string, unknown>, createdAt: document.createdAt });
     const jsonContent = exportJson(document), htmlContent = exportHtml(document);

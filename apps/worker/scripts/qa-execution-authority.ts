@@ -37,8 +37,11 @@ async function main(): Promise<void> {
     await db.update(operations).set({ status: 'RUNNING', currentRevisionId: revisionId, payload: { ...op, status: 'RUNNING', currentRevisionId: revisionId } }).where(eq(operations.id, op.id));
     const permit: Consent = { id: id(), userId: actor.userId, workspaceId: actor.workspaceId, purpose: 'Explicit test consent', scopes: ['context:read'], version: 1, grantedAt: new Date().toISOString() };
     await store.putConsent(permit);
-    const grantId = id(), expiresAt = new Date(Date.now() + 3600000);
-    await db.insert(betaGrants).values({ id: grantId, workspaceId: actor.workspaceId, status: 'ACTIVE', expiresAt, missionQuota: 10, concurrentLimit: 2, maxProviderSpendMinor: 1000, currency: 'USD', grantedBy: actor.userId, grantReason: 'Isolated authority regression' });
+    const grantId = id(), activatedAt = new Date(), expiresAt = new Date(activatedAt.getTime() + 3600000);
+    // P22 BIS: seed the grant with the canonical activation columns required by migration 0026
+    // (beta_grants_activation_consistent, beta_grants_expiry_after_creation, activation/revocation
+    // consistency). Exactly as an operator-activated grant is recorded; no constraint is bypassed.
+    await db.insert(betaGrants).values({ id: grantId, workspaceId: actor.workspaceId, status: 'ACTIVE', expiresAt, missionQuota: 10, concurrentLimit: 2, maxProviderSpendMinor: 1000, currency: 'USD', grantedBy: actor.userId, grantReason: 'Isolated authority regression', createdAt: activatedAt, activatedAt, activatedBy: actor.userId, updatedAt: activatedAt });
     await db.insert(betaGrantMissions).values({ id: id(), grantId, workspaceId: actor.workspaceId, operationId: op.id, admittedBy: actor.userId });
     const scope: MissionAuthorityScope = { principal: actor, operationId: op.id, planRevisionId: revisionId, stepAttemptId: attempt.id, attemptVersion: 2, capabilityId: capability.id, capabilityVersion: 1, profileId, profileVersion: 1 };
     const refused = (error: unknown) => error instanceof DomainError && ['DENIED', 'BETA_ACCESS_REQUIRED', 'CONFLICT', 'UNKNOWN_OUTCOME'].includes(error.code);

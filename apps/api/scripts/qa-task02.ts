@@ -313,6 +313,12 @@ async function verifyMigrationImmutability(targetUrl: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  // P22 BIS: the isolated QA run explicitly configures the reviewed World Bank provider
+  // (deployment switch, egress attestation and host allowlist) instead of depending on ambient
+  // shell environment. This configures the QA process only; production switches are untouched.
+  process.env.QEYNOX_WORLD_BANK_ENABLED = 'true';
+  process.env.QEYNOX_NETWORK_POLICY_ATTESTED = 'true';
+  process.env.QEYNOX_EGRESS_ALLOWED_HOSTS = 'api.worldbank.org';
   const qa = await createIsolatedQaDatabase();
   const targetConnectionString = qa.url;
   let connection: Awaited<ReturnType<typeof connectDatabase>> | undefined;
