@@ -1,5 +1,55 @@
 # QeyNox 2027 — Backend source wave 10–20
 
+## 2026-11-24 — MISSION A01: QA truth & source hygiene — `qa:storage` exit-code contract
+
+Confirmed issue: `apps/worker/scripts/qa-object-storage.ts` printed `STORAGE QA BLOCKED` and returned
+normally when the isolated-S3 prerequisites were absent, so a prerequisite-blocked run exited **0** —
+exactly the trap the 2026-11-22 follow-up audit had to work around by interpreting logs instead of exit
+codes. Fixed without touching any provider, payment, authorization or storage product logic.
+
+- Exit contract now enforced and documented in the script header: **0** PASS only after every
+  assertion completed against the operator-supplied isolated S3 + disposable database; **3** BLOCKED
+  when a prerequisite is absent (any missing `QEYNOX_QA_S3_*` variable, and now also a missing
+  `QEYNOX_QA_DATABASE_URL`, previously misclassified as a `NOT_CONFIGURED` failure → exit 1); **1**
+  FAILED for real assertion/execution failures. A configured-but-unreachable S3 endpoint is a FAILED
+  environment, not a BLOCKED prerequisite.
+- New `apps/worker/scripts/qa-storage-selftest.ts` (root script `qa:storage-selftest`) spawns the
+  storage QA as a subprocess and regression-checks all three outcomes: missing S3 → exit 3; S3 present
+  but database URL absent → exit 3; deliberate assertion failure (documented test-only hook
+  `QEYNOX_QA_STORAGE_SELFTEST_FAULT=assertion`, which can only fail a run earlier) → exit 1. Each leg
+  also asserts the run emitted **no** `OBJECT_STORAGE_EVIDENCE` line and **no** `Object storage QA
+  PASSED` line, so neither an exit-code-keyed runner nor a grep-based evidence collector can promote a
+  BLOCKED or failed run into a pass. The real-S3 PASS leg runs only when the self-test itself is given
+  real `QEYNOX_QA_S3_*` + `QEYNOX_QA_DATABASE_URL`; otherwise it prints NOT RUN and no storage claim.
+- Tenant object-key namespace validation preserved: `assertPrivateObjectKey` (P22 BIS) is untouched and
+  the suite keys stay under `workspaces/<workspaceId>/operations/…`. One assertion added to the live
+  suite (now 27, was 26): a malformed `workspaces/../…` key must be refused `DENIED` before any S3
+  request, never written.
+- `qa:storage` has no fixture path at all: it either runs against the operator-supplied real S3 and
+  disposable database or reports BLOCKED — fixture-only promotion into a PASS is impossible by
+  construction, and the self-test proves the harness cannot manufacture one.
+
+VERIFIED IN THIS ENVIRONMENT (no external services):
+- `pnpm install --frozen-lockfile` PASS (lockfile unchanged), `pnpm typecheck` PASS (6 tasks + release
+  tooling), `pnpm build` PASS (4 tasks).
+- `pnpm qa:storage-selftest` **PASS — 14 assertions, exit 0** (legs 1–3 above; real-S3 leg NOT RUN).
+- `pnpm qa:storage` without S3: `STORAGE QA BLOCKED…`, **exit 3** (was exit 0).
+- Deliberate failure leg: exit 1 with `ASSERTION FAILED: deliberate self-test assertion failure`, no
+  BLOCKED wording, no evidence line.
+
+BLOCKED — NOT VERIFIED, AND NOT CLAIMED:
+- The real isolated-S3 PASS outcome: no MinIO/S3-compatible service and no disposable PostgreSQL were
+  available in this environment, so the 27-assertion live suite (including the new namespace-refusal
+  assertion) has not been exercised against live infrastructure. Follow the existing operator runbook
+  (disposable MinIO + `QEYNOX_QA_DATABASE_URL`).
+- The same exit-0-when-BLOCKED pattern exists in other suites (`qa:platform-admin`,
+  `qa:platform-organizations`, `qa:platform-configuration` — recorded 0/0 BLOCKED in the 2026-11-22
+  matrix). Out of scope for this focused mission; flagged for a follow-up harness-truth pass.
+- Historical audit matrices in `docs/audits/` are dated records and were deliberately not rewritten.
+
+No deployment, no migration, no merge, no third-party CI. Storage/egress/provider/payment product
+logic unchanged.
+
 ## 2026-11-22 — MISSION P21: execution authority / revocation fencing (P22 certification pending)
 
 Preserved PgToolAuthorization and its existing canonical PostgreSQL checks. Closed confirmed missing

@@ -5,7 +5,14 @@
  * QEYNOX_QA_S3_SECRET_KEY pointing at a disposable MinIO/S3-compatible service.
  * Creates a random bucket, verifies private uploads, SHA-256 metadata, signed download expiry,
  * tenant isolation, failed-upload recovery and safe PENDING_UPLOAD reconciliation.
- * BLOCKED (not PASS) when the QA storage endpoint is absent.
+ *
+ * Exit contract (a blocked run is never reported as a pass):
+ *   0  PASS     every assertion completed against the operator-supplied isolated S3 and
+ *               isolated QA database
+ *   3  BLOCKED  a required QA prerequisite (isolated S3 endpoint/credentials or the isolated
+ *               QA database URL) is absent — no assertion ran and nothing was verified
+ *   1  FAILED   a real assertion or execution failure
+ * qa-storage-selftest.ts regression-checks all three outcomes by spawning this script.
  */
 import { createHash, randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
@@ -21,6 +28,10 @@ import {
 } from '@qeynox/application';
 import { DomainError, newId, type ID, type Operation, type Principal } from '@qeynox/domain';
 import { createIsolatedQaDatabase } from '../../api/scripts/qa-isolated-database';
+
+const PASS = 0;
+const FAILED = 1;
+const BLOCKED = 3;
 
 let assertions = 0;
 function assert(condition: unknown, message: string): asserts condition {
@@ -58,14 +69,27 @@ async function operationWithRevision(store: QeyNoxStore, principal: Principal, t
 }
 
 async function main(): Promise<void> {
-  if (!process.env.QEYNOX_QA_S3_ENDPOINT || !process.env.QEYNOX_QA_S3_ACCESS_KEY || !process.env.QEYNOX_QA_S3_SECRET_KEY) {
-    console.log('STORAGE QA BLOCKED: QEYNOX_QA_S3_ENDPOINT/ACCESS_KEY/SECRET_KEY are not configured; no live S3 checks performed.');
-    return;
-  }
-  if (!process.env.QEYNOX_QA_DATABASE_URL) throw new DomainError('NOT_CONFIGURED', 'QEYNOX_QA_DATABASE_URL required for storage QA');
   const endpoint = process.env.QEYNOX_QA_S3_ENDPOINT;
   const accessKeyId = process.env.QEYNOX_QA_S3_ACCESS_KEY;
   const secretAccessKey = process.env.QEYNOX_QA_S3_SECRET_KEY;
+  const missingS3 = (['QEYNOX_QA_S3_ENDPOINT', 'QEYNOX_QA_S3_ACCESS_KEY', 'QEYNOX_QA_S3_SECRET_KEY'] as const)
+    .filter(name => !process.env[name]);
+  if (!endpoint || !accessKeyId || !secretAccessKey) {
+    console.log('STORAGE QA BLOCKED: required isolated-S3 prerequisite(s) not configured: ' + missingS3.join(', ')
+      + '. No live S3 checks were performed and nothing was verified; this run is not a pass and exits BLOCKED (3).');
+    process.exit(BLOCKED);
+  }
+  if (!process.env.QEYNOX_QA_DATABASE_URL) {
+    console.log('STORAGE QA BLOCKED: QEYNOX_QA_DATABASE_URL is not configured, so the isolated QA database cannot be created. '
+      + 'No storage assertion was performed; this run is not a pass and exits BLOCKED (3).');
+    process.exit(BLOCKED);
+  }
+  // Test-only hook used by qa-storage-selftest.ts to prove that a real assertion failure exits
+  // FAILED (1). It can only ever fail this run earlier; it never bypasses, catches or softens a
+  // real assertion, and it is refused unless explicitly requested through the named variable.
+  if (process.env.QEYNOX_QA_STORAGE_SELFTEST_FAULT === 'assertion') {
+    assert(false, 'deliberate self-test assertion failure requested via QEYNOX_QA_STORAGE_SELFTEST_FAULT');
+  }
   const bucket = 'qeynox-qa-' + randomUUID().replace(/-/g, '').slice(0, 16);
   const client = new S3Client({ region: 'us-east-1', endpoint, forcePathStyle: true, credentials: { accessKeyId, secretAccessKey } });
   await client.send(new CreateBucketCommand({ Bucket: bucket }));
@@ -106,6 +130,9 @@ async function main(): Promise<void> {
     assert(receipt.sha256 === sha256(payload), 'put response digest matches content');
     const head = await realStore.head(key);
     assert(head?.sha256 === receipt.sha256 && head.size === payload.byteLength, 'head reports stored digest/size');
+    // A01: the strict tenant object-key namespace stays enforced for direct store calls. A malformed
+    // key is refused with DENIED by assertPrivateObjectKey before any S3 request — never written.
+    await expectDomainError('DENIED', () => realStore.put('workspaces/../' + workspaceId + '/escape', payload, 'text/plain'), 'malformed tenant object key');
     const signedUrl = await realStore.signedRead(key, 180);
     assert(/X-Amz-Signature=/.test(signedUrl) && /X-Amz-Expires=180/.test(signedUrl), 'signed read URL carries signature and expiry');
     const signedResponse = await fetch(signedUrl);
@@ -189,8 +216,11 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  console.error('Object storage QA FAILED:', error instanceof Error ? error.stack ?? error.message : error);
-  process.exitCode = 1;
-});
+main().then(
+  () => { process.exit(PASS); },
+  (error: unknown) => {
+    console.error('Object storage QA FAILED:', error instanceof Error ? error.stack ?? error.message : error);
+    process.exit(FAILED);
+  },
+);
 
