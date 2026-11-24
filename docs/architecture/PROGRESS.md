@@ -1571,3 +1571,66 @@ BLOCKED — NOT VERIFIED, AND NOT CLAIMED:
   reverting the A08 commerce change in place and reproducing the identical failure.
 
 No merge, no deployment, no credential and no real customer data.
+
+## MISSION A02 — complete the beta customer journey (branch `arena/88ed4c7a-qeynox`)
+
+Audit mission: trace all thirteen beta-journey steps Web → API → PostgreSQL → Worker → Result → Web
+against the REAL API (not the fixture), identify broken transitions and wrong client/server contracts,
+and fix confirmed source defects only. No product defect was confirmed; every failure encountered while
+building the audit was a defect in the audit driver's own expectations, corrected against the
+repo-codified contracts.
+
+METHOD — LIVE JOURNEY AUDIT DRIVER (fixture-labelled, disposable PostgreSQL):
+- `.tmp/journey-audit/driver.ts` boots the REAL NestJS API in-process (all feature modules, real
+  PostgreSQL via `QEYNOX_QA_DATABASE_URL`, real registration/beta/consent/tenant code paths, recorded
+  QA e-mail transport, deterministic Soul/Pilot fallback as shipped) and drives the same routes the web
+  client calls, parsing every response with the web's own zod schemas (apps/web/src/lib/api.ts and
+  feature schemas). QA database created and dropped per run.
+- Result: **70 contract checks across 15 steps, exit 0** — all web/client contracts matched the real API.
+  Coverage: invitation-only registration (policy + invitation redemption + atomic signup); verification +
+  login; workspace selection + beta grant activation (token rotation after switch-workspace asserted);
+  consent-aware Soul onboarding (full step order, skip, consent gate, mission locked to FIRST_OBJECTIVE);
+  honest pilot plan proposal (DETERMINISTIC_FALLBACK / ENGINE_NOT_CONFIGURED, steps=[], aiGenerated=false)
+  + manual plan save; eight-pack catalogue (8/8 capabilities ACTIVE, 8 published offers, truthful detail);
+  typed service request + quote under BETA_FREE (commercial view `executionAuthorized`,
+  `betaAuthorization` FREE_BETA amountDueNowMinor 0); launch honestly refused NOT_CONFIGURED with no
+  fake execution; execution/mydash/retry presentation (retry refuses INVALID_INPUT without a live
+  attempt); results/export/share refusals clean and tenant-safe; notifications, preferences, account,
+  sessions, reversible deletion request; Support honest NOT_CONFIGURED + 503 fail-closed conversations;
+  logout/revoked/expired sessions → 403 DENIED (revoked=0 from revoke-others is honest; self-revoke
+  ends access); edge transitions (non-enumerating login failures, no locale-dependent registration
+  bypass, document upload refused without artifact storage, unknown share token NOT_FOUND, no anonymous
+  catalogue); and the mission-page documents/claims/payment reads parsed with the web schemas against a
+  real seeded READY_FOR_REVIEW test row (explicitly labelled test data — no execution claimed; the
+  payment view's `executionAuthorized=false` for beta orders is the codified A21.03 rule, the true
+  authorization living on `/commercial`).
+- FIXTURE EVIDENCE ONLY: recorded QA e-mail transport, deterministic Soul/Pilot fallback, disposable
+  PostgreSQL. No live Hermes/Hatchet/Chatwoot/World Bank/Stripe was contacted by the driver.
+
+TARGETED QA MATRIX (all exit 0 unless noted, disposable PostgreSQL at 127.0.0.1:5433):
+- Backend suites: qa:registration 9 groups/149; qa:identity 57; qa:verification-resend 8/68;
+  qa:beta-access 11/126; qa:beta-journey 7/130; qa:beta-execution 13/473; qa:soul-intelligence 22;
+  qa:pilot-planner 10; qa:service-catalogue 63; qa:business-packs 374; qa:mission-lifecycle 14/88;
+  qa:atlas-results 10/150; qa:atlas-library 112; qa:notifications 98; qa:workspace-management 82;
+  qa:documents 77; qa:payment-freeze 21/369; qa:backend 28; qa:agent-runtime 65; qa:runtime-readiness 27;
+  qa:task02 5022; qa:platform-authorization 107; qa:platform-admin 70; qa:platform-users 165;
+  qa:platform-organizations 87; qa:platform-configuration 70; qa:support-isolation/private/concurrency
+  PASS + qa:support-reconciliation 33; qa-soul-first-mission.ts (legacy-mode run: refusal, atomic
+  mission, retry, workspace isolation) PASS.
+- Web (fixture API, EN/FR): smoke 449 PASS; flow2 37 PASS. 196 API routes cross-checked against the
+  client usage — no drift.
+
+BLOCKED — NOT VERIFIED, AND NOT CLAIMED (live services absent from this environment):
+- Real mission execution through Hermes/Hatchet (steps 9–11 results with citations, artifact exports,
+  delivery): every execution-path gate refuses honestly (NOT_CONFIGURED) and is asserted to refuse; the
+  success path itself is NOT VERIFIED here and is covered only by the deterministic execution suites.
+- Chatwoot conversations (Support inbox): capability reports NOT_CONFIGURED; web fails closed (503).
+- E-mail provider delivery beyond the recorded transport; World Bank provider data (see below); Stripe
+  (frozen by A21.01, not enabled by this mission).
+- `qa:connectors`, `qa:raas`, `qa:egress` exit 1 in this sandbox: each passes all offline assertions and
+  then fails at exactly one real live TLS call to api.worldbank.org, which the sandbox allowlist blocks
+  (A21.04 gap, pre-existing). Left failing deliberately — the suites are correct to demand the live
+  endpoint; no exit-0-when-blocked guard was added and no assertion was weakened.
+
+No merge, no deployment, no new credentials; beta grants, consent and tenant isolation were exercised,
+never bypassed.

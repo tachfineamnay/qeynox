@@ -358,3 +358,14 @@ Operator follow-ups (not performed by the agent):
 - Invitations are delivered manually (`registrationPath` is returned once). An operator console screen and an e-mail adapter remain open.
 
 No push to main, no merge, no deployment; the migration was applied only to disposable databases.
+
+## Beta customer journey audit (Mission A02)
+
+| Responsibility | Code area | Status |
+| --- | --- | --- |
+| Live journey audit driver: boots the REAL API in-process against disposable PostgreSQL and drives all thirteen beta-journey steps with the web's own zod schemas | `.tmp/journey-audit/driver.ts` (QA infrastructure, gitignored) | **VERIFIED IN DISPOSABLE QA — 70 contract checks / 15 steps, exit 0** (fixture-labelled: recorded QA e-mail transport, deterministic Soul/Pilot fallback, disposable PG) |
+| Invitation-only registration → verification → login → workspace selection + beta activation → consent-aware Soul onboarding → pilot plan → catalogue → BETA_FREE acceptance | apps/api/src/auth, packages/roles/src/soul.ts, apps/api/src/beta-access, packages/application/src/pilot-planner.ts, apps/api/src/services | **VERIFIED IN DISPOSABLE QA** (journey audit steps 1–7; no product defect confirmed) |
+| Mission launch / execution / retry / results / export / share honesty: launch refuses NOT_CONFIGURED without live Hermes/Hatchet; retry refuses without a live attempt; export/share refusals tenant-safe | packages/application/src/execution.ts, apps/api/src/operations, apps/api/src/results | **VERIFIED IN DISPOSABLE QA (refusal paths)**; execution success path **BLOCKED** — live Hermes/Hatchet absent (A21.04) |
+| Mission-page documents/claims/payment reads parse with the web schemas against a real seeded READY_FOR_REVIEW test row; payment view keeps `executionAuthorized=false` for beta orders (A21.03 codified) | apps/web/src/app/[lang]/missions/[id]/page.tsx, apps/api/src/results, apps/api/src/operations | **VERIFIED IN DISPOSABLE QA** (seeded row explicitly labelled test data) |
+| Notifications/preferences, account, sessions, deletion request, Support honesty, logout/revocation contracts (403 DENIED for revoked/expired; revoke-others never touches the current session) | apps/api/src/notifications, account, support; apps/api/src/auth | **VERIFIED IN DISPOSABLE QA** (journey audit steps 12–14) |
+| Provider egress suites (connectors, raas, egress) require one real live TLS call to api.worldbank.org | apps/worker/scripts/qa-connectors.ts, qa-raas-deliverable.ts, qa-egress.ts | **BLOCKED** in this sandbox — allowlist blocks the live call (A21.04, pre-existing); offline assertions pass; no guard added |
