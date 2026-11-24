@@ -14,6 +14,11 @@ import { copy, locale, type Locale } from '../../../lib/copy';
 import { readResultsLibrary } from '../../../lib/results';
 import { resultsCopy } from '../../../lib/results-copy';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 export const dynamic = 'force-dynamic';
 
 interface ResultsSearchParams {

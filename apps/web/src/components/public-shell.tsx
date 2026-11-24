@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { Locale } from '../lib/copy';
 import { publicCopy } from '../lib/public-content';
+import { publicationState } from '../lib/publication';
 
 /**
  * Public marketing shell. Server-rendered only: the mobile navigation uses native <details>, so the
@@ -9,6 +10,9 @@ import { publicCopy } from '../lib/public-content';
  */
 export function PublicShell({ lang, path, children }: { lang: Locale; path: string; children: ReactNode }) {
   const c = publicCopy[lang];
+  // MISSION A03 — the footer warning is honest in both states: it shows only while publication
+  // fields are actually pending, and disappears once the operator has supplied verified values.
+  const publicationPending = publicationState().pendingGroups.length > 0;
   const other: Locale = lang === 'en' ? 'fr' : 'en';
   // Callers pass the route path without a leading slash (e.g. "legal/notice"); normalise it once so
   // the language switcher never builds a broken href like "/frlegal/notice".
@@ -69,7 +73,7 @@ export function PublicShell({ lang, path, children }: { lang: Locale; path: stri
               </ul>
             </nav>
             <div>
-              <p className="legal-pending-inline">{c.footer.pending}</p>
+              {publicationPending ? <p className="legal-pending-inline">{c.footer.pending}</p> : null}
               <p className="public-footer-meta">{lang === 'en' ? 'QeyNox — Results as a Service' : 'QeyNox — Results as a Service'}</p>
             </div>
           </div>

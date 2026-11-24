@@ -4,6 +4,11 @@ import { api, ApiError, session } from '../../../../lib/api';
 import { copy, locale, supportCopy } from '../../../../lib/copy';
 import { replySupportConversation } from '../../../../lib/support-actions';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 interface Message { id: string; content: string; messageType: string; private: boolean; sourceId: string | null; createdAt: string; sender: { name: string | null; type: string | null } | null }
 interface ConversationDetail { conversation: { id: string; status: string; priority: string | null; contact: { name: string | null; email: string | null } }; messages: readonly Message[] }
 

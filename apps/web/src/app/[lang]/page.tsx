@@ -5,6 +5,10 @@ import { pageMetadata } from '../../lib/site';
 import { publicCopy } from '../../lib/public-content';
 import { PublicShell } from '../../components/public-shell';
 
+// MISSION A03 — publication details come from the deployment environment at request time,
+// so public pages must never be prerendered with build-time values.
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const lang = locale((await params).lang);
   return pageMetadata(lang, '', publicCopy[lang].home.title, publicCopy[lang].home.description);

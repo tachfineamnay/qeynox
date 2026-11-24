@@ -9,6 +9,11 @@ import { missionCopy } from '../../../../../../lib/mission-copy';
 import { read, detailSchema, documentSchema } from '../../../../../../lib/mission';
 import { planViewSchema } from '../../../../../../lib/plan';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 /**
  * MISSION A07 — Atlas result reader.
  *

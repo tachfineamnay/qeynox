@@ -745,3 +745,10 @@
 .qx-beta-activate p{margin:0}
 .qx-beta-activate button{justify-self:start}
 @media(max-width:600px){.qx-beta-price{align-items:flex-start;text-align:left}.qx-beta-facts{grid-template-columns:1fr}.qx-beta-activate button{justify-self:stretch}}
+/* MISSION A03 — verified publication details: same visual family as .legal-pending but with the
+   success tokens, signalling operator-supplied verified values instead of pending ones. */
+.legal-verified{border:1px solid var(--qx-success);background:var(--qx-success-bg);color:var(--qx-success);border-radius:var(--qx-radius-lg);padding:18px 20px;margin:0 0 30px}
+.legal-verified .legal-verified-list{margin:10px 0 0;padding:0}
+.legal-verified .legal-verified-item{display:flex;gap:8px;padding:4px 0}
+.legal-verified .legal-verified-item dt{flex:0 0 auto;font-weight:650}
+.legal-verified .legal-verified-item dd{margin:0;overflow-wrap:anywhere}

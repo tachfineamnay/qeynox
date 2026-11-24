@@ -1634,3 +1634,55 @@ BLOCKED — NOT VERIFIED, AND NOT CLAIMED (live services absent from this enviro
 
 No merge, no deployment, no new credentials; beta grants, consent and tenant isolation were exercised,
 never bypassed.
+
+## MISSION A03 — publication readiness (branch `arena/14834895-qeynox`)
+
+Audit mission: make public launch readiness explicit and auditable without inventing legal,
+commercial or hosting facts. Inspected `public-content.ts`, `legal-page.tsx`, the contact page, the
+EN/FR public pages, SEO metadata and the deployment configuration; implemented only where needed.
+
+DELIVERED:
+- **Publication source of truth** `apps/web/src/lib/publication.ts`: every legal/publication field
+  maps to one environment variable, is validated (strict public e-mail; text values reject control
+  characters and oversize input), and is classified VERIFIED / MISSING / INVALID. Only VERIFIED
+  values render; INVALID values never reach the HTML (fail closed) and are never echoed into
+  release-check logs.
+- **Dynamic honest rendering**: contact + legal pages + site footer derive their state at request
+  time (`force-dynamic`): pending fields show the pending block (labels byte-identical to the
+  previous static list, plus the legal-basis item required by the privacy page), verified fields
+  show a verified-details block (success tokens, `<dt>/<dd>`, `role="note"`), the footer warning
+  appears only while fields are actually pending. Legal prose made state-neutral in EN/FR (it no
+  longer claims values are missing when they are supplied, or vice versa).
+- **Release check** `pnpm qa:publication` (`apps/web/scripts/qa-publication.mjs`): 8 self-test
+  groups over synthetic environments + a real-environment report that exits 1 with
+  `PUBLICATION_BLOCKED` while essential verified data is missing (reason lines name variables, never
+  values). Verified both ways: shipped config → PUBLICATION_BLOCKED (12 required variables listed);
+  fully supplied config → PUBLICATION_READY (optional fields stay non-blocking).
+- **Publication pages HTTP QA** `apps/web/scripts/publication-pages-qa.mjs` (18 assertions, EN/FR,
+  three scenarios: nothing configured / everything verified / invalid contact address): honest
+  pending state, no invented mailto, verified rendering, fail-closed invalid value, footer honesty,
+  404s, robots/sitemap and noindex contracts.
+- **404/noindex audit fixes**: root `app/not-found.tsx` (bilingual, public shell, real 404) for
+  unmatched URLs and unsupported locales; `[lang]/not-found.tsx` boundary for matched-route
+  notFound() (recorded nuance: streamed dynamic pages may answer 200 with the not-found UI — soft
+  404 — framework-inherent in Next 16, surfaces are noindex); `/services` + `/*/services` added to
+  robots.txt disallow (session-gated catalogue was crawlable); `robots: {index:false, follow:false}`
+  added to all 21 authenticated pages (shared results token already had it).
+
+VERIFIED IN THIS ENVIRONMENT (all exit 0 unless noted): `pnpm typecheck` (all packages);
+apps/web build; publication pages QA 18 PASS; smoke 449 PASS; flow2 37 PASS; qa:task02 5022;
+qa:backend 28; qa:agent-runtime 65; qa:publication self-tests PASS with honest PUBLICATION_BLOCKED
+release verdict (exit 1 by design — the operator inputs are listed in
+docs/architecture/PUBLICATION_CHECKLIST.md).
+
+BLOCKED / NOT VERIFIED, AND NOT CLAIMED:
+- The publication data itself: no legal entity, registration, hosting, jurisdiction, retention,
+  legal-basis or contact fact exists in this repository; the operator must supply verified values
+  (exact inputs in the checklist). The gate stays closed until then.
+- qa:connectors / qa:raas / qa:egress remain TLS-blocked at the live api.worldbank.org call in this
+  sandbox (A21.04, pre-existing, untouched by this web-only mission).
+- `QEYNOX_PUBLIC_URL` remains build-time for robots/sitemap/canonical metadata (noted in the
+  checklist); no deployment was performed or modified.
+
+No push, no merge, no deployment, no new credentials; QA fixtures use `*.example` values on QA
+servers only.

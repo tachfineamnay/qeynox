@@ -5,6 +5,11 @@ import { connectionCopy } from '../../../lib/connection-copy';
 import { ConnectionViewSchema, ConnectionAuditSchema, type ConnectionView, type ConnectionAudit } from '../../../lib/connections';
 import { ConnectButton, DisconnectButton, RefreshButton } from '../../../components/connection-controls';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 export const dynamic = 'force-dynamic';
 
 const STATE_TONES: Record<string, string> = {

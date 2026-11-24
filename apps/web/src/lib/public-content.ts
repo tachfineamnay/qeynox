@@ -37,38 +37,14 @@ export interface SiteCopy {
     readonly title: string; readonly description: string; readonly h1: string; readonly lead: string;
     readonly supportTitle: string; readonly supportBody: string;
     readonly publicTitle: string; readonly publicBody: string; readonly publicMissing: string;
+    readonly publicVerified: string;
     readonly legalPendingTitle: string; readonly legalPendingBody: string;
   };
   readonly legal: { readonly notice: LegalPageCopy; readonly privacy: LegalPageCopy; readonly terms: LegalPageCopy; readonly cookies: LegalPageCopy };
   readonly pending: { readonly title: string; readonly intro: string };
+  readonly verified: { readonly title: string; readonly intro: string };
+  readonly notFound: { readonly title: string; readonly body: string; readonly backHome: string };
 }
-
-export const legalPlaceholders: Readonly<Record<Locale, readonly string[]>> = {
-  en: [
-    'Legal entity name and legal form',
-    'Registered office address',
-    'Registration number (trade and companies register)',
-    'VAT number, if applicable',
-    'Publication director',
-    'Hosting provider: name, address and contact',
-    'Data protection contact / DPO, if designated',
-    'Competent jurisdiction and applicable law',
-    'Data retention periods and international transfer safeguards',
-    'Cookie/storage configuration owner and consent tooling, if added later',
-  ],
-  fr: [
-    'Raison sociale et forme juridique de l’éditeur',
-    'Adresse du siège social',
-    'Numéro d’immatriculation (registre du commerce et des sociétés)',
-    'Numéro de TVA intracommunautaire, le cas échéant',
-    'Directeur de la publication',
-    'Hébergeur : nom, adresse et contact',
-    'Contact protection des données / DPO, si désigné',
-    'Juridiction compétente et droit applicable',
-    'Durées de conservation et garanties de transferts internationaux',
-    'Responsable de la configuration cookies/stockage et outil de consentement, si ajouté ultérieurement',
-  ],
-};
 
 const en: SiteCopy = {
   nav: { home: 'Home', how: 'How it works', manifesto: 'Manifesto', contact: 'Contact', signin: 'Sign in', enter: 'Open MyDash' },
@@ -170,10 +146,11 @@ const en: SiteCopy = {
     supportTitle: 'Existing customers and workspace members',
     supportBody: 'Sign in and use the Support entry in MyDash. Conversations are handled in the platform support process, with the same account and workspace isolation as your QeyNox data.',
     publicTitle: 'Public or prospective enquiries',
-    publicBody: 'A public contact address will be published here once the legal and operational details are confirmed. The site intentionally does not invent an email address, form endpoint or response-time commitment.',
+    publicBody: 'A public contact address is published here only once the legal and operational details are confirmed. The site intentionally does not invent an email address, form endpoint or response-time commitment.',
     publicMissing: 'Public contact address: to be completed before publication.',
+    publicVerified: 'You can also write to the operator directly at the address below. Account-specific questions are handled through authenticated Support.',
     legalPendingTitle: 'Legal information to complete',
-    legalPendingBody: 'The legal pages already state the actual data and cookie usages implemented in the product. Identity, hosting, jurisdiction and retention fields remain marked for completion before publication.',
+    legalPendingBody: 'The legal pages already state the actual data and cookie usages implemented in the product. Identity, hosting, jurisdiction and retention fields stay marked for completion until the operator supplies verified values.',
   },
   legal: {
     notice: {
@@ -182,9 +159,9 @@ const en: SiteCopy = {
       intro: 'This page identifies the publisher and host of the QeyNox website. Fields that have not been verified are explicitly marked and must be completed before publication.',
       requiresPlaceholders: true,
       sections: [
-        { heading: 'Publisher', paragraphs: ['The QeyNox service is operated by the legal entity identified in the completed legal details below. The entity name, legal form and registered office have not yet been published because they have not been verified in this repository.'] },
-        { heading: 'Publication director', paragraphs: ['The publication director must be named by the operator before publication. This field is intentionally not invented.'] },
-        { heading: 'Hosting', paragraphs: ['Hosting provider, address and contact details must be recorded before publication. The public site and application are served from the operator deployment; no hosting provider is claimed here without verification.'] },
+        { heading: 'Publisher', paragraphs: ['The QeyNox service is operated by the legal entity identified in the verified publication details below. Any publication detail not listed there has not been verified in this repository and must be completed before publication.'] },
+        { heading: 'Publication director', paragraphs: ['The publication director is named in the verified publication details below once the operator designates one. This field is intentionally not invented.'] },
+        { heading: 'Hosting', paragraphs: ['Hosting provider, address and contact details are recorded in the verified publication details below once the operator supplies them. The public site and application are served from the operator deployment; no hosting provider is claimed here without verification.'] },
         { heading: 'Intellectual property', paragraphs: ['The QeyNox name, interface, design system and documentation are protected by the applicable intellectual property rules. Third-party names remain the property of their owners.'] },
         { heading: 'Contact', paragraphs: ['A verified public contact channel must be added before publication. Existing workspace members can use the authenticated Support entry.'] },
       ],
@@ -197,9 +174,9 @@ const en: SiteCopy = {
       sections: [
         { heading: 'Data processed', paragraphs: ['QeyNox processes account identifiers (email address, password hash, locale), workspace membership and roles, session metadata, missions and their revisions, results and evidence records, consented context and consent choices, support conversations when the support integration is enabled, and platform audit records for administration and security.'] },
         { heading: 'Purposes', paragraphs: ['Data is processed to provide the service, authenticate users, isolate workspaces, execute and record missions, deliver results, provide support, secure the platform and meet the operator obligations. QeyNox does not use the public website for advertising profiles.'] },
-        { heading: 'Legal basis and retention', paragraphs: ['The operator must document the applicable legal basis for each purpose and the retention period for each data category. These fields are not invented here and must be completed before publication.'] },
+        { heading: 'Legal basis and retention', paragraphs: ['The operator documents the applicable legal basis for each purpose and the retention period for each data category in the verified publication details below. These fields are not invented here; anything not listed there is still pending.'] },
         { heading: 'Processors and transfers', paragraphs: ['The deployment may use hosting, database and support providers. The support integration uses the configured external support engine (Chatwoot) when enabled; no message is duplicated in the QeyNox database. The identity of processors, their locations and transfer safeguards must be completed by the operator. No marketing email provider is configured in this repository.'] },
-        { heading: 'Your rights', paragraphs: ['Depending on applicable law, you may request access, rectification, erasure, restriction, objection or portability. In-product features allow you to inspect, edit, delete and revoke consented context and to sign out or revoke sessions. A verified data-protection contact must be added before publication.'] },
+        { heading: 'Your rights', paragraphs: ['Depending on applicable law, you may request access, rectification, erasure, restriction, objection or portability. In-product features allow you to inspect, edit, delete and revoke consented context and to sign out or revoke sessions. The data-protection contact, when designated, is listed in the verified publication details.'] },
       ],
     },
     terms: {
@@ -230,6 +207,8 @@ const en: SiteCopy = {
     },
   },
   pending: { title: 'To be completed before publication', intro: 'The operator must verify and fill the following fields. They are not invented in this repository.' },
+  verified: { title: 'Verified publication details', intro: 'Supplied by the operator through the deployment configuration and rendered exactly as provided.' },
+  notFound: { title: 'Page not found', body: 'The address does not match any public QeyNox page. Use the navigation or return to the home page. — L’adresse ne correspond à aucune page publique de QeyNox.', backHome: 'Back to home — Retour à l’accueil' },
 };
 
 const fr: SiteCopy = {
@@ -332,10 +311,11 @@ const fr: SiteCopy = {
     supportTitle: 'Clients existants et membres d’un workspace',
     supportBody: 'Connectez-vous et utilisez l’entrée Support dans MyDash. Les conversations sont traitées dans le processus de support de la plateforme, avec l’isolation de compte et de workspace applicable à vos données QeyNox.',
     publicTitle: 'Demandes publiques ou prospectives',
-    publicBody: 'Une adresse de contact publique sera publiée ici lorsque les informations légales et opérationnelles seront confirmées. Le site n’invente ni adresse e-mail, ni endpoint de formulaire, ni engagement de délai de réponse.',
+    publicBody: 'Une adresse de contact publique n’est publiée ici qu’après confirmation des informations légales et opérationnelles. Le site n’invente ni adresse e-mail, ni endpoint de formulaire, ni engagement de délai de réponse.',
     publicMissing: 'Adresse de contact publique : à compléter avant publication.',
+    publicVerified: 'Vous pouvez également écrire directement à l’opérateur à l’adresse ci-dessous. Les questions liées au compte passent par le support authentifié.',
     legalPendingTitle: 'Informations légales à compléter',
-    legalPendingBody: 'Les pages légales décrivent déjà les usages réels de données et de cookies implémentés dans le produit. L’identité, l’hébergement, la juridiction et les durées de conservation restent signalés à compléter avant publication.',
+    legalPendingBody: 'Les pages légales décrivent déjà les usages réels de données et de cookies implémentés dans le produit. L’identité, l’hébergement, la juridiction et les durées de conservation restent signalés à compléter jusqu’à ce que l’opérateur fournisse des valeurs vérifiées.',
   },
   legal: {
     notice: {
@@ -344,9 +324,9 @@ const fr: SiteCopy = {
       intro: 'Cette page identifie l’éditeur et l’hébergeur du site QeyNox. Les champs non vérifiés sont explicitement signalés et doivent être complétés avant publication.',
       requiresPlaceholders: true,
       sections: [
-        { heading: 'Éditeur', paragraphs: ['Le service QeyNox est exploité par l’entité légale identifiée dans les informations complètes ci-dessous. Le nom, la forme juridique et le siège social ne sont pas encore publiés car ils n’ont pas été vérifiés dans ce dépôt.'] },
-        { heading: 'Directeur de la publication', paragraphs: ['Le directeur de la publication doit être désigné par l’opérateur avant publication. Ce champ n’est volontairement pas inventé.'] },
-        { heading: 'Hébergement', paragraphs: ['Le nom, l’adresse et le contact de l’hébergeur doivent être renseignés avant publication. Le site public et l’application sont servis par le déploiement de l’opérateur ; aucun hébergeur n’est affirmé ici sans vérification.'] },
+        { heading: 'Éditeur', paragraphs: ['Le service QeyNox est exploité par l’entité légale identifiée dans les informations de publication vérifiées ci-dessous. Toute information non listée n’a pas été vérifiée dans ce dépôt et doit être complétée avant publication.'] },
+        { heading: 'Directeur de la publication', paragraphs: ['Le directeur de la publication est nommé dans les informations de publication vérifiées ci-dessous lorsque l’opérateur le désigne. Ce champ n’est volontairement pas inventé.'] },
+        { heading: 'Hébergement', paragraphs: ['Le nom, l’adresse et le contact de l’hébergeur sont enregistrés dans les informations de publication vérifiées ci-dessous lorsque l’opérateur les fournit. Le site public et l’application sont servis par le déploiement de l’opérateur ; aucun hébergeur n’est affirmé ici sans vérification.'] },
         { heading: 'Propriété intellectuelle', paragraphs: ['Le nom QeyNox, l’interface, le design system et la documentation sont protégés par les règles de propriété intellectuelle applicables. Les noms de tiers restent la propriété de leurs titulaires.'] },
         { heading: 'Contact', paragraphs: ['Un canal de contact public vérifié doit être ajouté avant publication. Les membres d’un workspace peuvent utiliser l’entrée Support authentifiée.'] },
       ],
@@ -359,9 +339,9 @@ const fr: SiteCopy = {
       sections: [
         { heading: 'Données traitées', paragraphs: ['QeyNox traite les identifiants de compte (adresse e-mail, empreinte de mot de passe, langue), l’appartenance et les rôles de workspace, les métadonnées de session, les missions et leurs révisions, les résultats et preuves, le contexte consenti et les choix de consentement, les conversations de support lorsque l’intégration est activée, ainsi que les journaux d’audit d’administration et de sécurité.'] },
         { heading: 'Finalités', paragraphs: ['Les données sont traitées pour fournir le service, authentifier les utilisateurs, isoler les workspaces, exécuter et enregistrer les missions, livrer les résultats, fournir le support, sécuriser la plateforme et respecter les obligations de l’opérateur. Le site public n’est pas utilisé pour du profilage publicitaire.'] },
-        { heading: 'Base légale et conservation', paragraphs: ['L’opérateur doit documenter la base légale applicable à chaque finalité et la durée de conservation de chaque catégorie. Ces champs ne sont pas inventés ici et doivent être complétés avant publication.'] },
+        { heading: 'Base légale et conservation', paragraphs: ['L’opérateur documente la base légale applicable à chaque finalité et la durée de conservation de chaque catégorie dans les informations de publication vérifiées ci-dessous. Ces champs ne sont pas inventés ici ; ce qui n’y figure pas reste à compléter.'] },
         { heading: 'Sous-traitants et transferts', paragraphs: ['Le déploiement peut utiliser des prestataires d’hébergement, de base de données et de support. L’intégration de support utilise le moteur externe configuré (Chatwoot) lorsqu’il est activé ; aucun message n’est dupliqué dans la base QeyNox. L’identité des sous-traitants, leurs localisations et les garanties de transfert doivent être complétées par l’opérateur. Aucun fournisseur d’e-mail marketing n’est configuré dans ce dépôt.'] },
-        { heading: 'Vos droits', paragraphs: ['Selon le droit applicable, vous pouvez demander l’accès, la rectification, l’effacement, la limitation, l’opposition ou la portabilité. Les fonctionnalités du produit permettent de consulter, modifier, supprimer et révoquer le contexte consenti ainsi que de se déconnecter ou de révoquer des sessions. Un contact protection des données vérifié doit être ajouté avant publication.'] },
+        { heading: 'Vos droits', paragraphs: ['Selon le droit applicable, vous pouvez demander l’accès, la rectification, l’effacement, la limitation, l’opposition ou la portabilité. Les fonctionnalités du produit permettent de consulter, modifier, supprimer et révoquer le contexte consenti ainsi que de se déconnecter ou de révoquer des sessions. Le contact protection des données, lorsqu’il est désigné, figure dans les informations de publication vérifiées.'] },
       ],
     },
     terms: {
@@ -392,6 +372,8 @@ const fr: SiteCopy = {
     },
   },
   pending: { title: 'À compléter avant publication', intro: 'L’opérateur doit vérifier et renseigner les champs suivants. Ils ne sont pas inventés dans ce dépôt.' },
+  verified: { title: 'Informations de publication vérifiées', intro: 'Fournies par l’opérateur via la configuration du déploiement et restituées telles quelles.' },
+  notFound: { title: 'Page introuvable', body: 'L’adresse ne correspond à aucune page publique de QeyNox. Utilisez la navigation ou revenez à l’accueil. — The address does not match any public QeyNox page.', backHome: 'Retour à l’accueil — Back to home' },
 };
 
 export const publicCopy: Readonly<Record<Locale, SiteCopy>> = { en, fr };
