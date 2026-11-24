@@ -5,6 +5,11 @@ import { copy, locale } from '../../../lib/copy';
 import { api, identityStateSchema, session } from '../../../lib/api';
 import { logout } from '../../../lib/actions';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 /**
  * Account page.
  *

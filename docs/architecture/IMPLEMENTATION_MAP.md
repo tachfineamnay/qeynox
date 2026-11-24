@@ -369,3 +369,14 @@ No push to main, no merge, no deployment; the migration was applied only to disp
 | Mission-page documents/claims/payment reads parse with the web schemas against a real seeded READY_FOR_REVIEW test row; payment view keeps `executionAuthorized=false` for beta orders (A21.03 codified) | apps/web/src/app/[lang]/missions/[id]/page.tsx, apps/api/src/results, apps/api/src/operations | **VERIFIED IN DISPOSABLE QA** (seeded row explicitly labelled test data) |
 | Notifications/preferences, account, sessions, deletion request, Support honesty, logout/revocation contracts (403 DENIED for revoked/expired; revoke-others never touches the current session) | apps/api/src/notifications, account, support; apps/api/src/auth | **VERIFIED IN DISPOSABLE QA** (journey audit steps 12–14) |
 | Provider egress suites (connectors, raas, egress) require one real live TLS call to api.worldbank.org | apps/worker/scripts/qa-connectors.ts, qa-raas-deliverable.ts, qa-egress.ts | **BLOCKED** in this sandbox — allowlist blocks the live call (A21.04, pre-existing); offline assertions pass; no guard added |
+
+## Publication readiness (Mission A03)
+
+| Responsibility | Code area | Status |
+| --- | --- | --- |
+| Publication source of truth: env-mapped legal/contact fields, validation, VERIFIED/MISSING/INVALID classification, release blockers | apps/web/src/lib/publication.ts | **VERIFIED IN DISPOSABLE QA** (`qa:publication` self-tests; publication-pages-qa scenarios) |
+| Release gate reporting PUBLICATION_BLOCKED while essential verified data is missing (exit 1; READY exit 0) | apps/web/scripts/qa-publication.mjs, root `pnpm qa:publication` | **VERIFIED IN DISPOSABLE QA** (both verdicts exercised) |
+| Honest dynamic rendering: pending block (dynamic), verified-details block, footer warning, contact mailto only for validated addresses | apps/web/src/app/[lang]/contact, legal pages, components/publication-blocks.tsx, components/public-shell.tsx, components/legal-page.tsx, lib/public-content.ts | **VERIFIED IN DISPOSABLE QA** (18-assertion EN/FR three-scenario suite) |
+| Public 404: root bilingual boundary (unmatched URLs, unsupported locales) + `[lang]` boundary (matched-route notFound) | apps/web/src/app/not-found.tsx, app/[lang]/not-found.tsx | **VERIFIED IN DISPOSABLE QA**; streamed soft-404 nuance recorded in PUBLICATION_CHECKLIST.md |
+| Noindex hygiene: authenticated routes meta noindex/nofollow; session-gated catalogue disallowed in robots.txt | 21 authenticated pages, app/robots.ts | **VERIFIED IN DISPOSABLE QA** |
+| Operator inputs for publication (15 env variables, required/optional) | docs/architecture/PUBLICATION_CHECKLIST.md | **BLOCKED — awaiting operator-verified values**; nothing invented in the repository |

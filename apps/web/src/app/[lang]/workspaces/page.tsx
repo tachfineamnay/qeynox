@@ -9,6 +9,11 @@ import {
 } from '../../../lib/workspaces';
 import { CreateWorkspace, InvitationInbox, InvitePanel, MemberRow, Switcher } from '../../../components/team-panels';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 export const dynamic = 'force-dynamic';
 
 /**

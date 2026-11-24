@@ -7,7 +7,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [{
       userAgent: '*',
       allow: '/',
-      disallow: ['/account', '/mydash', '/missions', '/results', '/soul', '/support', '/capabilities', '/admin', '/api/', '/*/account', '/*/mydash', '/*/missions', '/*/results', '/*/soul', '/*/support', '/*/capabilities'],
+      disallow: ['/account', '/mydash', '/missions', '/results', '/soul', '/support', '/capabilities', '/services', '/admin', '/api/', '/*/account', '/*/mydash', '/*/missions', '/*/results', '/*/soul', '/*/support', '/*/capabilities', '/*/services'],
     }],
     sitemap: SITE_URL + '/sitemap.xml',
   };

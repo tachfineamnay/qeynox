@@ -1,10 +1,18 @@
 import Link from 'next/link';
 import type { Locale } from '../lib/copy';
-import { publicCopy, legalPlaceholders, type LegalPageCopy } from '../lib/public-content';
+import { publicCopy, type LegalPageCopy } from '../lib/public-content';
+import { publicationState } from '../lib/publication';
+import { PendingDetailsBlock, VerifiedDetailsBlock } from './publication-blocks';
 import { PublicShell } from './public-shell';
 
+/**
+ * MISSION A03 — the legal pages render the publication state instead of a static placeholder list:
+ * verified values supplied by the operator appear in a verified-details block, and only the fields
+ * still missing are listed as pending.
+ */
 export function LegalPage({ lang, path, page }: { lang: Locale; path: string; page: LegalPageCopy }) {
   const c = publicCopy[lang];
+  const state = publicationState();
   return (
     <PublicShell lang={lang} path={path}>
       <section className="public-hero public-hero-compact">
@@ -17,11 +25,10 @@ export function LegalPage({ lang, path, page }: { lang: Locale; path: string; pa
       <section className="public-section">
         <div className="public-container public-prose">
           {page.requiresPlaceholders ? (
-            <div className="legal-pending" role="note">
-              <strong>{c.pending.title}</strong>
-              <p>{c.pending.intro}</p>
-              <ul>{legalPlaceholders[lang].map(item => <li key={item}>{item}</li>)}</ul>
-            </div>
+            <>
+              <PendingDetailsBlock state={state} lang={lang} />
+              <VerifiedDetailsBlock state={state} lang={lang} />
+            </>
           ) : null}
           {page.sections.map(section => (
             <section key={section.heading}>

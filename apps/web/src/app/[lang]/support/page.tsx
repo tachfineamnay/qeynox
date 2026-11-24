@@ -4,6 +4,11 @@ import { api, ApiError, session } from '../../../lib/api';
 import { copy, locale, supportCopy } from '../../../lib/copy';
 import { openSupportConversation } from '../../../lib/support-actions';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 interface Capability { status: 'CONFIGURED' | 'NOT_CONFIGURED'; reason: string | null; inboxConfigured: boolean }
 interface Conversation { id: string; status: string; priority: string | null; lastMessageAt: string | null; contact: { name: string | null; email: string | null } }
 

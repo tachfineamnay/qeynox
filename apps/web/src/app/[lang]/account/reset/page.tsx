@@ -3,6 +3,11 @@ import { RecoveryConfirmForm } from '../../../../components/forms';
 import { copy, locale } from '../../../../lib/copy';
 import { api, recoveryInspectSchema } from '../../../../lib/api';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 /**
  * "Choose a new password" screen. The token is inspected WITHOUT being consumed, so reloading this
  * page cannot burn the link. A dead or already-used link is reported plainly instead of showing a

@@ -20,6 +20,11 @@ import { read, detailSchema, summarySchema, activitySchema, documentSchema, guid
 import { runtimeComponentText } from '../../../../lib/runtime-copy';
 import { planViewSchema, readinessSchema, commercialViewSchema, claimListSchema, paymentViewSchema, formatMoney, type PlanAttempt } from '../../../../lib/plan';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 const consentsSchema = z.array(z.object({ id: z.string(), scope: z.array(z.string()).optional(), scopes: z.array(z.string()).optional(), revokedAt: z.string().optional(), expiresAt: z.string().optional(), grantedAt: z.string() }));
 
 /**

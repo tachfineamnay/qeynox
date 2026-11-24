@@ -6,6 +6,11 @@ import { settingsCopy } from '../../../../lib/settings-copy';
 import { profileSchema, sessionViewSchema, deletionRequestSchema } from '../../../../lib/workspaces';
 import { PasswordForm, SessionList, LocaleForm, DeletionPanel } from '../../../../components/account-panels';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 export const dynamic = 'force-dynamic';
 
 /**

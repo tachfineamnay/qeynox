@@ -6,6 +6,11 @@ import { GUIDANCE_COOKIE } from '../../../lib/soul-guidance-cookie';
 import { api, ApiError, session, z } from '../../../lib/api';
 import { copy, locale, soulCopy } from '../../../lib/copy';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 export const dynamic = 'force-dynamic';
 
 /**

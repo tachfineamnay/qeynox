@@ -10,6 +10,11 @@ import { readBetaJourney, type BetaJourneyRead } from '../../../../lib/beta';
 import { BetaOfferSummary } from '../../../../components/beta-offer';
 import { serviceDetailSchema, type ServiceDetail } from '@qeynox/contracts';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 export const dynamic = 'force-dynamic';
 
 export default async function Page({ params }: { params: Promise<{ lang: string; offerId: string }> }) {

@@ -3,6 +3,11 @@ import { VerificationForm } from '../../../../components/forms';
 import { copy, locale } from '../../../../lib/copy';
 import { api, z } from '../../../../lib/api';
 
+import type { Metadata } from 'next';
+
+/** MISSION A03 — authenticated product surface: never indexed (robots.txt also disallows it). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 /**
  * Verification landing page.
  *
